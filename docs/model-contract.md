@@ -28,7 +28,8 @@ Every animated node carries glTF `extras`, which three.js exposes as `object.use
 ```
 
 - `rotate`: the node's rotation is `rest × axisAngle(axis, factor × pose.gears[key])`. `axis` is in the node's parent space. The scene sets the angle absolutely each frame and never accumulates it.
-- `lift`: `pose.clutch.left/right` are booleans that the scene eases to a value e in 0..1 (e = 1 means engaged). The node's position is `rest + axis × distance × (1 − e)`, so a disengaged gear is raised by `distance`.
+- `lift`: `pose.clutch.left/right` are booleans that the scene eases to a value e in 0..1 (e = 1 means engaged). The node's position is `rest + axis × distance × (1 − e)`, so a disengaged gear is raised by `distance`. The extras `pose` is `clutchL` (reads `pose.clutch.left`) or `clutchR` (`pose.clutch.right`).
+- Every animated node has an identity rest rotation, so `rest × axisAngle` and `axisAngle` in the parent frame are the same thing.
 - Rotation sign: a positive angle about a vertical axis is counter-clockwise seen from above. For wheels, a positive `wheelL`/`wheelR` means the wheel rolls forward. Blender picks `axis` and `factor` so that this holds.
 
 ### Pose keys (from `Chariot.pose()`)
@@ -46,7 +47,7 @@ Every animated node carries glTF `extras`, which three.js exposes as `object.use
 | song: `bigFlat` | 中心大平轮 (48 teeth); the figure shaft is fixed to it |
 | clutch `clutchL`, `clutchR` | song only, `lift` motion of the small flat wheels and their pole rollers |
 
-The figure: node `figure` rotates with `pose.figureRel`, which already includes the start-up offset, about +Y. Its arm points along local **+X** at angle 0. The shaft and big gear rotate with `gears.figure` / `gears.bigFlat` / `gears.carrier`.
+The figure: node `figure` rotates with `pose.figureRel`, which already includes the start-up offset, about +Y. Its extras say `"pose": "figure"` like the shaft's; the scene special-cases this one node and uses `pose.figureRel` (= `gears.figure` + `figureOffset`) instead of `gears.figure`. Its arm points along local **+X** at angle 0. The shaft and big gear rotate with `gears.figure` / `gears.bigFlat` / `gears.carrier`.
 
 ## Required node names
 
@@ -54,7 +55,7 @@ All nodes are children of root `chariot`.
 
 | Node | Mechanism | Motion |
 |---|---|---|
-| `body.*` (frame, floor, rails, roof, pole, pillars…) | both | static |
+| `body.*`: `body.frame`, `body.pole`, `body.side.L/R`, `body.end.F/B`, `body.deck`, `body.tier`, `body.roof` (+ `body.axle` in song) | both | static |
 | `wheel.L`, `wheel.R` | both | rotate `wheelL` / `wheelR` |
 | `figure` (immortal with outstretched arm) + `figure.shaft` | both | rotate `figure` (shaft: `figure` too) |
 | `diff.sideA`, `diff.sideB` (each including its driving horizontal gear) | differential | rotate `sideA` / `sideB` |
@@ -72,13 +73,15 @@ All nodes are children of root `chariot`.
 ```
 
 - `shell`: everything that hides the gears (roof, side boards, railings). X-ray makes it transparent; explode moves it far away.
-- `explode`: offset in chi in the chariot frame, used at explode = 1. Gears separate vertically so that the meshing stays readable.
+- `explode`: offset in chi, used at explode = 1, applied to the node's position in its parent's frame. Only direct children of `chariot` carry a non-zero offset; deeper nodes (pinions, small flat wheels, markers) are `[0, 0, 0]` and move with their parent. Gears separate vertically so that the meshing stays readable.
 - `label`: Chinese name shown in callouts. `teeth`: tooth count, used by the "count the teeth" tasks.
-- Every gear has one **marker tooth** in a contrasting colour (child mesh `<node>.marker`), so children can follow a gear round and count turns.
+- Every gear has one **marker tooth** in a contrasting colour (child mesh `<node>.marker`, static relative to its gear), so children can follow a gear round and count turns. The wheels also have a red marker spoke (`wheel.L.marker`, `wheel.R.marker`).
+- `diff.sideA` / `diff.sideB` each hold two peg rings: `teeth` counts the horizontal gear driven by the crown wheel (42 / 18), `sideTeeth` the 16 upright pegs that mesh with the pinions.
+- Song meshing phase: at all-zero angles every pair is in mesh. A lowered small flat wheel is in mesh only while `(smallR − 2·footR)`, `(smallL + 2·footL)` and `(small + 4·bigFlat)` are multiples of 30°. js/sim does not keep this when it lowers a wheel after a straight run (see `docs/model-notes.md`).
 
 ## Geometry rules
 
 - Gear teeth are wooden pegs (Song style, the text gives tooth pitch 3 寸), modelled as real teeth with the documented counts so children can count them. Pitch radii follow params: foot gear ⌀2.4, small flat ⌀1.2, big flat ⌀4.8 chi.
 - Differential: pitch radii must make the wheel→side gear ratio exactly 1 (`params.differential.inputRatio`) and the senses match the table above. Report the final layout in `docs/model-notes.md`.
-- Clearance: in every pose sampled from `js/sim/scenarios.js`, meshing pairs touch only where designed and no other pair intersects (`pnpm check:model`).
+- Clearance: in every pose sampled from `js/sim/scenarios.js`, meshing pairs touch only where designed and no other pair intersects (`pnpm check:model`). Meshing pairs are tested in every pose in which they are in phase (all differential poses; Song poses with the wheel raised, or lowered in phase).
 - Budget: under 120 k triangles per GLB (classroom tablets). Use flat-shaded low-poly wood with vertex colours or simple materials. No textures larger than 1024².
