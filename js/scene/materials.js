@@ -13,47 +13,60 @@ import * as THREE from "three";
 /** @typedef {Record<string, THREE.DataTexture>} Textures */
 
 /**
- * Make the procedural textures, in a worker when possible.
+ * Make the procedural textures, in a worker when possible. The chariot's
+ * (wood, metal) come first so the chariot isn't held up by the paving.
  * @param {THREE.WebGLRenderer} renderer
  * @param {"lite" | "full"} level
- * @returns {Promise<Textures>}
+ * @returns {{chariot: Promise<Textures>, scene: Promise<Textures>}}
  */
-export async function loadTextures(renderer, level) {
-  /** @type {TexSet} */
-  let set;
-  try {
-    set = await new Promise((resolve, reject) => {
-      const w = new Worker(new URL("./texgen.worker.js", import.meta.url), { type: "module" });
-      w.onmessage = (e) => {
-        resolve(e.data.set);
-        w.terminate();
-      };
-      w.onerror = (e) => {
-        reject(e);
-        w.terminate();
-      };
-      w.postMessage({ level });
-    });
-  } catch {
-    const { generateAll } = await import("./texgen.js");
-    set = generateAll(level);
-  }
+export function loadTextures(renderer, level) {
   const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  /** @type {Textures} */
-  const out = {};
-  for (const [name, t] of Object.entries(set)) {
-    const tex = new THREE.DataTexture(t.data, t.size, t.size, THREE.RGBAFormat, THREE.UnsignedByteType);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.magFilter = THREE.LinearFilter;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.generateMipmaps = true;
-    tex.anisotropy = aniso;
-    const colour = !/Rough|Normal/.test(name) && name !== "clouds";
-    tex.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-    tex.needsUpdate = true;
-    out[name] = tex;
+  /** @param {TexSet} set */
+  const upload = (set) => {
+    /** @type {Textures} */
+    const out = {};
+    for (const [name, t] of Object.entries(set)) {
+      const tex = new THREE.DataTexture(t.data, t.size, t.size, THREE.RGBAFormat, THREE.UnsignedByteType);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.magFilter = THREE.LinearFilter;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.generateMipmaps = true;
+      tex.anisotropy = aniso;
+      const colour = !/Rough|Normal/.test(name) && name !== "clouds";
+      tex.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      tex.needsUpdate = true;
+      out[name] = tex;
+    }
+    return out;
+  };
+  /** @type {Record<"chariot" | "scene", (s: TexSet) => void>} */
+  const got = { chariot: () => {}, scene: () => {} };
+  /** @type {Promise<TexSet>} */
+  const chariot = new Promise((r) => (got.chariot = r));
+  /** @type {Promise<TexSet>} */
+  const scene = new Promise((r) => (got.scene = r));
+  const fallback = async () => {
+    const t = await import("./texgen.js");
+    got.chariot(t.generateChariot(level));
+    await new Promise((r) => setTimeout(r));
+    got.scene(t.generateScene(level));
+  };
+  try {
+    const w = new Worker(new URL("./texgen.worker.js", import.meta.url), { type: "module" });
+    let n = 0;
+    w.onmessage = (e) => {
+      got[/** @type {"chariot" | "scene"} */ (e.data.part)](e.data.set);
+      if (++n === 2) w.terminate();
+    };
+    w.onerror = () => {
+      w.terminate();
+      fallback();
+    };
+    w.postMessage({ level });
+  } catch {
+    fallback();
   }
-  return out;
+  return { chariot: chariot.then(upload), scene: scene.then(upload) };
 }
 
 /**
@@ -82,7 +95,7 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   lacquer: { color: 0xa82a1d, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
   // Roof: dark glazed tiles.
-  roof: { color: 0x354044, map: "tiles", roughness: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.5, normal: 0.9, scale: 0.55, project: "roof" },
+  roof: { color: 0x354044, map: "tiles", roughness: 0.68, normal: 0.9, scale: 0.55, project: "roof" },
   // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
   blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },
   orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },

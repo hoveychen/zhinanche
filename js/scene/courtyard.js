@@ -33,9 +33,12 @@ class Bucket {
     this.parts = new Map();
   }
 
-  /** @param {string} key @param {THREE.BufferGeometry} g */
-  add(key, g) {
-    let geo = g.index ? g.toNonIndexed() : g;
+  /**
+   * @param {string} key @param {THREE.BufferGeometry} g
+   * @param {boolean} [indexed] keep the index (every geometry under this key must be indexed)
+   */
+  add(key, g, indexed = false) {
+    let geo = g.index && !indexed ? g.toNonIndexed() : g;
     if (!geo.getAttribute("uv")) geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(geo.getAttribute("position").count * 2), 2));
     for (const k of Object.keys(geo.attributes)) if (!["position", "normal", "uv", "color"].includes(k)) geo.deleteAttribute(k);
     const list = this.parts.get(key);
@@ -224,6 +227,14 @@ function balustrade(b, z, x0, x1) {
   b.box("marble", [x0 - 1, 0, z - 1.2], [x1 + 1, 0.5, z + 1.2]);
 }
 
+/** @type {THREE.BufferGeometry | null} */
+let clump = null;
+/** A welded unit icosphere (IcosahedronGeometry comes unindexed with flat normals). */
+function clumpTemplate() {
+  clump ??= mergeVertices(new THREE.IcosahedronGeometry(1, 2).deleteAttribute("uv").deleteAttribute("normal"));
+  return clump;
+}
+
 /**
  * Cypress-ish tree: trunk and a crown of ragged clumps, darker underneath.
  * @param {Bucket} b @param {number} x @param {number} z @param {number} h @param {number} seed
@@ -244,16 +255,15 @@ function tree(b, x, z, h, seed, near = false) {
     const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
     const small = near ? 1 : 1.25;
     const rad = h * small * (k < 4 ? 0.13 - 0.06 * t : 0.09 - 0.045 * t) * (0.85 + 0.3 * r());
-    // Icosahedrons come unindexed: weld them so the normals come out smooth.
-    const g = mergeVertices(new THREE.IcosahedronGeometry(rad, 2).deleteAttribute("uv").deleteAttribute("normal"));
+    const g = clumpTemplate().clone();
     const p = g.getAttribute("position");
     const ph = r() * 10;
     // Ragged leaf-spray surface: two octaves of bumps, no smooth "boulder".
     for (let i = 0; i < p.count; i++) {
-      const X = p.getX(i) / rad, Y = p.getY(i) / rad, Z = p.getZ(i) / rad;
+      const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i);
       const n1 = Math.sin(X * 4.1 + ph) * Math.sin(Y * 3.7 - ph) * Math.sin(Z * 4.3 + 2 * ph);
       const n2 = Math.sin(X * 11.3 - ph) * Math.sin(Y * 9.7 + ph) * Math.sin(Z * 10.9);
-      const s = 0.9 + 0.22 * n1 + 0.14 * n2;
+      const s = rad * (0.9 + 0.22 * n1 + 0.14 * n2);
       p.setXYZ(i, p.getX(i) * s, p.getY(i) * s, p.getZ(i) * s);
     }
     g.computeVertexNormals();
@@ -267,7 +277,7 @@ function tree(b, x, z, h, seed, near = false) {
       col.set([v * 0.95, v, v * 0.9], i * 3);
     }
     g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    b.add("leaves", g);
+    b.add("leaves", g, true);
   }
 }
 

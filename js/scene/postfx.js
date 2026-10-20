@@ -16,8 +16,17 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 /** Camera-to-target distance (chi) below which depth of field fades in. */
 const DOF_NEAR = 24;
 
-/** GTAO that skips transparent meshes and the sky in its depth/normal pass. */
+/**
+ * GTAO that skips transparent meshes and the sky in its depth/normal pass,
+ * and works at half resolution (occlusion is soft; full res cost ~14 ms a
+ * frame at DPR 2 on a laptop GPU).
+ */
 class OpaqueGTAOPass extends GTAOPass {
+  /** @param {number} w @param {number} h */
+  setSize(w, h) {
+    super.setSize(Math.ceil(w / 2), Math.ceil(h / 2));
+  }
+
   /**
    * @param {THREE.WebGLRenderer} renderer
    * @param {THREE.WebGLRenderTarget} writeBuffer
@@ -57,8 +66,8 @@ export class PostFX {
     composer.addPass(new RenderPass(scene, camera));
 
     const ao = new OpaqueGTAOPass(scene, camera, size.x, size.y);
-    ao.updateGtaoMaterial({ radius: 3, distanceExponent: 1.6, thickness: 3, scale: 2.4, samples: 16 });
-    ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+    ao.updateGtaoMaterial({ radius: 3, distanceExponent: 1.6, thickness: 3, scale: 2.4, samples: 8 });
+    ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, rings: 2, samples: 8 });
     ao.blendIntensity = 1;
     // ?debug=ao shows the occlusion buffer alone (for tuning)
     const debug = new URLSearchParams(location.search).get("debug");

@@ -1,6 +1,7 @@
 // Render quality tiers and the frame-rate governor that steps them down.
 //   high:   post-processing (multisampled HDR, ambient occlusion, bloom, depth
-//           of field in close-ups), 2048 shadow map, device pixel ratio ≤ 2
+//           of field in close-ups), 2048 shadow map, pixel ratio ≤ 1.5 (MSAA does
+//           the anti-aliasing; full DPR 2 halves the frame rate)
 //   medium: no post-processing, 2048 shadow map, pixel ratio ≤ 1.5
 //   lite:   no post-processing, 1024 shadow map, pixel ratio 1, smaller textures
 // `?quality=high|medium|lite` forces a tier and turns the governor off.
@@ -20,7 +21,7 @@ export const TIERS = /** @type {const} */ (["high", "medium", "lite"]);
 
 /** @type {Record<Quality, TierSettings>} */
 export const SETTINGS = {
-  high: { postfx: true, shadowSize: 2048, maxPixelRatio: 2, textures: "full" },
+  high: { postfx: true, shadowSize: 2048, maxPixelRatio: 1.5, textures: "full" },
   medium: { postfx: false, shadowSize: 2048, maxPixelRatio: 1.5, textures: "full" },
   lite: { postfx: false, shadowSize: 1024, maxPixelRatio: 1, textures: "lite" },
 };

@@ -42,8 +42,13 @@ export class Look {
     this.env = new Environment(renderer, scene, { shadowSize: s.shadowSize, clouds: true });
     this.ground = makeGround();
     scene.add(this.ground);
-    this.yard = new Courtyard();
-    scene.add(this.yard.group);
+    // The courtyard is built after the chariot's first frames (see render):
+    // ~45 ms of main thread (175 ms on a slow phone) that loading needn't wait for.
+    /** @type {Courtyard | null} */
+    this.yard = null;
+    this.frames = 0;
+    /** @type {Textures | null} */
+    this.sceneTex = null;
     camera.far = 2600;
     camera.updateProjectionMatrix();
     /** @type {THREE.Mesh[]} */
@@ -53,10 +58,14 @@ export class Look {
     this.postfxLoading = false;
     this.governor = pick.forced ? null : new FrameGovernor(this.quality, (q) => this.setQuality(q));
     document.body.dataset.quality = this.quality;
+    const tex = loadTextures(renderer, s.textures);
     /** @type {Promise<Textures>} */
-    this.texReady = loadTextures(renderer, s.textures).then((tex) => {
+    this.chariotTex = tex.chariot;
+    /** @type {Promise<Textures>} */
+    this.texReady = tex.scene.then((tex) => {
       dressGround(this.ground, tex);
-      this.yard.dress(tex);
+      this.sceneTex = tex;
+      this.yard?.dress(tex);
       this.env.bake(tex);
       return tex;
     });
@@ -69,7 +78,7 @@ export class Look {
 
   /** Swap a loaded chariot's flat colours for real materials. @param {THREE.Object3D} root */
   async dress(root) {
-    dressChariot(root, await this.texReady);
+    dressChariot(root, await this.chariotTex);
     root.traverse((o) => {
       if (o instanceof THREE.Mesh) this.chariotMeshes.push(o);
     });
@@ -92,6 +101,15 @@ export class Look {
 
   render() {
     const { renderer, scene, camera } = this.host;
+    if (++this.frames === 3) {
+      const build = () => {
+        this.yard = new Courtyard();
+        if (this.sceneTex) this.yard.dress(this.sceneTex);
+        scene.add(this.yard.group);
+      };
+      if (typeof requestIdleCallback === "function") requestIdleCallback(build, { timeout: 1500 });
+      else setTimeout(build, 50);
+    }
     this.governor?.tick(performance.now());
     // Parts faded out for the x-ray view stop casting shadows, so the gears
     // inside aren't left in the shade of a body you can't see.

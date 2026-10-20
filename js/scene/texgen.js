@@ -315,12 +315,15 @@ export function clouds(size = 256) {
 
 /** Everything, by name. @param {"lite" | "full"} [level] */
 export function generateAll(level = "full") {
-  const big = level === "full";
-  return /** @type {TexSet} */ ({
-    ...wood(big ? 512 : 256),
-    ...metal(256),
-    ...stone(big ? 1024 : 512),
-    ...tiles(256),
-    ...clouds(256),
-  });
+  return /** @type {TexSet} */ ({ ...generateChariot(level), ...generateScene(level) });
+}
+
+/** What the chariot needs (made first: the chariot waits for it). @param {"lite" | "full"} [level] */
+export function generateChariot(level = "full") {
+  return /** @type {TexSet} */ ({ ...wood(level === "full" ? 512 : 256), ...metal(256) });
+}
+
+/** Paving, roof tiles and clouds (can arrive after the first frame). @param {"lite" | "full"} [level] */
+export function generateScene(level = "full") {
+  return /** @type {TexSet} */ ({ ...stone(level === "full" ? 1024 : 512), ...tiles(256), ...clouds(256) });
 }
