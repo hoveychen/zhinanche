@@ -239,7 +239,10 @@ export class World {
       this.rig.setExplode(this.explode);
       this.cam.reframe = this.explode > 0.001 ? 0.9 : 0;
     }
-    if (this.cam.reframe > 0) this.cam.parts = this.rig.bounds(this.partsBox);
+    if (this.cam.reframe > 0) {
+      this.cam.parts = this.rig.bounds(this.partsBox);
+      this.cam.partsInset = this.hudInsets();
+    }
     this.rig.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
