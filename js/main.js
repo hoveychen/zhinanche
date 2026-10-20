@@ -301,6 +301,8 @@ try {
   else course.home();
   requestAnimationFrame(frame);
   world.prefetchOther();
+  // ?promo: hand the promo recorder (tools/promo/) the scene to direct; nothing else changes
+  if (q.has("promo")) Object.assign(window, { __promo: { app, world, course } });
   if (q.has("selftest")) {
     const { selftest } = await import("./app/selftest.js");
     await selftest({ app, course, world, tools, input });
