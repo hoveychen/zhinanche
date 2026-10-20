@@ -112,7 +112,7 @@ export class App {
   /** Free driving, everything on show. */
   free() {
     this.idleLoop = false;
-    this.direct({ reset: true, view: "follow" }, { jump: freeBase() });
+    this.direct({ reset: true }, { jump: { ...freeBase(), view: "follow" } });
   }
 
   /**

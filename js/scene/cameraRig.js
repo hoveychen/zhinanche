@@ -25,6 +25,12 @@ import * as THREE from "three";
 
 const GLIDE = 0.8;
 
+/**
+ * The follow view looks along a fixed bearing in the world: from the north
+ * and a little west, south past the chariot at the gate (js/scene/landmark.js).
+ */
+const CHASE_DIR = new THREE.Vector3(-0.2, 0.27, -1).normalize();
+
 export class CameraRig {
   /**
    * @param {THREE.PerspectiveCamera} camera
@@ -82,8 +88,10 @@ export class CameraRig {
         return { target: new THREE.Vector3(f.x, 0, f.z), pos: new THREE.Vector3(f.x, h, f.z + 0.01) };
       }
       case "follow": {
-        const target = local(1.5, 2.6, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.7, 0.08), this.fit(12)) };
+        // A chase camera that does not turn with the chariot: the chariot
+        // turns on screen while the figure's hand keeps pointing at the gate.
+        const target = new THREE.Vector3(f.x + 2.4, 6.5, f.z + 12);
+        return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(17)) };
       }
       case "gears": {
         // From behind and well above, so the left wheel is on the left of the
@@ -192,7 +200,7 @@ export class CameraRig {
       }
       cam.position.x += dx; cam.position.z += dz;
       ctl.target.x += dx; ctl.target.z += dz;
-      if (this.view === "follow" || this.view === "gears" || this.view === "wheels" || this.view === "figure") {
+      if (this.view === "gears" || this.view === "wheels" || this.view === "figure") {
         // Swing round with the chariot.
         const dh = Math.atan2(Math.sin(f.heading - this.last.heading), Math.cos(f.heading - this.last.heading));
         if (dh !== 0) {

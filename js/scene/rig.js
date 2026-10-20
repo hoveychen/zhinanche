@@ -35,6 +35,13 @@ const nameOf = (o) => /** @type {string} */ (o.userData.name ?? o.name);
 const GLOW = new THREE.Color(0xffc24a);
 const DIM = 0.32;
 
+/**
+ * The figure is drawn bigger than in the model (about 1.4 chi tall there, a
+ * speck on screen): it is what the viewer has to watch. Scaled about its
+ * feet, so it still stands on its shaft.
+ */
+export const FIGURE_SCALE = 2.4;
+
 export class Rig {
   /** @param {THREE.Object3D} scene the GLB scene */
   constructor(scene) {
@@ -103,7 +110,10 @@ export class Rig {
     });
 
     const figure = this.byName.get("figure");
-    if (figure) this.armTip = armTipOf(figure);
+    if (figure) {
+      figure.scale.setScalar(FIGURE_SCALE);
+      this.armTip = armTipOf(figure);
+    }
   }
 
   /**
