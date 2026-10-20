@@ -1,0 +1,50 @@
+{
+  "$comment": "唯一参数源。长度单位：宋尺（chi）。每个数值 {v, unit, conf, src, note?}；conf: doc=有文献，est=估计，design=本项目自定。src 标签见 docs/sources.md。",
+  "version": 1,
+  "units": {
+    "chiInMeters": { "v": 0.31, "unit": "m", "conf": "est", "src": "song-chi", "note": "宋尺约 30.7–31.6 cm，取 0.31 m，只用于界面上换算「米」" }
+  },
+  "song": {
+    "$comment": "燕肃造法（宋史·舆服一，天圣五年 1027）。离合式定轴轮系。",
+    "wheelDiameter":       { "v": 6,    "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "足輪二，高六尺，圍一丈八尺" },
+    "track":               { "v": 6,    "unit": "chi", "conf": "design", "src": "needham-via-enwiki", "note": "原文无轮距；齿数比只有在轮距=轮径时才正确，故取 6 尺" },
+    "footGearTeeth":       { "v": 24,   "unit": "teeth", "conf": "doc",  "src": "songshi149", "note": "附足立子輪二，徑二尺四寸，出齒各二十四" },
+    "footGearDiameter":    { "v": 2.4,  "unit": "chi", "conf": "doc",    "src": "songshi149" },
+    "smallFlatTeeth":      { "v": 12,   "unit": "teeth", "conf": "doc",  "src": "songshi149", "note": "左/右小平輪，徑一尺二寸，出齒十二" },
+    "smallFlatDiameter":   { "v": 1.2,  "unit": "chi", "conf": "doc",    "src": "songshi149" },
+    "bigFlatTeeth":        { "v": 48,   "unit": "teeth", "conf": "doc",  "src": "songshi149", "note": "中心大平輪，徑四尺八寸，出齒四十八" },
+    "bigFlatDiameter":     { "v": 4.8,  "unit": "chi", "conf": "doc",    "src": "songshi149" },
+    "poleRollerDiameter":  { "v": 0.3,  "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "轅端橫木下立小輪二，其徑三寸，鐵軸貫之" },
+    "centralShaftHeight":  { "v": 8,    "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "中立貫心軸一，高八尺，徑三寸" },
+    "centralShaftDiameter":{ "v": 0.3,  "unit": "chi", "conf": "doc",    "src": "songshi149" },
+    "footGearPlane":       { "v": 2.65, "unit": "chi", "conf": "design", "src": "this-project", "note": "3D 模型：附足立子轮齿面到车身中线的距离（原文无）。立子轮装在车轮内侧，小平轮从外侧咬它的上沿" },
+    "clutchLift":          { "v": 0.4, "unit": "chi", "conf": "design", "src": "this-project", "note": "3D 模型：小平轮抬起的高度，抬起后与立子轮、大平轮的齿都不相碰" }
+  },
+  "differential": {
+    "$comment": "Lanchester 式差动假说（20 世纪推定，无宋代原文）。尺寸与燕肃车取同一车轮和轮距，便于对比。",
+    "wheelDiameter":       { "v": 6,    "unit": "chi", "conf": "design", "src": "this-project", "note": "与燕肃车相同，便于对比" },
+    "track":               { "v": 6,    "unit": "chi", "conf": "design", "src": "this-project", "note": "轮距=轮径，使车轮到差速器两侧的传动比恰为 1:1" },
+    "inputRatio":          { "v": 1,    "unit": "ratio", "conf": "design", "src": "lanchester-condition", "note": "侧齿轮转角/车轮转角 = 轮径/轮距" },
+    "sideGearTeeth":       { "v": 16,   "unit": "teeth", "conf": "design", "src": "this-project" },
+    "pinionTeeth":         { "v": 8,    "unit": "teeth", "conf": "design", "src": "this-project" },
+    "crownLeftTeeth":      { "v": 42, "unit": "teeth", "conf": "design", "src": "this-project", "note": "左车轮立式冠轮与左水平轮（sideA）各 42 齿，半径相等，传动比恰为 1" },
+    "crownRightTeeth":     { "v": 18, "unit": "teeth", "conf": "design", "src": "this-project", "note": "右车轮立式冠轮与右水平轮（sideB）各 18 齿；两侧大小不同，所以高度错开" },
+    "sideGearPitchRadius": { "v": 0.6, "unit": "chi", "conf": "design", "src": "this-project", "note": "差速器侧齿轮（16 个立销）的节圆半径；行星小轮半径 = 0.6×8/16" },
+    "diffPegDiameter":     { "v": 0.07, "unit": "chi", "conf": "design", "src": "this-project", "note": "差速器内部木销直径" },
+    "diffPegAddendum":     { "v": 0.08, "unit": "chi", "conf": "design", "src": "this-project", "note": "差速器木销伸出节圆的长度" }
+  },
+  "body": {
+    "$comment": "车身外形只为好看与可读，取整数；不是考据结果。",
+    "length":              { "v": 8,    "unit": "chi", "conf": "design", "src": "this-project" },
+    "widthBetweenWheels":  { "v": 4.6,  "unit": "chi", "conf": "design", "src": "this-project" },
+    "poleLength":          { "v": 10.5, "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "吴德仁车「車轅一丈五寸」，燕肃车原文未给，借用" }
+  },
+  "model": {
+    "$comment": "3D 模型自定尺寸（blender/scripts 读取），不影响仿真。所有齿轮的齿距都取宋史齿轮推出的 π×2.4/24≈0.314 尺（「齒間相去三寸」）。",
+    "pegDiameter":         { "v": 0.09, "unit": "chi", "conf": "design", "src": "this-project", "note": "木销齿直径" },
+    "pegAddendum":         { "v": 0.11, "unit": "chi", "conf": "design", "src": "this-project", "note": "木销伸出节圆的长度" },
+    "pegDedendum":         { "v": 0.16, "unit": "chi", "conf": "design", "src": "this-project", "note": "轮盘边缘在节圆以内的距离（给对面木销让位）" },
+    "shaftTopHeight":      { "v": 11.75, "unit": "chi", "conf": "design", "src": "this-project", "note": "贯心轴顶（木人脚下）离地高度：燕肃车大平轮下的轴承在 3.75 尺，加轴高 8 尺。差动车取同一高度" },
+    "deckHeight":          { "v": 5.6, "unit": "chi", "conf": "design", "src": "this-project", "note": "下层平台（齿轮室顶）离地高度" }
+  }
+}

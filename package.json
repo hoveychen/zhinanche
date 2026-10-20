@@ -1,0 +1,26 @@
+{
+  "name": "zhinanche",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "指南车 3D 仿真与小学课件（无构建静态站）",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "vendor": "node tools/vendor.mjs",
+    "serve": "node tools/serve.mjs",
+    "build:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/build_chariot.py --",
+    "check:model": "node tools/export-poses.mjs && \"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/check_clearance.py --",
+    "render:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/render_previews.py --"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/three": "^0.186.0",
+    "three": "0.186.1",
+    "typescript": "^7.0.2"
+  }
+}
