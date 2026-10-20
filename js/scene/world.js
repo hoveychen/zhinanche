@@ -108,6 +108,7 @@ export class World {
     /** the HUD's margins cleared at the sides, or above and below (framing the parts; set by the page) */
     /** @type {() => Insets[]} */
     this.hudBands = () => [this.hudInsets()];
+    this.cam.insets = () => this.hudInsets();
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -216,8 +217,11 @@ export class World {
    * @param {PartId[]} highlight
    */
   setLook(xray, highlight) {
+    const was = this.#lookState.xray;
     this.#lookState = { xray, highlight };
     for (const rig of Object.values(this.rigs)) rig.setLook(xray, highlight);
+    // the gears view frames the whole cart until it can be seen through
+    if (xray !== was && this.cam.view === "gears" && this.#viewed) this.cam.setView("gears", this.camFocus());
   }
 
   /** Big figure for wide views (every chariot). @param {boolean} big @param {boolean} [instant] */
@@ -286,7 +290,7 @@ export class World {
   /** The focus the camera presets need. */
   camFocus() {
     const fig = this.rigs[this.mechanism]?.node("figure");
-    return { ...this.focus, mechanism: this.mechanism, figureX: fig ? fig.position.x : 0 };
+    return { ...this.focus, mechanism: this.mechanism, figureX: fig ? fig.position.x : 0, inside: this.#lookState.xray || this.explodeTarget > 0 };
   }
 
   /** @param {ViewId} v @param {boolean} [instant] */
@@ -330,6 +334,7 @@ export class World {
     rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
+    this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works"), dt);
     this.cam.update(dt, this.camFocus());
   }
 

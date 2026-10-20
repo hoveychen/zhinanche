@@ -13,6 +13,7 @@ import * as THREE from "three";
  * @property {number} heading sim heading (rad)
  * @property {"differential" | "song"} mechanism
  * @property {number} figureX figure shaft's local x (chi)
+ * @property {boolean} [inside] looking at the works (x-ray on, or taken apart)
  */
 
 /**
@@ -44,7 +45,10 @@ const ROOM = { x: 56, north: -100, south: 84 };
 const BULK = { y: 5, r: 9 };
 
 /** Views close in on the works on purpose: they may look from inside the body. */
-const CLOSE = new Set(["gears", "wheels", "figure"]);
+const CLOSE = new Set(["gears", "works", "wheels", "figure"]);
+
+/** Views that swing round with the chariot. */
+const TURNING = new Set(["gears", "works", "wheels", "figure"]);
 
 export class CameraRig {
   /**
@@ -71,6 +75,9 @@ export class CameraRig {
     this.partsInset = [{ left: 0, right: 0, top: 0, bottom: 0 }];
     /** which of them was used last (kept unless another is clearly better: no flip-flopping) */
     this.partsPick = 0;
+    /** the HUD's margins over the view (set by the world) */
+    /** @type {() => Insets} */
+    this.insets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
     /** how far from the target the camera wanted to be when last kept in the room (0: it wasn't) */
     this.wantDist = 0;
     /** the camera is where its view put it (nobody has dragged it since) */
@@ -172,16 +179,41 @@ export class CameraRig {
         return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(r)) };
       }
       case "gears": {
+        const song = f.mechanism === "song";
+        if (!f.inside) {
+          // Not seeing through the body yet: the whole cart from behind and
+          // above (sunlit side, figure in the picture); x-ray glides in close.
+          const target = local(song ? 0.6 : 0.2, 5.6, 0);
+          return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.85, 1.05), this.fit(9.5)) };
+        }
         // From behind and above, so the left wheel is on the left of the
         // screen: the wheels stand at the sides (local ±Z, radius 3) and would
         // hide the gears from any side-on angle. Close on the gears, which
         // fill the view (the figure is up its shaft, out of the picture: the
         // dial shows where it points); a little to the right so the big left
         // crown wheel shows its face. The boards go see-through with x-ray.
-        const song = f.mechanism === "song";
         const target = song ? local(1.1, 3.7, 0) : local(0.2, 2.5, -0.5);
         const r = song ? 4.9 : 4.4;
         return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.35, 0.75), this.fit(r)) };
+      }
+      case "works": {
+        // The gears and, up the shaft, the figure standing on them: the
+        // carrier and the man can be seen turning together. Higher and
+        // further back than the gears view, from the same side.
+        const target = local(f.figureX * 0.5 + 0.1, 6.2, -0.3);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.15, 0.8), this.fit(6.6)) };
+      }
+      case "above": {
+        // Close over the chariot, north up, tipped so the figure reads as a
+        // figure; set in the part of the view the HUD leaves free.
+        const ins = this.insets();
+        const r = 11.5, tip = THREE.MathUtils.degToRad(32);
+        const ux = Math.max(0.4, 1 - ins.left - ins.right), uy = Math.max(0.4, 1 - ins.top - ins.bottom);
+        const v = THREE.MathUtils.degToRad(this.camera.fov);
+        const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
+        const d = r / Math.min(ux * th, uy * tv);
+        const target = new THREE.Vector3(f.x - (ins.left - ins.right) * d * th, 0, f.z - (ins.top - ins.bottom) * d * tv);
+        return { target, pos: target.clone().add(new THREE.Vector3(0, d * Math.cos(tip), d * Math.sin(tip))) };
       }
       case "wheels": {
         const target = local(0, 2.8, 0);
@@ -290,7 +322,7 @@ export class CameraRig {
       }
       cam.position.x += dx; cam.position.z += dz;
       ctl.target.x += dx; ctl.target.z += dz;
-      if (this.view === "gears" || this.view === "wheels" || this.view === "figure") {
+      if (TURNING.has(this.view)) {
         // Swing round with the chariot.
         const dh = Math.atan2(Math.sin(f.heading - this.last.heading), Math.cos(f.heading - this.last.heading));
         if (dh !== 0) {
