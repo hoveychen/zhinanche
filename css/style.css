@@ -618,6 +618,8 @@ body[data-mode="home"] .stage-hook { display: flex; }
      open, the panel stands at the right */
   body[data-mode="free"] { --peek: 0px; }
   body[data-mode="free"] .panel { left: auto; top: 0; width: min(360px, 52%); max-height: none; border-top: 0; border-left: 4px solid var(--wood); border-radius: 0; }
+  /* the HUD keeps to the part of the view the open sheet leaves */
+  body[data-mode="free"][data-sheet="open"] .stage-overlay { right: min(360px, 52%); }
   body[data-mode="free"][data-sheet="closed"] .panel {
     top: auto; right: 50%; bottom: 8px; width: auto; transform: translateX(50%);
     background: transparent; border: 0; box-shadow: none;
