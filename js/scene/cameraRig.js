@@ -101,9 +101,9 @@ export class CameraRig {
         // the big left crown wheel shows its face. The boards go see-through
         // with x-ray.
         const song = f.mechanism === "song";
-        const target = song ? local(1.1, 5.6, 0) : local(0, 5.2, 0);
-        const r = song ? 6.6 : 6.2;
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 2, 0.3), this.fit(r)) };
+        const target = song ? local(1.6, 5.4, 0) : local(0.7, 5.2, 0);
+        const r = song ? 6.9 : 6.6;
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.25, 0.3), this.fit(r)) };
       }
       case "wheels": {
         const target = local(0, 2.8, 0);

@@ -14,6 +14,7 @@ import { CompassDemo, HoldHands } from "./demos.js";
 import { CameraRig } from "./cameraRig.js";
 import { partCaption } from "./parts.js";
 import { Look } from "./look.js";
+import { updateOutlines } from "./gearviz.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { MechanismId } from "../sim/params.js" */
@@ -238,6 +239,7 @@ export class World {
   }
 
   render() {
+    updateOutlines(this.renderer, this.time);
     this.look.render();
   }
 

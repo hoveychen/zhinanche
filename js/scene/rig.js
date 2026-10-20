@@ -5,7 +5,8 @@
 
 import * as THREE from "three";
 import { ClutchDisplay } from "./clutchPhase.js";
-import { PART_NODES, ownerOf } from "./parts.js";
+import { LEFT_NODES, PART_NODES, RIGHT_NODES, ownerOf } from "./parts.js";
+import { OUTLINES, SpinArc, TRAIN, makeHull, makeWire } from "./gearviz.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { PartId } from "../teach/types.js" */
@@ -27,13 +28,51 @@ import { PART_NODES, ownerOf } from "./parts.js";
  * @property {THREE.Color} color
  * @property {string} group
  * @property {string} owner node name the mesh belongs to (marker teeth → their gear)
+ * @property {boolean} wire drawn as a wireframe in x-ray (the body and the frame round the gears)
  */
 
 /** @param {THREE.Object3D} o @returns {string} */
 const nameOf = (o) => /** @type {string} */ (o.userData.name ?? o.name);
 
-const GLOW = new THREE.Color(0xffc24a);
-const DIM = 0.32;
+/** Parts faded back while others are highlighted: toward a pale grey, so they still read as wood. */
+const FADE = new THREE.Color(0xb8b0a4);
+const FADE_K = 0.62;
+/** How bright a turning gear glows in its train's colour (x-ray / taken apart). */
+const SPIN_GLOW = 0.55;
+/** Angular speed (rad/s) at which a gear counts as fully "turning". */
+const SPIN_FULL = 0.35;
+const TMP = new THREE.Color();
+
+/**
+ * Spin arcs: which gears get one, how far outside the teeth (chi), and the
+ * gear it meshes with (the arc's gap faces it so the arc doesn't cut the
+ * teeth in mesh). `lift` raises the arc along the axis; `radius` fixes it.
+ * @type {Record<string, {pad?: number, radius?: number, lift?: number, toward?: string}>}
+ */
+const ARCS = {
+  "diff.crown.L": { pad: 0.22, toward: "diff.sideA" },
+  "diff.crown.R": { pad: 0.22, toward: "diff.sideB" },
+  "diff.sideA": { pad: 0.25, lift: -0.15, toward: "diff.crown.L" },
+  "diff.sideB": { pad: 0.25, lift: 0.3, toward: "diff.crown.R" },
+  "song.foot.L": { pad: 0.22, toward: "song.small.L" },
+  "song.foot.R": { pad: 0.22, toward: "song.small.R" },
+  "song.small.L": { pad: 0.2, lift: 0.35, toward: "song.bigFlat" },
+  "song.small.R": { pad: 0.2, lift: 0.35, toward: "song.bigFlat" },
+  "song.bigFlat": { pad: 0.25, lift: 0.35, toward: "body.pole" },
+};
+/** The differential's carrier sits between the side gears: its arc goes on the shaft, above them. */
+const SHAFT_ARC = { radius: 0.55, lift: 2.6 };
+
+/**
+ * @typedef {object} Spinner a turning part, watched for how fast it turns
+ * @property {Motion} m
+ * @property {number} angle physical angle about its axis
+ * @property {number} prev
+ * @property {number} act 0..1, eased
+ * @property {THREE.Color} color its train's colour
+ * @property {SpinArc | null} arc
+ * @property {number} lift arc offset along the axis
+ */
 
 /**
  * The figure is drawn bigger than in the model (about 1.4 chi tall there, a
@@ -69,6 +108,15 @@ export class Rig {
     this.xray = false;
     /** @type {Set<string>} */
     this.lit = new Set();
+    this.dimming = false;
+    /** @type {{hull: THREE.Mesh, owner: string}[]} */
+    this.hulls = [];
+    /** @type {THREE.LineSegments[]} */
+    this.wires = [];
+    /** @type {Spinner[]} */
+    this.spinners = [];
+    /** @type {Map<string, Spinner>} */
+    this.spinOf = new Map();
     /** figure's arm tip in figure-local coordinates */
     this.armTip = new THREE.Vector3(1, 0, 0);
 
@@ -96,8 +144,12 @@ export class Rig {
       }
     });
 
+    /** @type {THREE.Mesh[]} */
+    const found = [];
     root.traverse((o) => {
-      if (!(o instanceof THREE.Mesh)) return;
+      if (o instanceof THREE.Mesh) found.push(o);
+    });
+    for (const o of found) {
       o.castShadow = true;
       o.receiveShadow = true;
       this.meshes.push(o);
@@ -109,8 +161,49 @@ export class Rig {
       const src = /** @type {THREE.MeshStandardMaterial} */ (o.material);
       const mat = src.clone();
       o.material = mat;
-      this.looks.push({ mat, color: mat.color.clone(), group, owner });
-    });
+      const wire = group === "shell" || owner === "body.frame";
+      this.looks.push({ mat, color: mat.color.clone(), group, owner, wire });
+      if (wire) {
+        const lines = makeWire(o);
+        o.add(lines);
+        this.wires.push(lines);
+      } else if (group === "gear" || group === "wheel" || group === "figure") {
+        if (n && nameOf(n).endsWith(".marker")) continue;
+        const hull = makeHull(o);
+        o.add(hull);
+        this.hulls.push({ hull, owner });
+      }
+    }
+
+    root.updateMatrixWorld(true);
+    for (const m of this.motions) {
+      if (m.motion !== "rotate" || m.name === "figure") continue;
+      const color = LEFT_NODES.has(m.name) ? TRAIN.left : RIGHT_NODES.has(m.name) ? TRAIN.right : TRAIN.middle;
+      /** @type {Spinner} */
+      const sp = { m, angle: 0, prev: 0, act: 0, color, arc: null, lift: 0 };
+      const cfg = ARCS[m.name] ?? (m.name === "figure.shaft" && this.mechanism === "differential" ? SHAFT_ARC : null);
+      if (cfg) {
+        const radius = cfg.radius ?? radiusAbout(m.node, m.axis, this.meshes) + (cfg.pad ?? 0.2);
+        sp.arc = new SpinArc(radius, color);
+        sp.lift = cfg.lift ?? 0;
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), m.axis);
+        // turn the arc's gap (local angle GAP) toward the gear it meshes with
+        const other = "toward" in cfg && cfg.toward ? this.byName.get(cfg.toward) : null;
+        if (other && m.node.parent) {
+          const want = m.node.parent.worldToLocal(other.getWorldPosition(new THREE.Vector3())).sub(m.node.position);
+          want.addScaledVector(m.axis, -want.dot(m.axis));
+          if (want.lengthSq() > 1e-6) {
+            const gap = new THREE.Vector3(Math.cos(SpinArc.GAP), Math.sin(SpinArc.GAP), 0).applyQuaternion(q);
+            const ang = Math.atan2(new THREE.Vector3().crossVectors(gap, want).dot(m.axis), gap.dot(want));
+            q.premultiply(new THREE.Quaternion().setFromAxisAngle(m.axis, ang));
+          }
+        }
+        sp.arc.group.quaternion.copy(q);
+        m.node.parent?.add(sp.arc.group);
+      }
+      this.spinners.push(sp);
+      this.spinOf.set(m.name, sp);
+    }
 
     const figure = this.byName.get("figure");
     /** @type {THREE.Object3D | null} */
@@ -142,6 +235,8 @@ export class Rig {
       if (m.motion !== "rotate") continue;
       const angle = m.name === "figure" ? pose.figureRel : (shown[m.key] ?? 0);
       m.node.quaternion.copy(q.setFromAxisAngle(m.axis, m.factor * angle));
+      const sp = this.spinOf.get(m.name);
+      if (sp) sp.angle = m.factor * angle;
     }
     this.#place();
   }
@@ -159,8 +254,24 @@ export class Rig {
 
   /** @param {number} v 0..1 */
   setExplode(v) {
+    const was = this.inside;
     this.explode = v;
     this.#place();
+    if (this.inside !== was) this.#outline();
+  }
+
+  /** Looking at the works: x-ray on, or taken apart. */
+  get inside() {
+    return this.xray || this.explode > 0.001;
+  }
+
+  /** Outlines on the gears while looking inside; bright on the highlighted ones. */
+  #outline() {
+    const on = this.inside;
+    for (const { hull, owner } of this.hulls) {
+      hull.visible = on;
+      hull.material = this.lit.has(owner) ? OUTLINES.lit : this.dimming ? OUTLINES.faded : OUTLINES.ink;
+    }
   }
 
   /** Start the clutch display afresh (after a reset). */
@@ -176,19 +287,25 @@ export class Rig {
     this.xray = xray;
     this.lit = new Set(highlight.flatMap((id) => PART_NODES[id] ?? []));
     const dimming = this.lit.size > 0 && this.looks.some((l) => this.lit.has(l.owner));
+    this.dimming = dimming;
     for (const l of this.looks) {
       const m = l.mat;
-      const see = xray && l.group === "shell";
+      // x-ray: the body stops drawing (it still writes nothing, casts no
+      // shadow) and its wireframe shows instead; no stacked see-through layers
+      const see = xray && l.wire;
       m.transparent = see;
-      m.opacity = see ? 0.13 : 1;
+      m.opacity = see ? 0 : 1;
       m.depthWrite = !see;
+      m.colorWrite = !see;
       m.color.copy(l.color);
       m.emissive.setRGB(0, 0, 0);
       if (dimming && !this.lit.has(l.owner) && (l.group === "gear" || l.group === "wheel" || l.group === "figure")) {
-        m.color.multiplyScalar(DIM);
+        m.color.lerp(FADE, FADE_K);
       }
       m.needsUpdate = true;
     }
+    for (const w of this.wires) w.visible = xray;
+    this.#outline();
   }
 
   /**
@@ -213,9 +330,41 @@ export class Rig {
       this.figureScale += Math.sign(gap) * Math.min(Math.abs(gap), step);
       this.figure.scale.setScalar(this.figureScale);
     }
-    if (this.lit.size === 0) return;
-    const k = 0.28 + 0.22 * Math.sin(t * 4);
-    for (const l of this.looks) if (this.lit.has(l.owner)) l.mat.emissive.copy(GLOW).multiplyScalar(k);
+    this.#spin(dt, t);
+  }
+
+  /**
+   * Watch how fast each part turns; while looking inside, a turning part
+   * glows in its train's colour and its spin arc shows. Highlighted parts pulse.
+   * @param {number} dt @param {number} t
+   */
+  #spin(dt, t) {
+    const inside = this.inside;
+    if (dt > 0) {
+      const rise = 1 - Math.exp(-dt / 0.12), fall = 1 - Math.exp(-dt / 0.5);
+      for (const sp of this.spinners) {
+        // a jump (reset, new step) is not turning
+        const step = sp.angle - sp.prev;
+        const omega = Math.abs(step) > 0.8 ? 0 : step / dt;
+        sp.prev = sp.angle;
+        const want = inside ? Math.min(1, Math.abs(omega) / SPIN_FULL) : 0;
+        sp.act += (want - sp.act) * (want > sp.act ? rise : fall);
+        if (sp.arc) {
+          const g = sp.arc.group;
+          g.position.copy(sp.m.node.position).addScaledVector(sp.m.axis, sp.lift);
+          sp.arc.update(sp.angle, omega, sp.act);
+        }
+      }
+    }
+    const k = 0.18 + 0.14 * Math.sin(t * 4);
+    for (const l of this.looks) {
+      const lit = this.lit.has(l.owner);
+      const sp = inside ? this.spinOf.get(l.owner) : undefined;
+      const a = sp ? sp.act * SPIN_GLOW : 0;
+      if (lit) l.mat.emissive.copy(l.color).multiplyScalar(k);
+      else l.mat.emissive.setRGB(0, 0, 0);
+      if (a > 0.001 && sp) l.mat.emissive.add(TMP.copy(sp.color).multiplyScalar(a));
+    }
   }
 
   /**
@@ -224,7 +373,7 @@ export class Rig {
    * @returns {{node: THREE.Object3D, point: THREE.Vector3} | null}
    */
   pick(ray) {
-    const targets = this.xray ? this.meshes.filter((m) => m.userData.partNode?.userData.group !== "shell") : this.meshes;
+    const targets = this.xray ? this.meshes.filter((m, i) => !this.looks[i].wire) : this.meshes;
     const hit = ray.intersectObjects(targets, false)[0];
     if (!hit) return null;
     let n = /** @type {THREE.Object3D | null} */ (hit.object.userData.partNode);
@@ -237,6 +386,28 @@ export class Rig {
   node(name) {
     return this.byName.get(name) ?? null;
   }
+}
+
+/**
+ * How far a part reaches from its axis (its own meshes and marker, not its
+ * moving children), in its local frame.
+ * @param {THREE.Object3D} node @param {THREE.Vector3} axis @param {THREE.Mesh[]} meshes
+ */
+function radiusAbout(node, axis, meshes) {
+  const inv = node.matrixWorld.clone().invert();
+  const v = new THREE.Vector3();
+  let r = 0;
+  for (const o of meshes) {
+    const p = o.userData.partNode;
+    if (p !== node && !(p?.parent === node && nameOf(p).endsWith(".marker"))) continue;
+    const pos = o.geometry.getAttribute("position");
+    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      r = Math.max(r, v.addScaledVector(axis, -v.dot(axis)).length());
+    }
+  }
+  return r;
 }
 
 /**
