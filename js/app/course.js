@@ -185,6 +185,10 @@ export class Course {
     if (jump) this.app.direct(step.scene ?? {}, { jump: stateAt(lesson.steps, k) });
     else this.app.direct(step.scene ?? {});
     this.app.newTracker();
+    // A step about the walk the children did ("count their footprints"),
+    // reached without walking them (Next pressed, or a link to it): walk them now.
+    const hh = this.app.world.holdHands;
+    if (this.app.state.demo === "holdHands" && !(step.task?.kind === "do" && step.task.check === "playedDemo") && !hh.walking && hh.steps.in === 0) hh.walk();
     this.#render(lesson, step);
   }
 
