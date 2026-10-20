@@ -1,0 +1,35 @@
+{
+  "$comment": "唯一参数源。长度单位：宋尺（chi）。每个数值 {v, unit, conf, src, note?}；conf: doc=有文献，est=估计，design=本项目自定。src 标签见 docs/sources.md。",
+  "version": 1,
+  "units": {
+    "chiInMeters": { "v": 0.31, "unit": "m", "conf": "est", "src": "song-chi", "note": "宋尺约 30.7–31.6 cm，取 0.31 m，只用于界面上换算「米」" }
+  },
+  "song": {
+    "$comment": "燕肃造法（宋史·舆服一，天圣五年 1027）。离合式定轴轮系。",
+    "wheelDiameter":       { "v": 6,    "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "足輪二，高六尺，圍一丈八尺" },
+    "track":               { "v": 6,    "unit": "chi", "conf": "design", "src": "needham-via-enwiki", "note": "原文无轮距；齿数比只有在轮距=轮径时才正确，故取 6 尺" },
+    "footGearTeeth":       { "v": 24,   "unit": "teeth", "conf": "doc",  "src": "songshi149", "note": "附足立子輪二，徑二尺四寸，出齒各二十四" },
+    "footGearDiameter":    { "v": 2.4,  "unit": "chi", "conf": "doc",    "src": "songshi149" },
+    "smallFlatTeeth":      { "v": 12,   "unit": "teeth", "conf": "doc",  "src": "songshi149", "note": "左/右小平輪，徑一尺二寸，出齒十二" },
+    "smallFlatDiameter":   { "v": 1.2,  "unit": "chi", "conf": "doc",    "src": "songshi149" },
+    "bigFlatTeeth":        { "v": 48,   "unit": "teeth", "conf": "doc",  "src": "songshi149", "note": "中心大平輪，徑四尺八寸，出齒四十八" },
+    "bigFlatDiameter":     { "v": 4.8,  "unit": "chi", "conf": "doc",    "src": "songshi149" },
+    "poleRollerDiameter":  { "v": 0.3,  "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "轅端橫木下立小輪二，其徑三寸，鐵軸貫之" },
+    "centralShaftHeight":  { "v": 8,    "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "中立貫心軸一，高八尺，徑三寸" },
+    "centralShaftDiameter":{ "v": 0.3,  "unit": "chi", "conf": "doc",    "src": "songshi149" }
+  },
+  "differential": {
+    "$comment": "Lanchester 式差动假说（20 世纪推定，无宋代原文）。尺寸与燕肃车取同一车轮和轮距，便于对比。",
+    "wheelDiameter":       { "v": 6,    "unit": "chi", "conf": "design", "src": "this-project", "note": "与燕肃车相同，便于对比" },
+    "track":               { "v": 6,    "unit": "chi", "conf": "design", "src": "this-project", "note": "轮距=轮径，使车轮到差速器两侧的传动比恰为 1:1" },
+    "inputRatio":          { "v": 1,    "unit": "ratio", "conf": "design", "src": "lanchester-condition", "note": "侧齿轮转角/车轮转角 = 轮径/轮距" },
+    "sideGearTeeth":       { "v": 16,   "unit": "teeth", "conf": "design", "src": "this-project" },
+    "pinionTeeth":         { "v": 8,    "unit": "teeth", "conf": "design", "src": "this-project" }
+  },
+  "body": {
+    "$comment": "车身外形只为好看与可读，取整数；不是考据结果。",
+    "length":              { "v": 8,    "unit": "chi", "conf": "design", "src": "this-project" },
+    "widthBetweenWheels":  { "v": 4.6,  "unit": "chi", "conf": "design", "src": "this-project" },
+    "poleLength":          { "v": 10.5, "unit": "chi", "conf": "doc",    "src": "songshi149", "note": "吴德仁车「車轅一丈五寸」，燕肃车原文未给，借用" }
+  }
+}
