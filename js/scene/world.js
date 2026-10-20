@@ -114,13 +114,29 @@ export class World {
 
   /**
    * Load the chariot on show; the other one waits until it is first wanted
-   * (setMechanism), so the first picture costs one model, not two.
+   * (setMechanism) or the page is idle (prefetchOther), so the first picture
+   * costs one model, not two.
    * @param {string} [base]
    */
   async load(base = "assets/") {
     this.base = base;
     await this.ensure(this.mechanism);
     this.setMechanism(this.mechanism);
+  }
+
+  /**
+   * Once the page is up and the browser is idle, load the chariot not on show
+   * too (hidden), so the first switch to it shows it at once.
+   */
+  prefetchOther() {
+    /** @type {MechanismId} */
+    const other = this.mechanism === "song" ? "differential" : "song";
+    const go = () => this.ensure(other).catch(() => {}); // a failure shows when it is picked
+    // after the first frames and the courtyard's own idle work
+    setTimeout(() => {
+      if (typeof requestIdleCallback === "function") requestIdleCallback(go, { timeout: 3000 });
+      else go();
+    }, 1500);
   }
 
   /** Load a chariot model (once). @param {MechanismId} m @returns {Promise<Rig>} */

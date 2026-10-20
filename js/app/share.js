@@ -69,6 +69,21 @@ export function setupOf(st, route) {
   };
 }
 
+/**
+ * The page's address with this setup in its hash. The query is dropped (no
+ * ?lesson / ?free), except that an English page says so with ?lang=en, so the
+ * link opens in English for whoever gets it; a Chinese page adds nothing.
+ * @param {string} href the page's address now
+ * @param {ShareSetup} setup
+ * @param {"zh" | "en"} lang the language the page shows
+ */
+export function shareHref(href, setup, lang) {
+  const u = new URL(href);
+  u.search = lang === "en" ? "?lang=en" : "";
+  u.hash = encodeShare(setup);
+  return u.href;
+}
+
 /** A number as short as it can be written (at most 3 decimals). @param {number} v */
 const num = (v) => String(Math.round(v * 1000) / 1000);
 
