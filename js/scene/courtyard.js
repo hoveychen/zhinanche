@@ -327,20 +327,20 @@ function lantern(b, x, z, y) {
   b.add("gold", tassel);
 }
 
-/** @type {THREE.BufferGeometry | null} */
-let clump = null;
-/** A welded unit icosphere (IcosahedronGeometry comes unindexed with flat normals). */
-function clumpTemplate() {
-  clump ??= mergeVertices(new THREE.IcosahedronGeometry(1, 2).deleteAttribute("uv").deleteAttribute("normal"));
-  return clump;
+/** @type {THREE.BufferGeometry[]} */
+const clumps = [];
+/** A welded unit icosphere (IcosahedronGeometry comes unindexed with flat normals). @param {number} [detail] */
+function clumpTemplate(detail = 2) {
+  clumps[detail] ??= mergeVertices(new THREE.IcosahedronGeometry(1, detail).deleteAttribute("uv").deleteAttribute("normal"));
+  return clumps[detail];
 }
 
 /**
  * A lumpy blob (crown clump, lion's mane) from the shared template.
- * @param {number} rad @param {number} ph phase @param {number} rough 0..1
+ * @param {number} rad @param {number} ph phase @param {number} rough 0..1 @param {number} [detail] icosphere detail
  */
-function lump(rad, ph, rough) {
-  const g = clumpTemplate().clone();
+function lump(rad, ph, rough, detail = 2) {
+  const g = clumpTemplate(detail).clone();
   const p = g.getAttribute("position");
   for (let i = 0; i < p.count; i++) {
     const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i);
@@ -360,32 +360,47 @@ function lump(rad, ph, rough) {
  */
 function tree(b, x, z, h, seed, near = false) {
   const r = rand(seed);
-  b.column("trunk", x, z, 0, h * 0.5, h * 0.03, 7);
-  const clumps = near ? 22 : 12;
-  const top = h * 1.02, bottom = h * 0.36;
-  const tint = 0.85 + 0.25 * r();
-  for (let k = 0; k < clumps; k++) {
-    const t = k < 4 ? 0.15 + 0.2 * k : r();
-    const y = bottom + (top - bottom) * t;
-    const spread = h * 0.13 * (1 - 0.65 * t);
-    const a = r() * Math.PI * 2;
-    const d = k < 4 ? 0 : spread * (0.55 + 0.45 * r());
-    const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
-    const small = near ? 1 : 1.3;
-    const rad = h * small * (k < 4 ? 0.13 - 0.06 * t : 0.09 - 0.045 * t) * (0.85 + 0.3 * r());
-    const g = lump(rad, r() * 10, 1);
-    const p = g.getAttribute("position");
-    g.translate(cx, y, cz);
-    // Light falls off into the crown and towards its base (cheap ambient occlusion).
-    const col = new Float32Array(p.count * 3);
-    for (let i = 0; i < p.count; i++) {
-      const up = (p.getY(i) - bottom) / (top - bottom);
-      const out = Math.hypot(p.getX(i) - x, p.getZ(i) - z) / (h * 0.25);
-      const v = Math.min(1.15, (0.4 + 0.45 * up + 0.3 * Math.min(1, out)) * tint * (0.8 + 0.3 * r()));
-      col.set([v * 0.95, v, v * 0.9], i * 3);
+  // A trunk that leans a little, so the tiers step sideways as they rise.
+  const lean = r() * Math.PI * 2, leanBy = h * 0.05 * r();
+  const at = (/** @type {number} */ t) => [x + Math.cos(lean) * leanBy * t, z + Math.sin(lean) * leanBy * t];
+  const trunk = new THREE.CylinderGeometry(h * 0.018, h * 0.032, h * 0.92, 7, 1, true);
+  trunk.translate(0, h * 0.46, 0);
+  const tp = trunk.getAttribute("position");
+  for (let i = 0; i < tp.count; i++) {
+    const [dx, dz] = at(tp.getY(i) / h);
+    tp.setXYZ(i, tp.getX(i) + dx, tp.getY(i), tp.getZ(i) + dz);
+  }
+  b.add("trunk", trunk);
+  // The crown: tiers of flattened foliage pads (an old palace pine / cypress),
+  // lit on top and dark underneath, so it reads as layers, not as one blob.
+  const tiers = near ? 8 : 6;
+  const bottom = h * 0.34, top = h * 1.0;
+  const tint = 0.85 + 0.3 * r();
+  for (let k = 0; k < tiers; k++) {
+    const t = k / (tiers - 1);
+    const y = bottom + (top - bottom) * t + h * 0.03 * (r() - 0.5);
+    const reach = h * (0.25 - 0.16 * t) * (0.8 + 0.4 * r());
+    const pads = t > 0.85 ? 1 : 3 + Math.floor(r() * 2);
+    const a0 = r() * Math.PI * 2;
+    const [tx, tz] = at(y / h);
+    for (let j = 0; j < pads; j++) {
+      const a = a0 + (j / pads) * Math.PI * 2 + 0.6 * (r() - 0.5);
+      const d = pads === 1 ? 0 : reach * (0.4 + 0.3 * r());
+      const rad = reach * (pads === 1 ? 0.85 : 0.66) * (0.85 + 0.3 * r());
+      const g = lump(rad, r() * 10, 1.3, near ? 2 : 1);
+      g.scale(1.15, 0.5 + 0.15 * r(), 1.15);
+      const p = g.getAttribute("position");
+      const col = new Float32Array(p.count * 3);
+      const hy = rad * 0.6;
+      for (let i = 0; i < p.count; i++) {
+        const up = Math.max(0, Math.min(1, p.getY(i) / hy * 0.5 + 0.5));
+        const v = Math.min(1.25, (0.25 + 0.85 * up * up + 0.15 * t) * tint * (0.85 + 0.25 * r()));
+        col.set([v * 0.9, v, v * 0.78], i * 3);
+      }
+      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      g.translate(tx + Math.cos(a) * d, y, tz + Math.sin(a) * d);
+      b.add("leaves", g, true);
     }
-    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    b.add("leaves", g, true);
   }
 }
 
@@ -430,25 +445,89 @@ function lion(b, x, z, seed, paw) {
   b.box("marble", [x - 2.8, 0, z - 4], [x + 2.8, 2.8, z + 4]);
   b.box("marble", [x - 3.2, 2.8, z - 4.4], [x + 3.2, 3.5, z + 4.4]);
   const y0 = 3.5;
-  /** @param {number} rad @param {number} sx @param {number} sy @param {number} sz @param {number} px @param {number} py @param {number} pz @param {number} rough */
-  const part = (rad, sx, sy, sz, px, py, pz, rough) => {
+  /** @param {THREE.BufferGeometry} g */
+  const put = (g) => b.add("bronze", g.index ? g : mergeVertices(g.deleteAttribute("uv")), true);
+  /** @param {number} rad @param {number} sx @param {number} sy @param {number} sz @param {number} px @param {number} py @param {number} pz @param {number} rough @param {number} [tilt] */
+  const part = (rad, sx, sy, sz, px, py, pz, rough, tilt = 0) => {
     const g = lump(rad, r() * 10, rough);
     g.scale(sx, sy, sz);
+    if (tilt) g.rotateX(tilt);
     g.translate(x + px, y0 + py, z + pz);
-    b.add("bronze", g, true);
+    put(g);
   };
-  part(1.7, 1, 0.9, 1.25, 0, 1.6, 1.4, 0.3); // haunches
-  part(1.5, 0.95, 1.35, 0.9, 0, 3.2, -0.2, 0.3); // chest
-  part(1.55, 1.1, 1.05, 1, 0, 5.4, -0.9, 1.4); // mane
-  part(0.95, 1, 0.9, 1.1, 0, 5.1, -1.9, 0.25); // face
+  /** A snail-shell curl of the mane. @param {number} px @param {number} py @param {number} pz @param {number} rad */
+  const curl = (px, py, pz, rad) => {
+    const g = new THREE.SphereGeometry(rad, 7, 5);
+    g.scale(1, 1, 0.75);
+    g.translate(x + px, y0 + py, z + pz);
+    put(g);
+  };
+  // Seated upright: haunches behind, a chest leaning forward over straight forelegs.
+  part(1.6, 1.05, 0.8, 1.2, 0, 1.3, 1.2, 0.25); // haunches
+  part(1.35, 0.95, 1.5, 0.85, 0, 3.0, -0.3, 0.2, -0.25); // chest
   for (const s of [-1, 1]) {
-    const g = new THREE.CylinderGeometry(0.42, 0.5, 3, 7);
-    g.translate(x + s * 0.9, y0 + 1.5, z - 1.3);
-    b.add("bronze", mergeVertices(g.deleteAttribute("uv")), true);
+    const leg = new THREE.CylinderGeometry(0.5, 0.6, 3.2, 8);
+    leg.translate(x + s * 0.85, y0 + 1.6, z - 1.25);
+    put(leg);
+    part(0.5, 1.1, 0.55, 1.3, s * 0.85, 0.25, -1.55, 0.2); // forepaw
+    part(0.62, 1, 0.7, 1.35, s * 1.35, 0.45, 0.9, 0.2); // hind paw tucked at the side
   }
-  const ball = lump(0.75, 1, 0.4);
-  ball.translate(x + paw * 1.1, y0 + 0.7, z - 2.3);
-  b.add("bronze", ball, true);
+  // The head is big and square, as on palace lions: a broad face with a
+  // blunt muzzle, heavy brows, bulging eyes, the mane in rows of curls.
+  const hy = 5.75, hz = -1.35;
+  const head = new THREE.BoxGeometry(2.5, 2.2, 2.0, 2, 2, 2);
+  const hp = head.getAttribute("position");
+  for (let i = 0; i < hp.count; i++) {
+    // round the box's corners a little
+    const X = hp.getX(i), Y = hp.getY(i), Z = hp.getZ(i);
+    const k = 1 - 0.12 * (Math.abs(X / 1.25) * Math.abs(Y / 1.1) + Math.abs(Y / 1.1) * Math.abs(Z) + Math.abs(X / 1.25) * Math.abs(Z));
+    hp.setXYZ(i, X * k, Y * k, Z * k);
+  }
+  head.translate(x, y0 + hy, z + hz);
+  put(head);
+  const muzzle = new THREE.BoxGeometry(1.5, 0.95, 0.8);
+  muzzle.translate(x, y0 + hy - 0.55, z + hz - 1.2);
+  put(muzzle);
+  const nose = new THREE.SphereGeometry(0.32, 8, 5);
+  nose.scale(1.4, 0.8, 1);
+  nose.translate(x, y0 + hy - 0.1, z + hz - 1.55);
+  put(nose);
+  const jaw = new THREE.BoxGeometry(1.3, 0.35, 0.7);
+  jaw.translate(x, y0 + hy - 1.2, z + hz - 1.1);
+  put(jaw);
+  for (const s of [-1, 1]) {
+    const brow = new THREE.BoxGeometry(0.95, 0.32, 0.45);
+    brow.rotateZ(s * 0.18);
+    brow.translate(x + s * 0.6, y0 + hy + 0.55, z + hz - 1.0);
+    put(brow);
+    const eye = new THREE.SphereGeometry(0.27, 8, 6);
+    eye.translate(x + s * 0.6, y0 + hy + 0.2, z + hz - 1.0);
+    put(eye);
+    const ear = new THREE.SphereGeometry(0.35, 6, 4);
+    ear.scale(0.8, 1, 0.5);
+    ear.translate(x + s * 1.35, y0 + hy + 0.75, z + hz - 0.2);
+    put(ear);
+  }
+  // curls: three rows over the crown, a fall of them down the back of the neck
+  for (let row = 0; row < 3; row++) {
+    const n = 5 - (row === 2 ? 1 : 0);
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n - 0.5;
+      curl(u * 2.3, hy + 1.1 - row * 0.05, hz - 0.65 + row * 0.75, 0.3);
+    }
+  }
+  for (let row = 0; row < 4; row++) {
+    for (let i = 0; i < 6; i++) {
+      const a = ((i + 0.5) / 6 - 0.5) * Math.PI * 1.1;
+      const R = 1.55 - row * 0.08;
+      curl(Math.sin(a) * R, hy + 0.4 - row * 0.75, hz + 0.75 + Math.cos(a) * R * 0.7 + row * 0.12, 0.34);
+    }
+  }
+  // tail: a flame of curls up the back
+  for (let i = 0; i < 4; i++) curl(0, 1.4 + i * 0.55, 2.5 - i * 0.1, 0.42 - i * 0.04);
+  const ball = new THREE.SphereGeometry(0.8, 12, 8);
+  ball.translate(x + paw * 0.95, y0 + 0.8, z - 2.6);
+  put(ball);
 }
 
 /** A far hall seen over the wall: a red body and a hip roof, no detail. @param {Bucket} b @param {number} cx @param {number} cz @param {number} w @param {number} d @param {number} y0 */
@@ -496,9 +575,9 @@ function materials() {
     bracket: M(0x2c6a5f, 0.7),
     roofYellow: M(0xe0a62a, 0.34, { side: THREE.DoubleSide }),
     roofGray: M(0x4b5354, 0.6, { side: THREE.DoubleSide }),
-    leaves: M(0x2f4a26, 0.85, { vertexColors: true }),
+    leaves: M(0x2d5226, 0.85, { vertexColors: true }),
     trunk: M(0x4a3626, 0.95),
-    bronze: M(0x4d3f2b, 0.42, { metalness: 0.85 }),
+    bronze: M(0x6b5634, 0.38, { metalness: 0.85 }),
     gold: M(0xd2a443, 0.3, { metalness: 1 }),
     lantern: M(0xc42a18, 0.55, { emissive: 0xff5a2a, emissiveIntensity: 0.35 }),
     doorDark: M(0x1a1310, 0.95),
