@@ -124,7 +124,9 @@ export class Odometer {
     }
     const d = distR - distL;
     let t = "两个轮子走得一样多";
-    if (Math.abs(d) >= 0.1) t = d > 0 ? `右轮比左轮多走 ${fmt(d)} 尺` : `左轮比右轮多走 ${fmt(-d)} 尺`;
+    // one forward and one back (spinning on the spot): "more" would be wrong
+    if (Math.min(distL, distR) <= -0.1 && Math.max(distL, distR) >= 0.1) t = "两个轮子朝相反方向走";
+    else if (Math.abs(d) >= 0.1) t = d > 0 ? `右轮比左轮多走 ${fmt(d)} 尺` : `左轮比右轮多走 ${fmt(-d)} 尺`;
     this.diff.textContent = t;
     this.diff.dataset.side = Math.abs(d) < 0.1 ? "" : d > 0 ? "r" : "l";
   }
