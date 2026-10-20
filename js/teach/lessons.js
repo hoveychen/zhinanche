@@ -290,7 +290,7 @@ export const LESSONS = [
         scene: { reset: true, mechanism: "differential", demo: null, xray: false, explode: 0, highlight: [], faults: {}, slip: {}, view: "top", trails: true, controls: [] },
       },
       {
-        text: "如果两个车轮装得太开了一点……\n\n齿轮是照原来的宽度做的，账就记错了。绕一圈，木人歪一点。绕得越多，歪得越多。",
+        text: "如果两个车轮装得太开了一点……\n\n齿轮是照原来的宽度做的，账就记错了。车只宽了一点点，绕一圈，木人却歪了好多。绕得越多，歪得越多。",
         scene: { reset: true, faults: { trackScale: 1.1 }, play: "circle" },
         task: {
           kind: "choose",
