@@ -88,6 +88,9 @@ export class App {
     else if (res.rebuild) this.#rebuild();
     const w = this.world;
     w.setMechanism(st.mechanism);
+    // Put the model where the (maybe reset) chariot is first: the demos and
+    // the camera are placed from it.
+    w.showPose(this.chariot.pose(), 0);
     w.setLook(st.xray, st.highlight);
     w.setExplode(st.explode);
     w.setTrails(st.trails);
