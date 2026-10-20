@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decodeRoute, decodeShare, defaultSetup, encodeRoute, encodeShare, setupOf, shareHref, thin } from "../../js/app/share.js";
+import { decodeRoute, decodeShare, defaultSetup, encodeRoute, encodeShare, placeHref, setupOf, shareHref, thin } from "../../js/app/share.js";
 import { freeBase } from "../../js/app/directive.js";
 
 /** A drawn S-bend like a child's: a point every half chi, a little hand jitter. */
@@ -96,16 +96,30 @@ test("thinning keeps the corners of a square and drops the points along its side
   assert.deepEqual(thin([{ x: 1, y: 1 }], 0.1), [{ x: 1, y: 1 }]);
 });
 
-test("an English page's link opens in English; a Chinese page's link carries no language", () => {
+test("a link from the English page goes to the English entry page; from the Chinese page, to the site's front page", () => {
   const setup = { ...defaultSetup(), mechanism: /** @type {const} */ ("song"), xray: true };
   const en = new URL(shareHref("https://example.org/zhinanche/?free&lang=en#old", setup, "en"));
-  assert.equal(en.pathname, "/zhinanche/");
-  assert.equal(en.search, "?lang=en");
+  assert.equal(en.pathname, "/zhinanche/en.html");
+  assert.equal(en.search, "");
   assert.deepEqual(decodeShare(en.hash), setup);
-  // switched to English with the top-bar button: no ?lang in the address, the link still says it
-  assert.equal(new URL(shareHref("https://example.org/?lesson=3", setup, "en")).search, "?lang=en");
-  const zh = new URL(shareHref("https://example.org/zhinanche/?free&lang=zh", setup, "zh"));
+  // already on the English entry, or switched to English on the front page
+  assert.equal(new URL(shareHref("https://example.org/zhinanche/en.html?free", setup, "en")).pathname, "/zhinanche/en.html");
+  assert.equal(new URL(shareHref("https://example.org/?lesson=3", setup, "en")).pathname, "/en.html");
+  const zh = new URL(shareHref("https://example.org/zhinanche/en.html?free&lang=zh", setup, "zh"));
+  assert.equal(zh.pathname, "/zhinanche/");
   assert.equal(zh.search, "");
   assert.deepEqual(decodeShare(zh.hash), setup);
   assert.equal(new URL(shareHref("https://example.org/?free", setup, "zh")).search, "");
+});
+
+test("the address follows the course: lesson and step, free driving, or the lesson list; ?lang stays", () => {
+  const base = "https://example.org/zhinanche/en.html?lang=en&lesson=3&step=4";
+  assert.equal(placeHref(base, { mode: "lesson", lesson: 3, step: 5 }), "https://example.org/zhinanche/en.html?lang=en&lesson=3&step=5");
+  assert.equal(placeHref(base, { mode: "home" }), "https://example.org/zhinanche/en.html?lang=en");
+  assert.equal(placeHref("https://example.org/?lesson=1&step=2", { mode: "free" }), "https://example.org/?free");
+  // a shared setup stays in free driving, and goes once a lesson is opened
+  const shared = "https://example.org/?free#s=1&m=song";
+  assert.equal(placeHref(shared, { mode: "free" }), shared);
+  assert.equal(placeHref(shared, { mode: "lesson", lesson: 1, step: 1 }), "https://example.org/?lesson=1&step=1");
+  assert.equal(placeHref("https://example.org/?selftest&free", { mode: "home" }), "https://example.org/?selftest");
 });

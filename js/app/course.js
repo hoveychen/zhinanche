@@ -7,6 +7,7 @@ import { S, bind, lessons } from "../i18n.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
 import { siteFoot } from "./about.js";
+import { placeHref } from "./share.js";
 
 /** @import { App } from "./app.js" */
 /** @import { Tools } from "./tools.js" */
@@ -19,6 +20,17 @@ const TOOL_FOR = { xrayOn: "xray", opened: "explode", switchedToSong: "mechanism
 /** Lesson text: paragraphs split on blank lines; trusted inline HTML. @param {string} text */
 function paragraphs(text) {
   return text.split(/\n\n+/).map((p) => h("p", { html: p.replace(/\n/g, "<br>") }));
+}
+
+/**
+ * Keep the address bar on where the course is, without a new history entry.
+ * @param {Parameters<typeof placeHref>[1]} at
+ */
+function keepAddress(at) {
+  try {
+    const to = placeHref(location.href, at);
+    if (to !== location.href) history.replaceState(history.state, "", to);
+  } catch {}
 }
 
 export class Course {
@@ -75,6 +87,7 @@ export class Course {
     });
     this.app.idleLoop = true;
     this.cb.onMode("home");
+    keepAddress({ mode: "home" });
   }
 
   #renderHome() {
@@ -124,6 +137,7 @@ export class Course {
     this.#renderFree();
     this.app.free(over);
     this.cb.onMode("free");
+    keepAddress({ mode: "free" });
   }
 
   #renderFree() {
@@ -190,6 +204,7 @@ export class Course {
     const hh = this.app.world.holdHands;
     if (this.app.state.demo === "holdHands" && !(step.task?.kind === "do" && step.task.check === "playedDemo") && !hh.walking && hh.steps.in === 0) hh.walk();
     this.#render(lesson, step);
+    keepAddress({ mode: "lesson", lesson: this.lesson + 1, step: k + 1 });
   }
 
   next() {

@@ -37,16 +37,17 @@ pnpm serve       # 本地静态服务器
 
 在「自己开」里画一条路、选好造法和毛病，按画面右上角的「复制链接」。链接把造法、毛病、地面、快慢、透视、拆开程度和画的路线都存在 `#` 后面（例：`#s=1&m=song&wl=1.05&v=top&p=…`），别人打开就从同一个起点沿同一条路开。编码见 [`js/app/share.js`](js/app/share.js)。
 
-另外，`?free` 直接打开「自己开」，`?lesson=N&step=K` 打开第 N 课第 K 步。
+另外，`?free` 直接打开「自己开」，`?lesson=N&step=K` 打开第 N 课第 K 步；地址栏会跟着当前课和步变，老师可以直接复制当前这一步的链接。英文版是 [`en.html`](en.html)，按顶栏的 EN / 中文 切换时地址也跟着换。
 
 ## 发布
 
 还没定放在哪里。上线前要填两处：
 
 - [`js/site.js`](js/site.js) 的 `repo`：源码仓库地址，填了以后首页课程列表下面会出现「源代码」链接。
-- [`index.html`](index.html) `<head>` 里的链接预览：`og:image` / `twitter:image` 现在是相对路径 `images/og.jpg`，多数网站抓预览图要绝对地址，改成 `https://<站点>/images/og.jpg`，并加上 `<meta property="og:url" content="https://<站点>/">`。
+- [`index.html`](index.html)（中文）和 [`en.html`](en.html)（英文）`<head>` 里的链接预览：`og:image` / `twitter:image` 现在是相对路径 `images/og.jpg`、`images/og.en.jpg`，多数网站抓预览图要绝对地址，改成 `https://<站点>/images/og.jpg`、`https://<站点>/images/og.en.jpg`，加上 `<meta property="og:url" content="https://<站点>/">`（en.html 里是 `…/en.html`），三条 `hreflang` 链接也改成绝对地址。
+- 发到英文网站（Reddit 等）用 `https://<站点>/en.html`（GitHub Pages 上 `https://<站点>/en` 也行），预览就是英文的。
 
-预览图 `images/og.jpg`（1200×630）、README 头图和动图都是从页面里的 3D 场景截的。
+预览图 `images/og.jpg`、`images/og.en.jpg`（1200×630）、README 头图和动图都是从页面里的 3D 场景截的。
 
 ## 测试
 
