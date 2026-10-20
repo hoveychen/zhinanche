@@ -251,14 +251,14 @@ export const LESSONS = [
         scene: { view: "top", highlight: ["bigFlat", "figure"] },
       },
       {
-        text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。现在把「车夫帮忙」关掉，让车随便绕一个大圈。",
+        text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。这一回，「车夫帮忙」已经关掉了，车随便绕一个大圈。",
         scene: { reset: true, assist: false, view: "top", trails: true, highlight: [], play: "circle", controls: ["assist", "reset"] },
         task: {
           kind: "choose",
           prompt: "关掉「车夫帮忙」绕一圈，木人还指南吗？",
           options: ["还指着南", "指歪了"],
           answer: 1,
-          right: "对，燕肃的车要靠车夫配合才准。",
+          right: "对，燕肃的车要靠车夫配合才准。把「车夫帮忙」打开，再按「再看一遍」，比一比。",
           wrong: "看看木人最后指着哪边？",
         },
       },

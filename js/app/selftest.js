@@ -25,6 +25,37 @@ function visible(el) {
 }
 
 /**
+ * The step's nav bar, at its widest: with the "往下看" cue on (whether this
+ * step needs it at this size or not), every button sits inside the bar and
+ * no button's words are cut short.
+ * @returns {string[]}
+ */
+function navProblems() {
+  const nav = document.querySelector(".panel-nav");
+  const cue = nav?.querySelector(".more-cue");
+  if (!(nav instanceof HTMLElement) || !(cue instanceof HTMLElement)) return [];
+  const wasHidden = cue.hidden, wasOn = nav.classList.contains("cue-on");
+  cue.hidden = false;
+  nav.classList.add("cue-on");
+  /** @type {string[]} */
+  const out = [];
+  const box = nav.getBoundingClientRect();
+  for (const el of nav.children) {
+    if (!visible(el)) continue;
+    const r = el.getBoundingClientRect();
+    const name = el.textContent?.trim() || el.className;
+    if (r.left < box.left - 1 || r.right > box.right + 1) out.push(`nav "${name}" runs out of the bar`);
+    // the cue may drop its words before its arrow; buttons may not
+    if (el !== cue && el.scrollWidth > el.clientWidth + 1) out.push(`nav "${name}" is cut short`);
+  }
+  const words = cue.querySelector("span");
+  if (words && words.scrollWidth > words.clientWidth + 1) out.push(`nav cue "${words.textContent}" is cut short`);
+  cue.hidden = wasHidden;
+  nav.classList.toggle("cue-on", wasOn);
+  return out;
+}
+
+/**
  * @param {{app: App, course: Course, world: World, tools: Tools, input: DriveInput}} ctx
  */
 export async function selftest({ app, course, world, input }) {
@@ -122,6 +153,7 @@ export async function selftest({ app, course, world, input }) {
           if (!Number.isFinite(app.chariot.pose().errorDeg)) problems.push("pose is not finite");
         }
         if (document.documentElement.scrollWidth > window.innerWidth + 1) problems.push(`page scrolls sideways (${document.documentElement.scrollWidth} > ${window.innerWidth})`);
+        problems.push(...navProblems());
         const t = step.task;
         if (t?.kind === "choose") {
           const opts = [...document.querySelectorAll(".task.choose .option")];
