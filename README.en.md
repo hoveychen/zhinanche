@@ -14,15 +14,15 @@ This repo puts one in your browser: a 3D simulation you can drive, draw routes f
 
 ## Try it
 
-The page opens in Chinese. Press **EN** in the top bar for English, or add `?lang=en` to the address.
+The English page is [`en.html`](en.html) (`index.html` is the Chinese one; same page, but links to it preview in English). Press **中文** / **EN** in the top bar to switch; the address follows.
 
 - **Lessons** walks through it in six steps: what it is, driving it, why the two wheels roll different distances on a turn, how the gears keep the books, the two ways it may have been built, and how it goes wrong.
 - **Drive** hands you the reins. Arrow keys or the on-screen pad to drive, **Draw a road** to sketch a route and watch the cart follow it, **See the gears** to fly in and watch them mesh.
 - **Break it on purpose.** Make the track too wide, one wheel a little bigger, or let a wheel slip, then drive a lap and watch the man drift off south. Real chariots had exactly this problem.
 - **Tap any part** to see what it is.
-- **Copy link** puts the whole setup, including the route you drew, into the URL. Whoever opens it watches the same cart drive the same road. Links copied from the English page open in English.
+- **Copy link** puts the whole setup, including the route you drew, into the URL. Whoever opens it watches the same cart drive the same road. Links copied from the English page point at `en.html`, so they open (and preview) in English.
 
-`?free` opens straight into driving; `?lesson=N&step=K` opens lesson N at step K.
+`?free` opens straight into driving; `?lesson=N&step=K` opens lesson N at step K. The address bar keeps up with the lesson, so a teacher can copy the step on screen.
 
 ## Run it yourself
 
@@ -50,6 +50,15 @@ The 3D models come out of Blender scripts (point `BLENDER=/path/to/blender` at y
 pnpm build:model   # writes assets/*.glb
 pnpm check:model   # checks the gears don't collide
 ```
+
+## Publishing
+
+Where it will live isn't decided yet. Before it goes up, fill in:
+
+- `repo` in [`js/site.js`](js/site.js): the source repository; once set, a "Source code" link shows under the lesson list.
+- The link previews in the `<head>` of [`index.html`](index.html) (Chinese) and [`en.html`](en.html) (English). `og:image` / `twitter:image` are relative (`images/og.jpg`, `images/og.en.jpg`) and most sites want absolute URLs: make them `https://<site>/images/og.jpg` and `https://<site>/images/og.en.jpg`, add `<meta property="og:url" content="https://<site>/">` (and `…/en.html` in en.html), and make the three `hreflang` links absolute too.
+
+Post `https://<site>/en.html` to English-speaking places (on GitHub Pages `https://<site>/en` works as well). The preview images (1200×630) are screenshots of the 3D scene with the title laid over it.
 
 ## How faithful is it?
 

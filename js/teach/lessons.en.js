@@ -172,11 +172,11 @@ export const LESSONS_EN = {
       { text: "Going straight, both small flat wheels are lifted up, and the man stays still.\n\nOn a turn, the pole swings to one side and the outside small wheel drops down. That links the outside road wheel to the big flat wheel." },
       { text: "When a road wheel turns once, all 24 teeth of its upright wheel push past. That turns the small flat wheel twice, and the big flat wheel half a turn.\n\nOn a right-angle turn, the outside wheel turns half a turn. The big flat wheel moves 12 teeth — a quarter turn. That's exactly what the <em>History of Song</em> says." },
       {
-        text: "Later, people did the maths and found Yan Su's chariot had a catch: on every turn, the inside wheel has to <b>stay still</b> while the chariot swings round it.\n\nThe driver had to steer just like that, or the man wouldn't point true. Now switch off <b>Driver helps</b> and let the chariot drive a big, sloppy circle.",
+        text: "Later, people did the maths and found Yan Su's chariot had a catch: on every turn, the inside wheel has to <b>stay still</b> while the chariot swings round it.\n\nThe driver had to steer just like that, or the man wouldn't point true. This time <b>Driver helps</b> is already off, and the chariot drives a big, sloppy circle.",
         task: {
           prompt: "With “Driver helps” off, does the man still point south after a lap?",
           options: ["Still south", "He's pointing the wrong way"],
-          right: "Right — Yan Su's chariot only points true if the driver plays along.",
+          right: "Right — Yan Su's chariot only points true if the driver plays along. Switch “Driver helps” on and press Watch again to compare.",
           wrong: "Look where he's pointing at the end.",
         },
       },

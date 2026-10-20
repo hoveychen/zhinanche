@@ -260,11 +260,32 @@ export class CompassRing {
     ghost.renderOrder = 5;
     ghost.userData.noAO = true;
     this.group.add(seal, ghost);
+    /** the letters round the ring, faded out close in on the works (they'd float big in the picture) */
+    this.labels = this.group.children.filter((o) => o !== ring).map((o) => {
+      const m = /** @type {THREE.MeshBasicMaterial} */ (/** @type {THREE.Mesh} */ (o).material);
+      return { mesh: o, mat: m, base: m.opacity };
+    });
+    this.labelsOn = 1;
     this.arrowMat = new THREE.MeshBasicMaterial({ color: COLORS.ok, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide });
     this.arrow = new THREE.Mesh(arrowGeometry(1.2, RING_R - 0.2, 0.42), this.arrowMat);
     this.arrow.position.y = 0.04;
     this.arrow.renderOrder = 3;
     this.group.add(this.arrow);
+  }
+
+  /**
+   * Fade the letters round the ring in or out: close in on the works they
+   * would float big in the picture (the arrow stays).
+   * @param {boolean} on @param {number} dt seconds since the last call (0: at once)
+   */
+  fadeLabels(on, dt) {
+    const want = on ? 1 : 0;
+    this.labelsOn += (want - this.labelsOn) * (dt <= 0 ? 1 : Math.min(1, dt / 0.35));
+    if (Math.abs(this.labelsOn - want) < 0.01) this.labelsOn = want;
+    for (const l of this.labels) {
+      l.mat.opacity = l.base * this.labelsOn;
+      l.mesh.visible = this.labelsOn > 0;
+    }
   }
 
   /**

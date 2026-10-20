@@ -70,17 +70,39 @@ export function setupOf(st, route) {
 }
 
 /**
- * The page's address with this setup in its hash. The query is dropped (no
- * ?lesson / ?free), except that an English page says so with ?lang=en, so the
- * link opens in English for whoever gets it; a Chinese page adds nothing.
+ * The link for this setup: the entry page of the language the page shows
+ * (index or en.html, so the link opens, and previews, in that language) with
+ * the setup in its hash and no query (no ?lesson / ?free).
  * @param {string} href the page's address now
  * @param {ShareSetup} setup
  * @param {"zh" | "en"} lang the language the page shows
  */
 export function shareHref(href, setup, lang) {
-  const u = new URL(href);
-  u.search = lang === "en" ? "?lang=en" : "";
+  const u = new URL(lang === "en" ? "en.html" : "./", href);
   u.hash = encodeShare(setup);
+  return u.href;
+}
+
+/**
+ * The page's address for where the course is (kept in the address bar, so a
+ * teacher can copy the step on show): ?lesson=N&step=K, ?free, or nothing for
+ * the lesson list. Other parameters (?lang) stay; a shared setup's hash stays
+ * only in free driving.
+ * @param {string} href
+ * @param {{mode: "home"} | {mode: "free"} | {mode: "lesson", lesson: number, step: number}} at 1-based lesson and step
+ */
+export function placeHref(href, at) {
+  const u = new URL(href);
+  const q = u.searchParams;
+  for (const k of ["lesson", "step", "free"]) q.delete(k);
+  if (at.mode === "lesson") {
+    q.set("lesson", String(at.lesson));
+    q.set("step", String(at.step));
+  }
+  if (at.mode === "free") q.set("free", "");
+  else u.hash = "";
+  // bare flags (?free, ?selftest) stay bare
+  u.search = q.toString().replace(/=(?=&|$)/g, "");
   return u.href;
 }
 
