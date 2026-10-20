@@ -42,6 +42,6 @@ export function partCaption(extras) {
   const title = extras.label ?? "";
   let detail = "";
   if (extras.teeth) detail = `${extras.teeth} 个齿`;
-  if (extras.teeth && extras.sideTeeth) detail += `，上面还有 ${extras.sideTeeth} 根立着的木销`;
+  if (extras.teeth && extras.sideTeeth) detail += `；中间一圈 ${extras.sideTeeth} 根木销，咬着小齿轮`;
   return { title, detail };
 }

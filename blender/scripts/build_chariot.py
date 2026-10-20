@@ -69,7 +69,7 @@ def peg_wheel(g, colour, parent, label, r_out, explode=(0, 0, 0), disc="ring", t
     obj = mb.build(g.name, g.center, parent)
     set_teach(obj, "gear", label, explode, g.n)
     m = marker.build(g.name + ".marker", g.center, obj)
-    set_teach(m, "gear", label + "的记号齿")
+    set_teach(m, "gear", label + "上的记号")
     return obj
 
 
@@ -186,7 +186,7 @@ def body(L, root, x0, x1, board_z0, side_holes, extra_frame=None):
     mb.box((x0 - 0.05, -2.5, deck), (x1 + 0.05, 2.5, deck + 0.12), "wood")
     railing(mb, x0 + 0.02, x1 - 0.02, -2.43, 2.43, deck + 0.12, 0.7)
     o = mb.build("body.deck", (0, 0, deck), root)
-    set_teach(o, "shell", "下层平台和勾栏", SHELL_EXPLODE["body.deck"])
+    set_teach(o, "shell", "下层平台和栏杆", SHELL_EXPLODE["body.deck"])
 
     tz0, tz1, top = deck + 0.12, deck + 0.9, 9.0
     mb = MB()
@@ -197,7 +197,7 @@ def body(L, root, x0, x1, board_z0, side_holes, extra_frame=None):
         for py in (-1.4, 1.4):
             mb.cyl((px, py, tz1), (px, py, top), 0.1, "lacquer", n=8)
     o = mb.build("body.tier", (s, 0, tz0), root)
-    set_teach(o, "shell", "上层重台", SHELL_EXPLODE["body.tier"])
+    set_teach(o, "shell", "上层平台", SHELL_EXPLODE["body.tier"])
 
     mb = MB()
     mb.box((s - 2.35, -2.15, top), (s + 2.35, 2.15, top + 0.12), "eave")
@@ -231,7 +231,7 @@ def figure(L, root):
     sh.cyl((s, 0, L.shaft_bottom), (s, 0, z), L.shaft_r, "gold", n=10)
     shaft = sh.build("figure.shaft", (s, 0, L.shaft_bottom), root)
     set_rotate(shaft, "figure", (0, 0, 1))
-    set_teach(shaft, "figure", "贯心轴", (0, 0, 3.0))
+    set_teach(shaft, "figure", "竖轴（木人站在顶上）", (0, 0, 3.0))
 
     mb = MB()
     c = (s, 0, z)
@@ -257,7 +257,7 @@ def figure(L, root):
         mb.box(at(0.125, dy - 0.015, 1.15), at(0.145, dy + 0.015, 1.18), "hat")
     fig = mb.build("figure", c, root)
     set_rotate(fig, "figure", (0, 0, 1))
-    set_teach(fig, "figure", "木仙人", (0, 0, 8.0))
+    set_teach(fig, "figure", "木人", (0, 0, 8.0))
 
 
 # --------------------------------------------------------------------------- Song
@@ -291,7 +291,7 @@ def build_song(L, root):
         def foot_hub(mb, sy=sy):
             mb.cyl((0, sy * 2.55, L.axle_z), (0, sy * 2.8, L.axle_z), 0.26, "wood_dark", n=10)
 
-        o = peg_wheel(foot, colour, root, f"{side_cn}附足立子轮", foot.r - L.ded, (0, sy * 1.2, 0), disc="ring", hub=(0.26, 0.1),
+        o = peg_wheel(foot, colour, root, f"{side_cn}立子轮", foot.r - L.ded, (0, sy * 1.2, 0), disc="ring", hub=(0.26, 0.1),
                       spokes=4, ring_w=0.28, extra=foot_hub)
         set_rotate(o, "foot" + side, foot.axis)
 
@@ -305,7 +305,7 @@ def build_song(L, root):
         lift.box((4.48, sy * 1.35 - 0.07, 3.62), (4.62, sy * 1.35 + 0.07, 3.8), "iron")
         lo = lift.build(f"song.smallLift.{side}", sm.center, root)
         set_lift(lo, f"clutch{side}", L.lift)
-        set_teach(lo, "gear", f"{side_cn}小平轮吊架和竹绳铁坠", (0, sy * 0.3, 1.0))
+        set_teach(lo, "gear", f"{side_cn}小平轮的吊绳（拉起、放下小平轮）", (0, sy * 0.3, 1.0))
         so = peg_wheel(sm, colour, lo, f"{side_cn}小平轮", sm.r - L.ded, disc="solid", t=0.12, hub=(0.12, 0.22))
         set_rotate(so, "small" + side, sm.axis)
 
@@ -316,10 +316,10 @@ def build_song(L, root):
         rl.cyl(rc, (rc[0], rc[1], POLE_Z - 0.07), 0.025, "iron", n=6)
         ro = rl.build(f"song.roller.{side}", rc, root)
         set_lift(ro, f"clutch{side}", 0.2)
-        set_teach(ro, "gear", f"{side_cn}辕端小轮", (0, 0, 0.6))
+        set_teach(ro, "gear", f"车辕头上的{side_cn}小轮", (0, 0, 0.6))
 
     big = g["big"]
-    o = peg_wheel(big, "gold", root, "中心大平轮", big.r - L.ded, (0, 0, 0), disc="ring", t=0.12, hub=(0.3, 0.26), spokes=6, ring_w=0.34)
+    o = peg_wheel(big, "gold", root, "大平轮", big.r - L.ded, (0, 0, 0), disc="ring", t=0.12, hub=(0.3, 0.26), spokes=6, ring_w=0.34)
     set_rotate(o, "bigFlat", big.axis)
     figure(L, root)
 
@@ -340,8 +340,8 @@ def build_differential(L, root):
     body(L, root, x0, x1, 1.1, [(-0.3, 0.3, 2.65, 3.35)], frame)
     pole(root, 3.3, lay.pv(L.raw, "body.poleLength"), [])
 
-    for side, colour, sy, gname, label in (("L", "blue", 1, "crown.L", "左立轮（冠轮）"),
-                                           ("R", "orange", -1, "crown.R", "右立轮（冠轮）")):
+    for side, colour, sy, gname, label in (("L", "blue", 1, "crown.L", "左轮带的竖齿轮"),
+                                           ("R", "orange", -1, "crown.R", "右轮带的竖齿轮")):
         wheel(L, side, colour, root)
         cr = g[gname]
 
@@ -361,7 +361,7 @@ def build_differential(L, root):
         mb.ring(sA.center, sA.axis, ringA.r - 0.12, ringA.r + 0.12, L.disc_t, "blue", n=16, ref=sA.u)
         axial_pegs(mb, ringA)
 
-    o = peg_wheel(sA, "blue", root, "左水平轮和下侧齿轮", sA.r - L.ded, (0, 0, -0.7), disc="ring", t=L.disc_t, hub=(0.28, 0.2),
+    o = peg_wheel(sA, "blue", root, "左边的平齿轮（下层）", sA.r - L.ded, (0, 0, -0.7), disc="ring", t=L.disc_t, hub=(0.28, 0.2),
                   ring_w=0.39, extra=side_a_extra)
     o["sideTeeth"] = ringA.n
     set_rotate(o, "sideA", sA.axis)
@@ -371,7 +371,7 @@ def build_differential(L, root):
     def side_b_extra(mb):
         axial_pegs(mb, ringB)
 
-    o = peg_wheel(sB, "orange", root, "右水平轮和上侧齿轮", sB.r - L.ded, (0, 0, 0.7), disc="solid", t=L.disc_t, hub=(0.24, 0.24),
+    o = peg_wheel(sB, "orange", root, "右边的平齿轮（上层）", sB.r - L.ded, (0, 0, 0.7), disc="solid", t=L.disc_t, hub=(0.24, 0.24),
                   extra=side_b_extra)
     o["sideTeeth"] = ringB.n
     set_rotate(o, "sideB", sB.axis)
@@ -383,10 +383,10 @@ def build_differential(L, root):
         cm.cyl((sx * 0.15, 0, L.z_pin), (sx * (L.r_side + 0.12), 0, L.z_pin), 0.05, "iron", n=6)
     carrier = cm.build("diff.carrier", cc, root)
     set_rotate(carrier, "carrier", (0, 0, 1))
-    set_teach(carrier, "gear", "差速器行星架", (0, 0, 0))
+    set_teach(carrier, "gear", "架子（木人就站在它上面）", (0, 0, 0))
     for k in (0, 1):
         p = g[f"pinion.{k}"]
-        o = peg_wheel(p, "gold", carrier, "行星小齿轮", L.pin_disc_r, disc="solid", t=0.08, hub=(0.08, 0.12))
+        o = peg_wheel(p, "gold", carrier, "小齿轮", L.pin_disc_r, disc="solid", t=0.08, hub=(0.08, 0.12))
         set_rotate(o, "pinion", p.axis)
     figure(L, root)
 
@@ -399,7 +399,7 @@ def build(mechanism):
     L = lay.layout(mechanism)
     root = empty("chariot", (0, 0, 0))
     root["mechanism"] = mechanism
-    root["label"] = "燕肃指南车（宋史）" if mechanism == "song" else "差动齿轮指南车（推测）"
+    root["label"] = "宋史式：燕肃的车" if mechanism == "song" else "差动式：现代人猜的"
     (build_song if mechanism == "song" else build_differential)(L, root)
     return L
 

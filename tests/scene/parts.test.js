@@ -39,7 +39,7 @@ test("every motion node is driven by a key the sim provides", () => {
 test("captions", () => {
   assert.equal(ownerOf("song.bigFlat.marker"), "song.bigFlat");
   assert.equal(ownerOf("wheel.L"), "wheel.L");
-  assert.deepEqual(partCaption({ label: "中心大平轮", teeth: 48 }), { title: "中心大平轮", detail: "48 个齿" });
-  assert.match(partCaption({ label: "左水平轮和下侧齿轮", teeth: 42, sideTeeth: 16 }).detail, /42 个齿.*16/);
+  assert.deepEqual(partCaption({ label: "大平轮", teeth: 48 }), { title: "大平轮", detail: "48 个齿" });
+  assert.match(partCaption({ label: "左边的平齿轮（下层）", teeth: 42, sideTeeth: 16 }).detail, /42 个齿.*16/);
   assert.equal(partCaption({ label: "车辕" }).detail, "");
 });
