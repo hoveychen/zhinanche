@@ -140,11 +140,11 @@ export const LESSONS = [
       },
       {
         text: "车的两个轮子也一样。\n\n车直着走，<span class=\"l\">左轮</span>和<span class=\"r\">右轮</span>走的路一样长。",
-        scene: { reset: true, demo: null, mechanism: "differential", view: "top", trails: true, odometer: true, play: "straight" },
+        scene: { reset: true, demo: null, mechanism: "differential", view: "above", trails: true, odometer: true, play: "straight" },
       },
       {
         text: "现在车向左绕一个圈。\n\n<span class=\"l\">左轮</span>在里圈，<span class=\"r\">右轮</span>在外圈。看看两个轮子各走了多远。",
-        scene: { reset: true, play: "circle" },
+        scene: { reset: true, view: "top", play: "circle" },
         task: {
           kind: "choose",
           prompt: "哪个轮子走的路更多？",
@@ -182,11 +182,11 @@ export const LESSONS = [
       },
       {
         text: "两个齿轮中间，夹着几个小齿轮。小齿轮装在一个架子上，木人就站在这个架子上。\n\n车直着走，两个车轮转得一样多。两边一抵消，架子不动，木人也不动。",
-        scene: { reset: true, highlight: ["pinion", "carrier", "figure"], play: "straight" },
+        scene: { reset: true, view: "works", highlight: ["pinion", "carrier", "figure"], play: "straight" },
       },
       {
         text: "车拐弯时，外边的车轮转得多。\n\n多出来的圈数，就让架子带着木人<b>反着</b>转回去。",
-        scene: { reset: true, highlight: ["wheelR", "carrier", "figure"], play: "pivotLeft" },
+        scene: { reset: true, view: "works", highlight: ["wheelR", "carrier", "figure"], play: "pivotLeft" },
         task: {
           kind: "choose",
           prompt: "车身向左转，木人在车上会怎么转？",
@@ -198,11 +198,11 @@ export const LESSONS = [
       },
       {
         text: "刚才车拐了两个弯，一共掉了个头。外边的车轮比里边<b>多转了一圈</b>。\n\n车身转了半圈，木人就反着转半圈，还是指着南。",
-        scene: { view: "top", highlight: ["figure"] },
+        scene: { reset: true, view: "top", trails: true, odometer: true, highlight: ["figure"], play: "pivotLeft" },
       },
       {
         text: "把「拆开」的滑块往右拖，齿轮会一个一个分开。",
-        scene: { view: "gears", highlight: [], controls: ["explode", "xray"] },
+        scene: { view: "gears", odometer: false, highlight: [], controls: ["explode", "xray"] },
         task: { kind: "do", prompt: "把滑块拖到右边，看看每个齿轮", check: "opened", done: "齿轮都分开了，看清楚了吗？" },
       },
       {
@@ -264,10 +264,11 @@ export const LESSONS = [
       },
       {
         text: "吴德仁的车齿轮更多，大平轮有 100 个齿。\n\n可书里没写清这些齿轮是怎么一个接一个的。到今天，还没人能确定。",
+        scene: { reset: true, assist: true, xray: true, view: "gears", highlight: ["bigFlat"], controls: [] },
       },
       {
         text: "那差动式是谁想出来的？是 20 世纪的英国工程师兰彻斯特。他按机械的道理猜出来的。\n\n古书里<b>没有</b>写差动式，可它怎么走都准。所以这个网页先用差动式，你也能换成宋史式比一比。",
-        scene: { mechanism: "differential", assist: true, controls: ["mechanism", "assist", "drive", "reset"] },
+        scene: { mechanism: "differential", assist: true, view: "top", highlight: [], controls: ["mechanism", "assist", "drive", "reset"] },
         task: {
           kind: "choose",
           prompt: "下面哪句话是对的？",
@@ -303,11 +304,11 @@ export const LESSONS = [
       },
       {
         text: "如果两个车轮一大一小……\n\n走同样远的路，大轮子转的圈数少，小轮子转的圈数多。齿轮以为车在拐弯，车明明直着走，木人却慢慢歪了。",
-        scene: { reset: true, faults: { leftWheelScale: 1.05 }, play: "straight" },
+        scene: { reset: true, view: "above", faults: { leftWheelScale: 1.05 }, play: "straight" },
       },
       {
         text: "如果地很滑，一个车轮打滑空转……\n\n车轮转了好多圈，车却没走那么远。齿轮又被骗了。",
-        scene: { reset: true, faults: {}, slip: { slipR: 0.2 }, play: "straight" },
+        scene: { reset: true, view: "above", faults: {}, slip: { slipR: 0.2 }, play: "straight" },
       },
       {
         text: "轮到你了：给车调一个毛病，把木人弄歪。",

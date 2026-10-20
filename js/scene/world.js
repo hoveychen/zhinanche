@@ -37,6 +37,7 @@ export class World {
   /** @type {{xray: boolean, highlight: PartId[]}} */
   #lookState = { xray: false, highlight: [] };
   #figureBig = true;
+  #viewed = false;
 
   /** @param {HTMLElement} host */
   constructor(host) {
@@ -104,6 +105,10 @@ export class World {
     /** the HUD's margins over the view, for framing routes (set by the page) */
     /** @type {() => Insets} */
     this.hudInsets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+    /** the HUD's margins cleared at the sides, or above and below (framing the parts; set by the page) */
+    /** @type {() => Insets[]} */
+    this.hudBands = () => [this.hudInsets()];
+    this.cam.insets = () => this.hudInsets();
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -115,13 +120,20 @@ export class World {
   /**
    * Load the chariot on show; the other one waits until it is first wanted
    * (setMechanism) or the page is idle (prefetchOther), so the first picture
-   * costs one model, not two.
+   * costs one model, not two. Resolves when the first picture is ready to
+   * show whole: courtyard built, textures on, every shader compiled.
    * @param {string} [base]
    */
   async load(base = "assets/") {
     this.base = base;
-    await this.ensure(this.mechanism);
+    await Promise.all([
+      this.ensure(this.mechanism),
+      this.look.warmPasses(),
+      this.look.buildYard(),
+      this.look.texReady.catch(() => {}),
+    ]);
     this.setMechanism(this.mechanism);
+    await this.look.warm();
   }
 
   /**
@@ -131,8 +143,9 @@ export class World {
   prefetchOther() {
     /** @type {MechanismId} */
     const other = this.mechanism === "song" ? "differential" : "song";
-    const go = () => this.ensure(other).catch(() => {}); // a failure shows when it is picked
-    // after the first frames and the courtyard's own idle work
+    // a failure shows when it is picked; compiled now, so showing it doesn't stall
+    const go = () => this.ensure(other).then((rig) => this.look.precompile(rig.root), () => {});
+    // after the first frames
     setTimeout(() => {
       if (typeof requestIdleCallback === "function") requestIdleCallback(go, { timeout: 3000 });
       else go();
@@ -204,8 +217,11 @@ export class World {
    * @param {PartId[]} highlight
    */
   setLook(xray, highlight) {
+    const was = this.#lookState.xray;
     this.#lookState = { xray, highlight };
     for (const rig of Object.values(this.rigs)) rig.setLook(xray, highlight);
+    // the gears view frames the whole cart until it can be seen through
+    if (xray !== was && this.cam.view === "gears" && this.#viewed) this.cam.setView("gears", this.camFocus());
   }
 
   /** Big figure for wide views (every chariot). @param {boolean} big @param {boolean} [instant] */
@@ -274,13 +290,16 @@ export class World {
   /** The focus the camera presets need. */
   camFocus() {
     const fig = this.rigs[this.mechanism]?.node("figure");
-    return { ...this.focus, mechanism: this.mechanism, figureX: fig ? fig.position.x : 0 };
+    return { ...this.focus, mechanism: this.mechanism, figureX: fig ? fig.position.x : 0, inside: this.#lookState.xray || this.explodeTarget > 0 };
   }
 
   /** @param {ViewId} v @param {boolean} [instant] */
   setView(v, instant = false) {
     this.cam.extraRadius = this.demo === "holdHands" ? this.holdHands.radius : this.demo === "compass" ? 14 : 0;
-    this.cam.setView(v, this.camFocus(), instant);
+    // the first view is where the first picture is taken: no glide in from
+    // the constructor's placeholder spot
+    this.cam.setView(v, this.camFocus(), instant || !this.#viewed);
+    this.#viewed = true;
   }
 
   /**
@@ -310,11 +329,12 @@ export class World {
     const rig = this.rig;
     if (this.cam.reframe > 0 && rig) {
       this.cam.parts = rig.bounds(this.partsBox, this.cam.view === "gears");
-      this.cam.partsInset = this.hudInsets();
+      this.cam.partsInset = this.hudBands();
     }
     rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
+    this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works"), dt);
     this.cam.update(dt, this.camFocus());
   }
 
@@ -332,6 +352,12 @@ export class World {
     this.renderer.domElement.style.height = "100%";
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.cam.short = h < 600;
+    // OrbitControls turns 2π × rotateSpeed per view height dragged: about a
+    // quarter turn for 300 px, slow enough for a child to stop where they mean to
+    this.controls.rotateSpeed = THREE.MathUtils.clamp(h / 1200, 0.25, 1);
+    // a view placed before the layout settled was framed for the old shape
+    if (this.#viewed && this.cam.atPreset && !this.cam.glide) this.cam.setView(this.cam.view, this.camFocus(), true);
     this.route.resize(w, h);
     this.look?.resize(w, h);
   }
