@@ -48,6 +48,12 @@ export class CameraRig {
     this.box = null;
     this.last = { x: 0, z: 0, heading: Math.PI / 2 };
     this.extraRadius = 0;
+    /** seconds left to keep the taken-apart parts framed (set while they move) */
+    this.reframe = 0;
+    /** @type {THREE.Box3 | null} round the parts, world space */
+    this.parts = null;
+    /** @type {Insets} the HUD's margins, kept clear when framing the parts */
+    this.partsInset = { left: 0, right: 0, top: 0, bottom: 0 };
   }
 
   /** Distance at which a sphere of radius r fills the view. @param {number} r */
@@ -104,9 +110,9 @@ export class CameraRig {
         // the big left crown wheel shows its face. The boards go see-through
         // with x-ray.
         const song = f.mechanism === "song";
-        const target = song ? local(1.1, 5.6, 0) : local(0, 5.2, 0);
-        const r = song ? 6.6 : 6.2;
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 2, 0.3), this.fit(r)) };
+        const target = song ? local(1.6, 5.4, 0) : local(0.7, 5.2, 0);
+        const r = song ? 6.9 : 6.6;
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.25, 0.3), this.fit(r)) };
       }
       case "wheels": {
         const target = local(0, 2.8, 0);
@@ -215,7 +221,44 @@ export class CameraRig {
         }
       }
     }
+    if (this.reframe > 0 && this.parts && !this.glide && this.view !== "top") this.#frameParts(dt, this.parts, this.partsInset);
+    this.reframe = Math.max(0, this.reframe - dt);
     this.last = { x: f.x, z: f.z, heading: f.heading };
     ctl.update(dt);
+  }
+
+  /**
+   * While the chariot comes apart, keep every part in the picture: same
+   * direction of view (the child may have turned it), centre and distance
+   * eased so the box round the parts just fits in the part of the view the
+   * HUD leaves free.
+   * @param {number} dt @param {THREE.Box3} box @param {Insets} inset
+   */
+  #frameParts(dt, box, inset) {
+    const cam = this.camera, ctl = this.controls;
+    const a = 1 - Math.exp(-dt * 5);
+    const off = cam.position.clone().sub(ctl.target);
+    const dist = off.length();
+    off.divideScalar(dist);
+    const centre = box.getCenter(new THREE.Vector3());
+    const right = new THREE.Vector3().crossVectors(cam.up, off).normalize();
+    const up = new THREE.Vector3().crossVectors(off, right);
+    const ux = Math.max(0.4, 1 - inset.left - inset.right), uy = Math.max(0.4, 1 - inset.top - inset.bottom);
+    const tv0 = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th0 = tv0 * cam.aspect;
+    const th = th0 * ux, tv = tv0 * uy;
+    let want = 0;
+    const c = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) {
+      c.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(centre);
+      const z = c.dot(off);
+      want = Math.max(want, z + Math.abs(c.dot(right)) / th, z + Math.abs(c.dot(up)) / tv);
+    }
+    want *= 1.06;
+    // aim off-centre so the parts sit in the middle of the free part
+    const goal = centre.clone()
+      .addScaledVector(right, -(inset.left - inset.right) * th0 * want)
+      .addScaledVector(up, -(inset.bottom - inset.top) * tv0 * want);
+    ctl.target.lerp(goal, a);
+    cam.position.copy(ctl.target).addScaledVector(off, dist + (want - dist) * a);
   }
 }

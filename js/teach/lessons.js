@@ -201,9 +201,9 @@ export const LESSONS = [
         scene: { view: "top", highlight: ["figure"] },
       },
       {
-        text: "按「拆开」，把齿轮一个一个分开看。",
+        text: "把「拆开」的滑块往右拖，齿轮会一个一个分开。",
         scene: { view: "gears", highlight: [], controls: ["explode", "xray"] },
-        task: { kind: "do", prompt: "按「拆开」，看看每个齿轮", check: "opened", done: "齿轮都分开了，看清楚了吗？" },
+        task: { kind: "do", prompt: "把滑块拖到右边，看看每个齿轮", check: "opened", done: "齿轮都分开了，看清楚了吗？" },
       },
       {
         text: "<b>车身转多少，木人就反着转多少。</b>\n\n所以站在地上看，木人好像一直没动，一直指着南。",
