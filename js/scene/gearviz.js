@@ -115,7 +115,7 @@ export function makeWire(mesh) {
 /** How much of the circle the arc covers. */
 const ARC = Math.PI * 1.55;
 /** dash length along the arc (chi) */
-const DASH = 0.42;
+const DASH = 0.7;
 
 let dashTex = /** @type {THREE.CanvasTexture | null} */ (null);
 /** Comet dashes: faint tail, bright head, gap. */
@@ -147,7 +147,7 @@ export class SpinArc {
    * @param {THREE.Color} color
    * @param {number} [tube] chi
    */
-  constructor(radius, color, tube = 0.06) {
+  constructor(radius, color, tube = 0.13) {
     this.group = new THREE.Group();
     this.group.name = "spinArc";
     this.spin = new THREE.Group(); // mirrored for the other way round
@@ -161,9 +161,11 @@ export class SpinArc {
     this.mat = new THREE.MeshBasicMaterial({ color, map: tex, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
     this.headMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
     const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 6, Math.max(24, Math.round(radius * 40)), ARC), this.mat);
-    const head = new THREE.Mesh(new THREE.ConeGeometry(tube * 3, tube * 8, 12), this.headMat);
-    head.position.set(radius * Math.cos(ARC), radius * Math.sin(ARC), 0);
-    head.rotation.z = ARC;
+    const head = new THREE.Mesh(new THREE.ConeGeometry(tube * 3.2, tube * 7, 16), this.headMat);
+    // the cone's middle sits on the arc's end, pointing along it
+    const a = ARC + (tube * 3.5) / radius;
+    head.position.set(radius * Math.cos(a), radius * Math.sin(a), 0);
+    head.rotation.z = a;
     for (const m of [ring, head]) {
       m.castShadow = m.receiveShadow = false;
       m.userData.noAO = true;

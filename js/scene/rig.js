@@ -29,6 +29,7 @@ import { OUTLINES, SpinArc, TRAIN, makeHull, makeWire } from "./gearviz.js";
  * @property {string} group
  * @property {string} owner node name the mesh belongs to (marker teeth → their gear)
  * @property {boolean} wire drawn as a wireframe in x-ray (the body and the frame round the gears)
+ * @property {boolean} [dim] faded back because other parts are highlighted
  */
 
 /** @param {THREE.Object3D} o @returns {string} */
@@ -42,6 +43,8 @@ const SPIN_GLOW = 0.55;
 /** Angular speed (rad/s) at which a gear counts as fully "turning". */
 const SPIN_FULL = 0.35;
 const TMP = new THREE.Color();
+/** Groups whose parts fade back (highlights) or light up (turning). */
+const MOVING_GROUPS = new Set(["gear", "wheel", "figure"]);
 
 /**
  * Spin arcs: which gears get one, how far outside the teeth (chi), and the
@@ -61,7 +64,7 @@ const ARCS = {
   "song.bigFlat": { pad: 0.25, lift: 0.35, toward: "body.pole" },
 };
 /** The differential's carrier sits between the side gears: its arc goes on the shaft, above them. */
-const SHAFT_ARC = { radius: 0.55, lift: 2.6 };
+const SHAFT_ARC = { radius: 0.75, lift: 2.4 };
 
 /**
  * @typedef {object} Spinner a turning part, watched for how fast it turns
@@ -204,6 +207,9 @@ export class Rig {
       this.spinners.push(sp);
       this.spinOf.set(m.name, sp);
     }
+    // the figure turns with its shaft
+    const shaft = this.spinOf.get("figure.shaft");
+    if (shaft) this.spinOf.set("figure", shaft);
 
     const figure = this.byName.get("figure");
     /** @type {THREE.Object3D | null} */
@@ -299,9 +305,8 @@ export class Rig {
       m.colorWrite = !see;
       m.color.copy(l.color);
       m.emissive.setRGB(0, 0, 0);
-      if (dimming && !this.lit.has(l.owner) && (l.group === "gear" || l.group === "wheel" || l.group === "figure")) {
-        m.color.lerp(FADE, FADE_K);
-      }
+      l.dim = dimming && !this.lit.has(l.owner) && MOVING_GROUPS.has(l.group);
+      if (l.dim) m.color.lerp(FADE, FADE_K);
       m.needsUpdate = true;
     }
     for (const w of this.wires) w.visible = xray;
@@ -356,14 +361,20 @@ export class Rig {
         }
       }
     }
+    // While anything turns, what stands still fades back: the train that is
+    // driving stands out in its own colour.
+    let moving = 0;
+    for (const sp of this.spinners) moving = Math.max(moving, sp.act);
     const k = 0.18 + 0.14 * Math.sin(t * 4);
     for (const l of this.looks) {
-      const lit = this.lit.has(l.owner);
-      const sp = inside ? this.spinOf.get(l.owner) : undefined;
-      const a = sp ? sp.act * SPIN_GLOW : 0;
-      if (lit) l.mat.emissive.copy(l.color).multiplyScalar(k);
+      if (!MOVING_GROUPS.has(l.group)) continue;
+      const sp = this.spinOf.get(l.owner);
+      const act = inside && sp ? sp.act : 0;
+      const f = Math.max(l.dim ? FADE_K * (1 - act) : 0, moving * (1 - act) * FADE_K);
+      l.mat.color.copy(l.color).lerp(FADE, f);
+      if (this.lit.has(l.owner)) l.mat.emissive.copy(l.color).multiplyScalar(k);
       else l.mat.emissive.setRGB(0, 0, 0);
-      if (a > 0.001 && sp) l.mat.emissive.add(TMP.copy(sp.color).multiplyScalar(a));
+      if (act > 0.001 && sp && l.owner !== "figure") l.mat.emissive.add(TMP.copy(sp.color).multiplyScalar(act * SPIN_GLOW));
     }
   }
 
@@ -373,7 +384,7 @@ export class Rig {
    * @returns {{node: THREE.Object3D, point: THREE.Vector3} | null}
    */
   pick(ray) {
-    const targets = this.xray ? this.meshes.filter((m, i) => !this.looks[i].wire) : this.meshes;
+    const targets = this.xray ? this.meshes.filter((_, i) => !this.looks[i].wire) : this.meshes;
     const hit = ray.intersectObjects(targets, false)[0];
     if (!hit) return null;
     let n = /** @type {THREE.Object3D | null} */ (hit.object.userData.partNode);
