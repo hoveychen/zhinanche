@@ -123,7 +123,7 @@ export const LESSONS = [
     steps: [
       {
         text: "先不看车。\n\n两个小朋友手拉手，一起绕着圈走。一个在里圈，一个在外圈。",
-        scene: { reset: true, demo: "holdHands", view: "top", xray: false, controls: [] },
+        scene: { reset: true, mechanism: "differential", demo: "holdHands", view: "top", xray: false, explode: 0, highlight: [], controls: [] },
         task: { kind: "do", prompt: "让两个小朋友走一圈", check: "playedDemo", done: "走完一圈啦！" },
       },
       {
