@@ -105,6 +105,9 @@ export class World {
     /** the HUD's margins over the view, for framing routes (set by the page) */
     /** @type {() => Insets} */
     this.hudInsets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+    /** the HUD's margins cleared at the sides, or above and below (framing the parts; set by the page) */
+    /** @type {() => Insets[]} */
+    this.hudBands = () => [this.hudInsets()];
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -322,7 +325,7 @@ export class World {
     const rig = this.rig;
     if (this.cam.reframe > 0 && rig) {
       this.cam.parts = rig.bounds(this.partsBox, this.cam.view === "gears");
-      this.cam.partsInset = this.hudInsets();
+      this.cam.partsInset = this.hudBands();
     }
     rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);

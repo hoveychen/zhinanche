@@ -67,8 +67,10 @@ export class CameraRig {
     this.reframe = 0;
     /** @type {THREE.Box3 | null} round the parts, world space */
     this.parts = null;
-    /** @type {Insets} the HUD's margins, kept clear when framing the parts */
-    this.partsInset = { left: 0, right: 0, top: 0, bottom: 0 };
+    /** @type {Insets[]} ways to keep clear of the HUD when framing the parts (the one that shows them biggest wins) */
+    this.partsInset = [{ left: 0, right: 0, top: 0, bottom: 0 }];
+    /** which of them was used last (kept unless another is clearly better: no flip-flopping) */
+    this.partsPick = 0;
     /** how far from the target the camera wanted to be when last kept in the room (0: it wasn't) */
     this.wantDist = 0;
     /** the camera is where its view put it (nobody has dragged it since) */
@@ -310,10 +312,12 @@ export class CameraRig {
    * While the chariot comes apart, keep every part in the picture: same
    * direction of view (the child may have turned it), centre and distance
    * eased so the box round the parts just fits in the part of the view the
-   * HUD leaves free.
-   * @param {number} dt @param {THREE.Box3} box @param {Insets} inset
+   * HUD leaves free. The HUD can be cleared beside it (a column free in the
+   * middle) or above and below it (a band free across the view); whichever
+   * shows the parts bigger is used.
+   * @param {number} dt @param {THREE.Box3} box @param {Insets[]} insets
    */
-  #frameParts(dt, box, inset) {
+  #frameParts(dt, box, insets) {
     const cam = this.camera, ctl = this.controls;
     const a = 1 - Math.exp(-dt * 5);
     const off = cam.position.clone().sub(ctl.target);
@@ -322,17 +326,25 @@ export class CameraRig {
     const centre = box.getCenter(new THREE.Vector3());
     const right = new THREE.Vector3().crossVectors(cam.up, off).normalize();
     const up = new THREE.Vector3().crossVectors(off, right);
-    const ux = Math.max(0.4, 1 - inset.left - inset.right), uy = Math.max(0.4, 1 - inset.top - inset.bottom);
     const tv0 = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th0 = tv0 * cam.aspect;
-    const th = th0 * ux, tv = tv0 * uy;
-    let want = 0;
-    const c = new THREE.Vector3();
-    for (let i = 0; i < 8; i++) {
-      c.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(centre);
-      const z = c.dot(off);
-      want = Math.max(want, z + Math.abs(c.dot(right)) / th, z + Math.abs(c.dot(up)) / tv);
-    }
-    want *= 1.06;
+    const fits = insets.map((inset) => {
+      const ux = Math.max(0.3, 1 - inset.left - inset.right), uy = Math.max(0.3, 1 - inset.top - inset.bottom);
+      const th = th0 * ux, tv = tv0 * uy;
+      let want = 0;
+      const c = new THREE.Vector3();
+      for (let i = 0; i < 8; i++) {
+        c.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(centre);
+        const z = c.dot(off);
+        want = Math.max(want, z + Math.abs(c.dot(right)) / th, z + Math.abs(c.dot(up)) / tv);
+      }
+      return want * 1.06;
+    });
+    let k = Math.min(this.partsPick, fits.length - 1);
+    fits.forEach((w, i) => {
+      if (w < fits[k] * 0.9) k = i;
+    });
+    this.partsPick = k;
+    const want = fits[k], inset = insets[k];
     // aim off-centre so the parts sit in the middle of the free part
     const goal = centre.clone()
       .addScaledVector(right, -(inset.left - inset.right) * th0 * want)

@@ -149,6 +149,22 @@ world.hudInsets = () => {
   }
   return ins;
 };
+// The parts taken apart are framed beside the HUD too, or in the band
+// between what sits along the top (dial, pause) and along the bottom (the
+// drive dock, the odometer), whichever leaves them bigger.
+world.hudBands = () => {
+  const r = stage.getBoundingClientRect();
+  const band = { left: 0, right: 0, top: 0, bottom: 0 };
+  if (!r.width || !r.height) return [world.hudInsets()];
+  for (const el of [dial.el, dial.text, pauseBtn, share.el, odo.el, input.pad, input.drawBtn, gearsBtn]) {
+    if (el.hidden || el.offsetParent === null) continue;
+    const b = el.getBoundingClientRect();
+    if (!b.width || !b.height) continue;
+    if ((b.top + b.bottom) / 2 < r.top + r.height / 2) band.top = Math.max(band.top, (b.bottom - r.top + 8) / r.height);
+    else band.bottom = Math.max(band.bottom, (r.bottom - b.top + 8) / r.height);
+  }
+  return [world.hudInsets(), band];
+};
 
 // ---------- pointer: draw a route, or tap a part ----------
 
