@@ -95,3 +95,11 @@ test("every part label in the GLB files has an English name, and no name is for 
   assert.deepEqual([...labels].filter((l) => !(l in names)), [], "labels without an English name");
   assert.deepEqual(Object.keys(names).filter((l) => !labels.has(l)), [], "English names for labels not in any GLB");
 });
+
+test("switching language moves the address to that language's entry page, query and hash kept", async () => {
+  const { langHref } = await import("../js/i18n.js");
+  assert.equal(langHref("https://example.org/zhinanche/?lesson=3&step=2", "en"), "https://example.org/zhinanche/en.html?lesson=3&step=2");
+  assert.equal(langHref("https://example.org/zhinanche/en.html?free#s=1", "zh"), "https://example.org/zhinanche/?free#s=1");
+  assert.equal(langHref("https://example.org/en.html?lang=en", "zh"), "https://example.org/?lang=zh");
+  assert.equal(langHref("https://example.org/en.html", "en"), "https://example.org/en.html");
+});

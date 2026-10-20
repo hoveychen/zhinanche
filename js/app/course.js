@@ -7,6 +7,7 @@ import { S, bind, lessons } from "../i18n.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
 import { siteFoot } from "./about.js";
+import { placeHref } from "./share.js";
 
 /** @import { App } from "./app.js" */
 /** @import { Tools } from "./tools.js" */
@@ -19,6 +20,17 @@ const TOOL_FOR = { xrayOn: "xray", opened: "explode", switchedToSong: "mechanism
 /** Lesson text: paragraphs split on blank lines; trusted inline HTML. @param {string} text */
 function paragraphs(text) {
   return text.split(/\n\n+/).map((p) => h("p", { html: p.replace(/\n/g, "<br>") }));
+}
+
+/**
+ * Keep the address bar on where the course is, without a new history entry.
+ * @param {Parameters<typeof placeHref>[1]} at
+ */
+function keepAddress(at) {
+  try {
+    const to = placeHref(location.href, at);
+    if (to !== location.href) history.replaceState(history.state, "", to);
+  } catch {}
 }
 
 export class Course {
@@ -75,6 +87,7 @@ export class Course {
     });
     this.app.idleLoop = true;
     this.cb.onMode("home");
+    keepAddress({ mode: "home" });
   }
 
   #renderHome() {
@@ -124,6 +137,7 @@ export class Course {
     this.#renderFree();
     this.app.free(over);
     this.cb.onMode("free");
+    keepAddress({ mode: "free" });
   }
 
   #renderFree() {
@@ -185,7 +199,12 @@ export class Course {
     if (jump) this.app.direct(step.scene ?? {}, { jump: stateAt(lesson.steps, k) });
     else this.app.direct(step.scene ?? {});
     this.app.newTracker();
+    // A step about the walk the children did ("count their footprints"),
+    // reached without walking them (Next pressed, or a link to it): walk them now.
+    const hh = this.app.world.holdHands;
+    if (this.app.state.demo === "holdHands" && !(step.task?.kind === "do" && step.task.check === "playedDemo") && !hh.walking && hh.steps.in === 0) hh.walk();
     this.#render(lesson, step);
+    keepAddress({ mode: "lesson", lesson: this.lesson + 1, step: k + 1 });
   }
 
   next() {
@@ -329,9 +348,10 @@ export class Course {
 
   /**
    * Scroll the panel so what the child has to press is in view. On opening a
-   * step (`all` false) scroll at most until the lesson's title is at the top,
-   * so the child still sees which lesson this is and reads the text from its
-   * first line (phones held upright: the panel is short); the cue covers the rest.
+   * step (`all` false) scroll at most until the lesson's heading ("第三课"
+   * and the title) is at the top, so the child still sees which lesson this
+   * is and reads the text from its first line (phones held upright: the panel
+   * is short); the cue covers the rest.
    * @param {boolean} all
    * @param {HTMLElement | null} [el] default: this step's target
    */
@@ -340,7 +360,7 @@ export class Course {
     if (!sc || !el) return;
     const need = this.#below(el) + 14;
     if (need <= 0) return;
-    const top = sc.querySelector(".panel-title");
+    const top = sc.querySelector(".lesson-head");
     const room = top ? top.getBoundingClientRect().top - sc.getBoundingClientRect().top - 2 : 0;
     const by = all ? need : Math.min(need, Math.max(0, room));
     if (by <= 0) return;

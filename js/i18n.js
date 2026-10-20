@@ -1,5 +1,8 @@
-// Which language the page speaks: Chinese by default, English with ?lang=en
-// or after the switch in the top bar was pressed (remembered in localStorage).
+// Which language the page speaks: Chinese by default; English on the English
+// entry page (en.html, whose <head> is in English for link previews), with
+// ?lang=en, or after the switch in the top bar was pressed (remembered in
+// localStorage). The address follows: switching moves it to that language's
+// entry page, so a copied address opens in the language it was copied in.
 // Switching never reloads: whatever shows words subscribes with onLang (or
 // binds an element with bind) and redraws them, so the lesson step, the
 // drive and the camera stay where they are.
@@ -21,11 +24,30 @@ const TABLES = { zh: STR, en: STR_EN };
 /** @param {unknown} v @returns {v is Lang} */
 const isLang = (v) => v === "zh" || v === "en";
 
+/** Each language's entry page, relative to the site's folder. @type {Record<Lang, string>} */
+export const ENTRY = { zh: "./", en: "en.html" };
+
+/**
+ * The page's address in language `l`: on that language's entry page, with the
+ * same query and hash (a ?lang= in it is changed to `l`).
+ * @param {string} href @param {Lang} l
+ */
+export function langHref(href, l) {
+  const u = new URL(href);
+  if (u.searchParams.has("lang")) u.searchParams.set("lang", l);
+  u.pathname = new URL(ENTRY[l], u).pathname;
+  return u.href;
+}
+
 /** @returns {Lang} */
 function initial() {
   try {
     const q = new URLSearchParams(location.search).get("lang");
     if (isLang(q)) return q;
+  } catch {}
+  // the English entry page is English whatever was picked last time
+  try {
+    if (document.documentElement.dataset.entry === "en") return "en";
   } catch {}
   try {
     const v = localStorage.getItem(KEY);
@@ -56,14 +78,6 @@ export function setLang(l) {
   lang = l;
   try {
     localStorage.setItem(KEY, l);
-  } catch {}
-  // keep a shared ?lang= link saying what the page now shows
-  try {
-    const u = new URL(location.href);
-    if (u.searchParams.has("lang")) {
-      u.searchParams.set("lang", l);
-      history.replaceState(history.state, "", u);
-    }
   } catch {}
   applyDocument();
   for (const fn of subs) fn(l);
@@ -120,6 +134,11 @@ function overlay(l, t) {
  */
 export function applyDocument() {
   const s = S();
+  // the address says the language too (a copied address opens in it)
+  try {
+    const to = langHref(location.href, lang);
+    if (to !== location.href) history.replaceState(history.state, "", to);
+  } catch {}
   document.documentElement.lang = s.page.htmlLang;
   document.title = s.page.title;
   for (const sel of ['meta[name="description"]', 'meta[property="og:description"]', 'meta[name="twitter:description"]']) document.querySelector(sel)?.setAttribute("content", s.page.description);

@@ -36,7 +36,7 @@ const input = new DriveInput({
   onDraw: (on) => {
     world.controls.enabled = !on;
     stage.classList.toggle("drawing", on);
-    hint.hidden = !on;
+    syncHint();
     if (on && app.state.view !== "top") app.direct({ view: "top" });
   },
   onDrive: () => app.takeOver(),
@@ -99,7 +99,12 @@ const pauseBtn = bind(h("button", { type: "button", class: "pause-btn", "aria-pr
 ]), (s) => s.ui.pauseKey, "title");
 const share = new ShareButton(() => setupOf(app.state, app.drawn));
 const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [bind(h("b"), (s) => s.ui.paused), bind(h("span"), (s) => s.ui.pausedHow)]);
-overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), hint, demoCount, callout, stageHook, pauseBtn, share.el, share.status, pausedNote);
+// the pause note and the drawing hint stack at the top middle, never on top of each other
+overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), h("div", { class: "stage-notes" }, [pausedNote, hint]), demoCount, callout, stageHook, pauseBtn, share.el, share.status);
+/** The drawing hint shows while a road is wanted: not while one is being drawn or driven. */
+function syncHint() {
+  hint.hidden = !input.drawOn || drawing !== null || app.follow !== null;
+}
 
 const course = new Course(app, tools, byId("panel"), {
   onMode: (mode) => {
@@ -170,6 +175,7 @@ canvas.addEventListener("pointerdown", (e) => {
   app.takeOver();
   drawing = [p];
   world.route.set([toWorld(app.chariot), p]);
+  syncHint();
 });
 canvas.addEventListener("pointermove", (e) => {
   if (!drawing) return;
@@ -188,6 +194,7 @@ const endDraw = () => {
   for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
   if (len < 4) world.route.clear();
   else app.followRoute(pts);
+  syncHint();
 };
 canvas.addEventListener("pointerup", (e) => {
   if (drawing) {
@@ -260,6 +267,7 @@ function frame(/** @type {number} */ now) {
     const camBearing = Math.atan2(-(tgt.z - cam.z), tgt.x - cam.x);
     dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
     if (!odo.el.hidden) odo.update(pose.distL, pose.distR);
+    syncHint();
     if (!demoCount.hidden) demoCount.textContent = S().stage.demoCount(world.holdHands.steps.in, world.holdHands.steps.out);
     placeCallout();
   }
