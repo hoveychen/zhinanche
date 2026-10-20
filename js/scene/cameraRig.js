@@ -91,7 +91,10 @@ export class CameraRig {
         // A chase camera that does not turn with the chariot: the chariot
         // turns on screen while the figure's hand keeps pointing at the gate.
         const target = new THREE.Vector3(f.x + 2.4, 8, f.z + 9);
-        return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(19)) };
+        // Phones held upright (polish-mobile): fit() goes by the narrow width
+        // there and leaves the chariot small, so come in closer.
+        const r = this.camera.aspect < 0.8 ? 15.5 : 19;
+        return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(r)) };
       }
       case "gears": {
         // From behind and well above, so the left wheel is on the left of the

@@ -1,5 +1,6 @@
 // Heads-up displays over the 3D view: the south dial (where the figure points,
-// turned to match the camera like a map) and the two wheels' distances.
+// turned to match the camera like a map, its letters kept upright) and the two
+// wheels' distances, which fold away with a tap.
 
 import { h, s } from "./dom.js";
 import { CHI_IN_METERS } from "../sim/params.js";
@@ -16,15 +17,21 @@ export class Dial {
       const r1 = d % 90 === 0 ? 70 : 76;
       ticks.push(s("line", { x1: Math.sin(a) * r1, y1: -Math.cos(a) * r1, x2: Math.sin(a) * 82, y2: -Math.cos(a) * 82, class: d % 90 === 0 ? "tick major" : "tick" }));
     }
+    /** the letters ride round with the rose but are turned back to stay upright */
+    /** @type {{el: SVGElement, x: number, y: number}[]} */
+    this.upright = [];
     const letter = (/** @type {string} */ t, /** @type {number} */ x, /** @type {number} */ y) => {
       const el = s("text", { x, y, class: "dir" });
       el.textContent = t;
+      this.upright.push({ el, x, y });
       return el;
     };
-    const seal = s("g", { class: "seal", transform: "translate(0 58)" }, [s("rect", { x: -17, y: -17, width: 34, height: 34, rx: 3 })]);
+    const stamp = s("g", {}, [s("rect", { x: -17, y: -17, width: 34, height: 34, rx: 3 })]);
     const nan = s("text", { x: 0, y: 1 });
     nan.textContent = "南";
-    seal.append(nan);
+    stamp.append(nan);
+    const seal = s("g", { class: "seal", transform: "translate(0 58)" }, [stamp]);
+    this.upright.push({ el: stamp, x: 0, y: 0 });
     this.arm = s("g", { class: "arm" }, [
       s("path", { d: "M 6 -5 L 52 -5 L 52 -12 L 74 0 L 52 12 L 52 5 L 6 5 Z" }),
     ]);
@@ -49,6 +56,7 @@ export class Dial {
     this.text = h("p", { class: "dial-text", "aria-live": "polite" });
     this.el = h("div", { class: "hud-dial", role: "status" }, [/** @type {Node} */ (/** @type {unknown} */ (svg)), this.text]);
     this.lastText = "";
+    this.lastRot = NaN;
   }
 
   /**
@@ -60,6 +68,10 @@ export class Dial {
   update(figureWorld, heading, errorDeg, camBearing) {
     const rot = camBearing * DEG - 90;
     this.rose.setAttribute("transform", `rotate(${rot.toFixed(2)})`);
+    if (!(Math.abs(rot - this.lastRot) <= 0.05)) {
+      this.lastRot = rot;
+      for (const u of this.upright) u.el.setAttribute("transform", `rotate(${(-rot).toFixed(2)} ${u.x} ${u.y})`);
+    }
     this.arm.setAttribute("transform", `rotate(${(-figureWorld * DEG).toFixed(2)})`);
     // the chariot icon sits outside the rose group, so it gets both rotations
     this.cart.setAttribute("transform", `rotate(${(rot - heading * DEG).toFixed(2)})`);
@@ -98,10 +110,23 @@ export class Odometer {
     this.l = col("l", "左轮");
     this.r = col("r", "右轮");
     this.diff = h("p", { class: "odo-diff" });
-    this.el = h("div", { class: "hud-odo", role: "group", "aria-label": "两个车轮各走了多远" }, [
+    // A tap folds it down to the one line under the bars (small screens need the room).
+    this.el = h("div", { class: "hud-odo", role: "button", tabindex: "0", "aria-expanded": "true", "aria-label": "两个车轮各走了多远（点一下收起或展开）" }, [
       h("div", { class: "odo-cols" }, [this.l.el, this.r.el]),
       this.diff,
+      h("span", { class: "odo-fold", "aria-hidden": "true" }),
     ]);
+    const fold = () => {
+      const folded = this.el.classList.toggle("folded");
+      this.el.setAttribute("aria-expanded", String(!folded));
+    };
+    this.el.addEventListener("click", fold);
+    this.el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fold();
+      }
+    });
     this.scale = 10;
   }
 
@@ -115,9 +140,11 @@ export class Odometer {
     this.el.classList.toggle("signed", neg);
     for (const [c, v] of /** @type {const} */ ([[this.l, distL], [this.r, distR]])) {
       const f = Math.min(1, Math.abs(v) / this.scale);
-      const pct = neg ? f * 50 : f * 100;
-      c.fill.style.height = `${pct}%`;
-      c.fill.style.bottom = neg && v < 0 ? `${50 - pct}%` : neg ? "50%" : "0";
+      // the bar's length and where it starts, as fractions; CSS lays the bars
+      // out upright or (on phones) lying down
+      const len = neg ? f / 2 : f;
+      c.fill.style.setProperty("--len", len.toFixed(4));
+      c.fill.style.setProperty("--from", (neg && v < 0 ? 0.5 - len : neg ? 0.5 : 0).toFixed(4));
       c.fill.classList.toggle("back", v < -0.05);
       c.num.textContent = fmt(v);
       c.m.textContent = `约 ${fmt(v * CHI_IN_METERS)} 米`;

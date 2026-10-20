@@ -48,9 +48,16 @@ export class Course {
     this.target = null;
     /** @type {HTMLElement | null} */
     this.scroller = null;
+    // In the nav bar, in place of the step count, so it never covers the task.
     this.cue = h("button", { type: "button", class: "more-cue", hidden: true, onclick: () => this.#reveal(true) }, [
       /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M12 21 L4 12 H9 V3 H15 V12 H20 Z" })]))),
-      h("span", { text: "往下看" }),
+      h("span", { text: STR.ui.moreBelow }),
+    ]);
+    // Free driving on a phone: the panel is a sheet under the 3D view that
+    // stays folded to this handle until it is wanted (CSS decides when).
+    this.sheetText = h("span", { class: "sheet-text" });
+    this.sheetBtn = h("button", { type: "button", class: "sheet-handle", "aria-expanded": "false", onclick: () => this.setSheet(document.body.dataset.sheet !== "open") }, [
+      h("span", { class: "sheet-grip", "aria-hidden": "true" }), this.sheetText,
     ]);
     new ResizeObserver(() => this.#updateCue()).observe(panel);
     app.onTick(() => this.#tick());
@@ -106,12 +113,13 @@ export class Course {
   free() {
     this.mode = "free";
     this.doTask = null;
+    this.setSheet(false);
     const body = h("div", { class: "free" }, [
       h("h2", { class: "panel-title", text: STR.free.title }),
       h("p", { text: STR.free.howDrive }),
       h("p", { text: STR.free.howDraw }),
     ]);
-    this.#show(body, null);
+    this.#show(body, null, this.sheetBtn);
     this.app.free();
     this.cb.onMode("free");
   }
@@ -203,6 +211,7 @@ export class Course {
     const nav = h("nav", { class: "panel-nav", "aria-label": "翻页" }, [
       h("button", { type: "button", class: "plain", disabled: this.step === 0 && this.lesson === 0, onclick: () => this.back(), text: "上一步" }),
       h("span", { class: "step-count", text: `${this.step + 1} / ${n}` }),
+      this.cue,
       h("button", { type: "button", class: "primary", "data-focus": "next", onclick: () => this.next(), text: !last ? "下一步" : this.lesson < LESSONS.length - 1 ? "下一课" : "回到目录" }),
     ]);
     this.#show(h("article", { class: "lesson" }, parts), nav);
@@ -251,10 +260,17 @@ export class Course {
     if (this.replayBtn) this.replayBtn.disabled = this.app.playing;
   }
 
-  /** @param {HTMLElement} body @param {HTMLElement | null} nav */
-  #show(body, nav) {
+  /** @param {boolean} open */
+  setSheet(open) {
+    document.body.dataset.sheet = open ? "open" : "closed";
+    this.sheetBtn.setAttribute("aria-expanded", String(open));
+    this.sheetText.textContent = open ? STR.ui.sheetClose : STR.ui.sheetOpen;
+  }
+
+  /** @param {HTMLElement} body @param {HTMLElement | null} nav @param {HTMLElement | null} [handle] */
+  #show(body, nav, handle = null) {
     const scroller = h("div", { class: "panel-body", onscroll: () => this.#updateCue() }, [body, this.tools.el]);
-    this.panel.replaceChildren(scroller, this.cue, ...(nav ? [nav] : []));
+    this.panel.replaceChildren(...(handle ? [handle] : []), scroller, ...(nav ? [nav] : []));
     this.scroller = scroller;
     scroller.scrollTop = 0;
     this.tools.sync(this.app.state);
@@ -293,9 +309,6 @@ export class Course {
   #updateCue() {
     const show = this.target !== null && this.#below(this.target) > 1;
     this.cue.hidden = !show;
-    if (show) {
-      const nav = this.panel.querySelector(".panel-nav");
-      this.cue.style.bottom = `${(nav instanceof HTMLElement ? nav.offsetHeight : 0) + 12}px`;
-    }
+    this.panel.querySelector(".panel-nav")?.classList.toggle("cue-on", show);
   }
 }

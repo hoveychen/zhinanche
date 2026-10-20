@@ -29,6 +29,23 @@ const input = new DriveInput({
   onDrive: () => app.takeOver(),
 });
 const app = new App(world, input);
+app.onPause((on) => {
+  pauseBtn.classList.toggle("on", on);
+  pauseBtn.setAttribute("aria-pressed", String(on));
+  pauseText.textContent = on ? STR.ui.resume : STR.ui.pause;
+  pausedNote.hidden = !on;
+  stage.classList.toggle("paused", on);
+});
+window.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+  // Space on a control reached with the keyboard presses that control;
+  // anything else (a button only clicked with the mouse keeps the focus) pauses.
+  if (t instanceof HTMLElement && t !== document.body && t.matches(":focus-visible") && t.closest("button, [role=button], a")) return;
+  e.preventDefault();
+  app.setPaused(!app.paused);
+});
 const tools = new Tools({ direct: (d) => app.direct(d), resetChariot: () => app.resetChariot() });
 const dial = new Dial();
 const odo = new Odometer();
@@ -43,7 +60,15 @@ const stageHook = h("div", { class: "stage-hook" }, [
     h("span", { text: STR.stage.dragHint }),
   ]),
 ]);
-overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [input.drawBtn, input.pad]), hint, demoCount, callout, stageHook);
+// The global pause: holds the lesson's auto-play, hand driving, a drawn route,
+// the gears and the walking demo; the view can still be dragged round.
+const pauseText = h("span", { text: STR.ui.pause });
+const pauseBtn = h("button", { type: "button", class: "pause-btn", "aria-pressed": "false", title: "空格键", onclick: () => app.setPaused(!app.paused) }, [
+  /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { class: "i-pause", d: "M6 4 H10 V20 H6 Z M14 4 H18 V20 H14 Z" }), s("path", { class: "i-play", d: "M7 4 L20 12 L7 20 Z" })]))),
+  pauseText,
+]);
+const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [h("b", { text: STR.ui.paused }), h("span", { text: STR.ui.pausedHow })]);
+overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [input.drawBtn, input.pad]), hint, demoCount, callout, stageHook, pauseBtn, pausedNote);
 
 const course = new Course(app, tools, byId("panel"), {
   onMode: (mode) => {
@@ -94,6 +119,8 @@ const canvas = world.renderer.domElement;
 canvas.addEventListener("pointerdown", (e) => {
   press = { x: e.clientX, y: e.clientY, t: performance.now() };
   stage.classList.add("touched");
+  // back to the view: fold the free-driving sheet away (phones)
+  if (document.body.dataset.sheet === "open") course.setSheet(false);
   if (!input.drawOn || !e.isPrimary) return;
   const p = world.groundAt(e.clientX, e.clientY);
   if (!p) return;
@@ -171,7 +198,11 @@ function frame(/** @type {number} */ now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   last = now;
   app.tick(dt);
-  world.animate(dt);
+  if (app.paused) {
+    // hold everything that moves by itself; the camera still follows a drag
+    world.animate(0);
+    world.cam.update(dt, world.camFocus());
+  } else world.animate(dt);
   hudClock += dt;
   if (hudClock > 1 / 30) {
     hudClock = 0;

@@ -7,6 +7,7 @@ import { pivotTwist, roll, twist } from "../sim/drive.js";
 import { applyDirective, freeBase, hasFaults, hasSlip, sameFaults } from "./directive.js";
 import { FollowPlayer, planPlayback } from "./playback.js";
 import { Tracker } from "./checks.js";
+import { RAMP, ease } from "./drive.js";
 import { toSim, toWorld } from "../scene/world.js";
 
 /** @import { World } from "../scene/world.js" */
@@ -19,7 +20,6 @@ import { toSim, toWorld } from "../scene/world.js";
 /** Hand driving: body speed (chi/s) and turn rate (rad/s) at speed 1. */
 const DRIVE_V = 5;
 const DRIVE_W = 0.9;
-
 export class App {
   /**
    * @param {World} world
@@ -47,6 +47,25 @@ export class App {
     this.listeners = new Set();
     /** @type {Set<(state: SceneState) => void>} */
     this.stateListeners = new Set();
+    /** hand driving as it eases toward what is held: forward and turn, −1..1 */
+    this.drive = { fwd: 0, turn: 0 };
+    /** everything that moves by itself is held still (the camera still moves) */
+    this.paused = false;
+    /** @type {Set<(paused: boolean) => void>} */
+    this.pauseListeners = new Set();
+  }
+
+  /** @param {(paused: boolean) => void} fn */
+  onPause(fn) {
+    this.pauseListeners.add(fn);
+  }
+
+  /** @param {boolean} on */
+  setPaused(on) {
+    if (on === this.paused) return;
+    this.paused = on;
+    if (on) this.drive = { fwd: 0, turn: 0 };
+    for (const fn of this.pauseListeners) fn(on);
   }
 
   /** Notify on state changes (tools, HUD visibility). @param {(state: SceneState) => void} fn */
@@ -65,6 +84,8 @@ export class App {
    * @param {{jump?: SceneState}} [opts] jump: adopt this whole state (going back / opening a lesson)
    */
   direct(d, opts = {}) {
+    // pressing anything carries on: pause only holds what was already playing
+    this.setPaused(false);
     const j = opts.jump;
     /** @type {DirectiveResult} */
     const res = j
@@ -173,6 +194,7 @@ export class App {
   replay() {
     if (!this.lastPlay) return;
     const name = this.lastPlay;
+    this.setPaused(false);
     this.resetChariot();
     this.play(name);
   }
@@ -193,6 +215,7 @@ export class App {
    */
   followRoute(worldPts) {
     this.player = null;
+    this.setPaused(false);
     const pts = [{ x: this.chariot.x, y: this.chariot.y }, ...worldPts.map(toSim)];
     const st = this.state;
     const style = st.mechanism === "song" && st.assist ? "pivot" : "smooth";
@@ -203,6 +226,7 @@ export class App {
 
   /** The child took the wheel: stop any auto-play. */
   takeOver() {
+    this.setPaused(false);
     if (this.player) this.player = null;
     this.world.cam.unframe();
     if (this.follow) {
@@ -214,10 +238,12 @@ export class App {
 
   /** @param {number} dt */
   tick(dt) {
+    if (this.paused) dt = 0;
     const c = this.chariot;
     const before = { x: c.x, y: c.y, heading: c.heading, d: (c.distL + c.distR) / 2 };
     let byChild = false;
     const speed = this.state.speed;
+    if ((this.player && !this.player.done) || this.follow) this.drive = { fwd: 0, turn: 0 };
     if (this.player && !this.player.done) {
       this.player.update(c, dt, speed);
       if (this.player.done && this.idleLoop && this.lastPlay) {
@@ -233,10 +259,13 @@ export class App {
         this.tracker.routeDone();
       }
     } else {
-      const { fwd, turn } = this.input.command();
-      if (fwd !== 0 || turn !== 0) {
+      const want = this.input.command();
+      const dr = this.drive;
+      dr.fwd = ease(dr.fwd, want.fwd, dt, RAMP.up, RAMP.brake);
+      dr.turn = ease(dr.turn, want.turn, dt, RAMP.steer, RAMP.steer);
+      if (dr.fwd !== 0 || dr.turn !== 0) {
         const st = this.state;
-        const v = fwd * DRIVE_V * speed, omega = turn * DRIVE_W * speed;
+        const v = dr.fwd * DRIVE_V * speed, omega = dr.turn * DRIVE_W * speed;
         const g = st.mechanism === "song" && st.assist ? pivotTwist(v, omega, dt, c.track) : twist(v, omega, dt, c.track);
         roll(c, g.groundL, g.groundR, st.slip);
         byChild = true;
