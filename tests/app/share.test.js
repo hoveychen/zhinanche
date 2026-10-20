@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decodeRoute, decodeShare, defaultSetup, encodeRoute, encodeShare, setupOf, thin } from "../../js/app/share.js";
+import { decodeRoute, decodeShare, defaultSetup, encodeRoute, encodeShare, setupOf, shareHref, thin } from "../../js/app/share.js";
 import { freeBase } from "../../js/app/directive.js";
 
 /** A drawn S-bend like a child's: a point every half chi, a little hand jitter. */
@@ -94,4 +94,18 @@ test("thinning keeps the corners of a square and drops the points along its side
   for (let i = 9; i >= 0; i--) sq.push({ x: i, y: 10 });
   assert.deepEqual(thin(sq, 0.1), [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]);
   assert.deepEqual(thin([{ x: 1, y: 1 }], 0.1), [{ x: 1, y: 1 }]);
+});
+
+test("an English page's link opens in English; a Chinese page's link carries no language", () => {
+  const setup = { ...defaultSetup(), mechanism: /** @type {const} */ ("song"), xray: true };
+  const en = new URL(shareHref("https://example.org/zhinanche/?free&lang=en#old", setup, "en"));
+  assert.equal(en.pathname, "/zhinanche/");
+  assert.equal(en.search, "?lang=en");
+  assert.deepEqual(decodeShare(en.hash), setup);
+  // switched to English with the top-bar button: no ?lang in the address, the link still says it
+  assert.equal(new URL(shareHref("https://example.org/?lesson=3", setup, "en")).search, "?lang=en");
+  const zh = new URL(shareHref("https://example.org/zhinanche/?free&lang=zh", setup, "zh"));
+  assert.equal(zh.search, "");
+  assert.deepEqual(decodeShare(zh.hash), setup);
+  assert.equal(new URL(shareHref("https://example.org/?free", setup, "zh")).search, "");
 });

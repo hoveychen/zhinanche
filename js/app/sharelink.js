@@ -2,20 +2,17 @@
 // switches and the route drawn into a link (js/app/share.js) and copies it.
 
 import { h, s } from "./dom.js";
-import { S, bind, onLang } from "../i18n.js";
-import { encodeShare } from "./share.js";
+import { S, bind, getLang, onLang } from "../i18n.js";
+import { shareHref } from "./share.js";
 
 /** @import { ShareSetup } from "./share.js" */
 
 /**
- * The page's address with this setup in its hash (and no ?lesson / ?free).
+ * The page's address with this setup in its hash, in the page's language.
  * @param {ShareSetup} setup
  */
 export function shareUrl(setup) {
-  const u = new URL(location.href);
-  u.search = "";
-  u.hash = encodeShare(setup);
-  return u.href;
+  return shareHref(location.href, setup, getLang());
 }
 
 /** @param {string} text */
