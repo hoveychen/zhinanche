@@ -7,7 +7,7 @@ import { COLORS, OK_DEG } from "./ground.js";
 import { FIGURE_SCALE } from "./rig.js";
 import { LANDMARK_DISTANCE } from "./landmark.js";
 
-/** Lengths in chi, as seen in the world (the figure node is scaled up). */
+/** Lengths in chi, as seen in the world while the figure is drawn big. */
 const SHAFT = 3.2, HEAD = 1.3;
 /** The beam reaches about as far as the gate, so a hand on south lights up its plaque. */
 const BEAM = LANDMARK_DISTANCE - 8;
@@ -52,7 +52,7 @@ export class Pointer {
     beam.renderOrder = 4;
     for (const m of [shaft, head]) m.castShadow = true;
     g.add(shaft, head, beam);
-    // the figure node is scaled up; keep the pointer's own size
+    // Sized for the big figure; it shrinks with the figure close on the gears.
     g.scale.setScalar(1 / FIGURE_SCALE);
     g.position.copy(tip);
     this.mesh = g;

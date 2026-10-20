@@ -110,8 +110,9 @@ export class CameraRig {
         return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.32, 0.3), this.fit(5.5)) };
       }
       case "figure": {
-        const target = local(f.figureX, 12.3, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(0.4, 0.35, 1), this.fit(2.2)) };
+        // the figure is drawn big here (js/scene/rig.js FIGURE_SCALE)
+        const target = local(f.figureX, 13.4, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(0.4, 0.35, 1), this.fit(4.2)) };
       }
       case "overview":
       default: {

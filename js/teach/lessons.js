@@ -33,7 +33,7 @@ export const LESSONS = [
     steps: [
       {
         text: "这是<b>指南车</b>。\n\n车上站着一个木头小人。他伸着手，指着南方。",
-        scene: { reset: true, mechanism: "differential", view: "overview", xray: false, explode: 0, demo: null, controls: [] },
+        scene: { reset: true, mechanism: "differential", view: "follow", xray: false, explode: 0, demo: null, controls: [] },
       },
       {
         text: "看，车拐来拐去。\n\n木人的手指向哪里？仔细看一看。",

@@ -38,9 +38,12 @@ const DIM = 0.32;
 /**
  * The figure is drawn bigger than in the model (about 1.4 chi tall there, a
  * speck on screen): it is what the viewer has to watch. Scaled about its
- * feet, so it still stands on its shaft.
+ * feet, so it still stands on its shaft. Close up on the gears it goes back
+ * to its real size (setFigureBig), or it would fill the view.
  */
 export const FIGURE_SCALE = 2.4;
+/** seconds to grow or shrink the figure */
+const FIGURE_EASE = 0.5;
 
 export class Rig {
   /** @param {THREE.Object3D} scene the GLB scene */
@@ -110,6 +113,11 @@ export class Rig {
     });
 
     const figure = this.byName.get("figure");
+    /** @type {THREE.Object3D | null} */
+    this.figure = figure ?? null;
+    this.figureScale = FIGURE_SCALE;
+    this.figureTarget = FIGURE_SCALE;
+    this.lastPulse = 0;
     if (figure) {
       figure.scale.setScalar(FIGURE_SCALE);
       this.armTip = armTipOf(figure);
@@ -183,8 +191,28 @@ export class Rig {
     }
   }
 
-  /** Pulse the highlighted parts. @param {number} t seconds */
+  /**
+   * Draw the figure big (wide views) or at its real size (close on the gears).
+   * @param {boolean} big @param {boolean} [instant]
+   */
+  setFigureBig(big, instant = false) {
+    this.figureTarget = big ? FIGURE_SCALE : 1;
+    if (instant) {
+      this.figureScale = this.figureTarget;
+      this.figure?.scale.setScalar(this.figureScale);
+    }
+  }
+
+  /** Pulse the highlighted parts, and ease the figure's size. @param {number} t seconds */
   pulse(t) {
+    const dt = Math.min(0.1, Math.max(0, t - this.lastPulse));
+    this.lastPulse = t;
+    if (this.figure && this.figureScale !== this.figureTarget) {
+      const step = ((FIGURE_SCALE - 1) * dt) / FIGURE_EASE;
+      const gap = this.figureTarget - this.figureScale;
+      this.figureScale += Math.sign(gap) * Math.min(Math.abs(gap), step);
+      this.figure.scale.setScalar(this.figureScale);
+    }
     if (this.lit.size === 0) return;
     const k = 0.28 + 0.22 * Math.sin(t * 4);
     for (const l of this.looks) if (this.lit.has(l.owner)) l.mat.emissive.copy(GLOW).multiplyScalar(k);
