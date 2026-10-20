@@ -38,21 +38,21 @@
   <body data-mode="home">
     <div class="app">
       <header class="bar">
-        <h1 class="mark"><span class="seal" aria-hidden="true">南</span>指南车</h1>
-        <nav class="tabs" aria-label="页面">
-          <button type="button" class="tab on" data-go="home" aria-current="page">课程</button>
-          <button type="button" class="tab" data-go="free">自己开</button>
+        <h1 class="mark"><span class="seal" aria-hidden="true">南</span><span data-i18n="bar.brand">指南车</span></h1>
+        <nav class="tabs" aria-label="页面" data-i18n="bar.tabsLabel" data-i18n-attr="aria-label">
+          <button type="button" class="tab on" data-go="home" aria-current="page" data-i18n="bar.tabHome">课程</button>
+          <button type="button" class="tab" data-go="free" data-i18n="bar.tabFree">自己开</button>
         </nav>
       </header>
       <main class="layout">
-        <section id="stage" class="stage" aria-label="指南车">
+        <section id="stage" class="stage" aria-label="指南车" data-i18n="bar.stageLabel" data-i18n-attr="aria-label">
           <div id="stage-gl" class="stage-gl"></div>
           <div id="stage-overlay" class="stage-overlay"></div>
-          <p id="loading" class="loading" role="status">正在把车推出来……</p>
+          <p id="loading" class="loading" role="status" data-i18n="bar.loading">正在把车推出来……</p>
         </section>
-        <aside id="panel" class="panel" aria-label="课程"></aside>
+        <aside id="panel" class="panel" aria-label="课程" data-i18n="bar.panelLabel" data-i18n-attr="aria-label"></aside>
       </main>
     </div>
-    <noscript><p class="noscript">这个页面要打开 JavaScript 才能用。</p></noscript>
+    <noscript><p class="noscript">这个页面要打开 JavaScript 才能用。 <span lang="en">This page needs JavaScript.</span></p></noscript>
   </body>
 </html>

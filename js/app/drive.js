@@ -3,6 +3,7 @@
 // the chariot gets going and stops (ease, used by js/app/app.js).
 
 import { h } from "./dom.js";
+import { bind } from "../i18n.js";
 
 /** @typedef {"up" | "down" | "left" | "right"} Dir */
 
@@ -12,7 +13,6 @@ const ARROW = {
   left: "M4 12 L14 4 V9 H20 V15 H14 V20 Z",
   right: "M20 12 L10 20 V15 H4 V9 H10 V4 Z",
 };
-const LABEL = { up: "前进", down: "后退", left: "左拐", right: "右拐" };
 /**
  * Seconds from standing to full speed, from full speed to a stop, and to
  * swing the steering fully over: a short roll-off and a short brake instead of
@@ -47,10 +47,10 @@ export class DriveInput {
 
     /** @param {Dir} d */
     const btn = (d) => {
-      const b = h("button", { type: "button", class: `pad-btn pad-${d}`, "aria-label": LABEL[d] }, [
+      const b = bind(h("button", { type: "button", class: `pad-btn pad-${d}` }, [
         /** @type {Node} */ (/** @type {unknown} */ (svgArrow(ARROW[d]))),
-        h("span", { text: LABEL[d] }),
-      ]);
+        bind(h("span"), (s) => s.drive[d]),
+      ]), (s) => s.drive[d], "aria-label");
       const down = (/** @type {PointerEvent} */ e) => {
         e.preventDefault();
         b.setPointerCapture?.(e.pointerId);
@@ -80,12 +80,12 @@ export class DriveInput {
       b.addEventListener("contextmenu", (e) => e.preventDefault());
       return b;
     };
-    this.pad = h("div", { class: "pad", "data-control": "drive", role: "group", "aria-label": "开车：按住方向按钮，也可以用键盘方向键" }, [
+    this.pad = bind(h("div", { class: "pad", "data-control": "drive", role: "group" }, [
       btn("up"), btn("left"), btn("right"), btn("down"),
-    ]);
+    ]), (s) => s.drive.padLabel, "aria-label");
     this.drawBtn = h("button", { type: "button", class: "draw-btn", "data-control": "draw", "aria-pressed": "false", onclick: () => this.setDraw(!this.drawOn) }, [
       /** @type {Node} */ (/** @type {unknown} */ (svgArrow("M4 20 L5 15 L16 4 L20 8 L9 19 Z M14 6 L18 10"))),
-      h("span", { text: "画路线" }),
+      bind(h("span"), (s) => s.drive.draw),
     ]);
 
     window.addEventListener("keydown", (e) => {

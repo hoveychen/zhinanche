@@ -8,8 +8,7 @@ import { Tools } from "./app/tools.js";
 import { Course } from "./app/course.js";
 import { Dial, Odometer } from "./app/hud.js";
 import { byId, h, s } from "./app/dom.js";
-import { LESSONS } from "./teach/lessons.js";
-import { STR } from "./teach/strings.js";
+import { S, bind, onLang, applyDocument, langSwitch, lessons } from "./i18n.js";
 import { decodeShare, setupOf } from "./app/share.js";
 import { ShareButton } from "./app/sharelink.js";
 
@@ -19,13 +18,15 @@ const stage = byId("stage");
 const glHost = byId("stage-gl");
 const overlay = byId("stage-overlay");
 const loading = byId("loading");
+applyDocument();
+document.querySelector(".bar")?.append(langSwitch());
 
 const world = new World(glHost);
 // the other chariot's model is fetched the first time it is picked
 world.onLoading = (on, err) => {
   loading.hidden = !on && !err;
   if (err) {
-    loading.textContent = STR.ui.modelFailed;
+    loading.textContent = S().ui.modelFailed;
     loading.classList.add("error");
   }
 };
@@ -42,7 +43,7 @@ const app = new App(world, input);
 app.onPause((on) => {
   pauseBtn.classList.toggle("on", on);
   pauseBtn.setAttribute("aria-pressed", String(on));
-  pauseText.textContent = on ? STR.ui.resume : STR.ui.pause;
+  pauseText.textContent = on ? S().ui.resume : S().ui.pause;
   pausedNote.hidden = !on;
   stage.classList.toggle("paused", on);
 });
@@ -59,9 +60,9 @@ window.addEventListener("keydown", (e) => {
 const tools = new Tools({ direct: (d) => app.direct(d), resetChariot: () => app.resetChariot() });
 const dial = new Dial();
 const odo = new Odometer();
-const hint = h("p", { class: "stage-hint", hidden: true, text: "用手指在地上画一条路，松手车就出发" });
+const hint = bind(h("p", { class: "stage-hint", hidden: true }), (s) => s.stage.drawHint);
 // Free driving: go close on the gears (seen through the body) and back.
-const gearsText = h("span", { text: STR.free.gearsOn });
+const gearsText = h("span", { text: S().free.gearsOn });
 let xrayBeforeGears = false;
 const gearsBtn = h("button", {
   type: "button", class: "draw-btn gears-btn", "data-control": "gearsView", "aria-pressed": "false",
@@ -81,21 +82,21 @@ const demoCount = h("p", { class: "demo-count", hidden: true });
 const callout = h("div", { class: "callout", hidden: true, role: "status" });
 // Home page only (CSS): what to look at, and that the view can be dragged.
 const stageHook = h("div", { class: "stage-hook" }, [
-  h("p", { class: "stage-hook-line", text: STR.stage.hook }),
+  bind(h("p", { class: "stage-hook-line" }), (s) => s.stage.hook),
   h("p", { class: "drag-hint" }, [
     /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M4 12 L8 8 V10.5 H16 V8 L20 12 L16 16 V13.5 H8 V16 Z" })]))),
-    h("span", { text: STR.stage.dragHint }),
+    bind(h("span"), (s) => s.stage.dragHint),
   ]),
 ]);
 // The global pause: holds the lesson's auto-play, hand driving, a drawn route,
 // the gears and the walking demo; the view can still be dragged round.
-const pauseText = h("span", { text: STR.ui.pause });
-const pauseBtn = h("button", { type: "button", class: "pause-btn", "aria-pressed": "false", title: "空格键", onclick: () => app.setPaused(!app.paused) }, [
+const pauseText = h("span", { text: S().ui.pause });
+const pauseBtn = bind(h("button", { type: "button", class: "pause-btn", "aria-pressed": "false", onclick: () => app.setPaused(!app.paused) }, [
   /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { class: "i-pause", d: "M6 4 H10 V20 H6 Z M14 4 H18 V20 H14 Z" }), s("path", { class: "i-play", d: "M7 4 L20 12 L7 20 Z" })]))),
   pauseText,
-]);
+]), (s) => s.ui.pauseKey, "title");
 const share = new ShareButton(() => setupOf(app.state, app.drawn));
-const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [h("b", { text: STR.ui.paused }), h("span", { text: STR.ui.pausedHow })]);
+const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [bind(h("b"), (s) => s.ui.paused), bind(h("span"), (s) => s.ui.pausedHow)]);
 overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), hint, demoCount, callout, stageHook, pauseBtn, share.el, share.status, pausedNote);
 
 const course = new Course(app, tools, byId("panel"), {
@@ -121,12 +122,18 @@ app.onState((st) => {
   const gears = st.view === "gears";
   gearsBtn.classList.toggle("on", gears);
   gearsBtn.setAttribute("aria-pressed", String(gears));
-  gearsText.textContent = gears ? STR.free.gearsOff : STR.free.gearsOn;
+  gearsText.textContent = gears ? S().free.gearsOff : S().free.gearsOn;
   demoCount.hidden = st.demo !== "holdHands";
   dial.el.hidden = st.demo === "holdHands";
   hideCallout();
 });
 world.holdHands.onLap = () => app.tracker.demoLap();
+onLang(() => {
+  pauseText.textContent = app.paused ? S().ui.resume : S().ui.pause;
+  gearsText.textContent = gearsBtn.classList.contains("on") ? S().free.gearsOff : S().free.gearsOn;
+  hideCallout();
+  course.relabel();
+});
 // Routes are framed beside the HUD: each panel on the view takes its side.
 world.hudInsets = () => {
   const r = stage.getBoundingClientRect();
@@ -244,7 +251,7 @@ function frame(/** @type {number} */ now) {
     const camBearing = Math.atan2(-(tgt.z - cam.z), tgt.x - cam.x);
     dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
     if (!odo.el.hidden) odo.update(pose.distL, pose.distR);
-    if (!demoCount.hidden) demoCount.textContent = `里圈走了 ${world.holdHands.steps.in} 步，外圈走了 ${world.holdHands.steps.out} 步`;
+    if (!demoCount.hidden) demoCount.textContent = S().stage.demoCount(world.holdHands.steps.in, world.holdHands.steps.out);
     placeCallout();
   }
   world.render();
@@ -274,6 +281,7 @@ try {
   loading.hidden = true;
   // ?free opens free driving; ?lesson=N&step=K (1-based) opens a lesson step.
   const q = new URLSearchParams(location.search);
+  const LESSONS = lessons();
   const li = Number(q.get("lesson")) - 1;
   if (shared) openShared(shared);
   else if (q.has("free")) course.free();
@@ -288,7 +296,8 @@ try {
     await selftest({ app, course, world, tools, input });
   }
 } catch (err) {
-  loading.textContent = "车没能搬出来，请刷新页面再试一次。";
+  loading.removeAttribute("data-i18n");
+  bind(loading, (s) => s.bar.loadFailed);
   loading.classList.add("error");
   throw err;
 }

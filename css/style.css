@@ -18,10 +18,22 @@
   --left: #2e70d6;
   --right: #f08a24;
   --right-ink: #b9580a;
-  --font: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Hiragino Sans GB", "Source Han Sans SC", system-ui, sans-serif;
-  --kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "BiauKai", var(--font);
+  /* Chinese first; Linux / Android have no Kai or PingFang, so Noto CJK
+     (Android, most Linux desktops), WenQuanYi and the old Droid fallback follow */
+  --cjk-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", "Droid Sans Fallback";
+  --cjk-kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "BiauKai", "AR PL UKai CN", "AR PL UKai TW", "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC";
+  --font: var(--cjk-sans), system-ui, sans-serif;
+  --kai: var(--cjk-kai), var(--font);
   --panel-w: 400px;
   --bar-h: 60px;
+}
+
+/* English: the system UI face for reading, a book serif where the Chinese
+   pages use Kai (titles, the hook); Chinese characters still fall through to
+   the CJK lists (the 南 seals). */
+html[lang="en"] {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--cjk-sans), sans-serif;
+  --kai: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", P052, Georgia, var(--cjk-kai), serif;
 }
 
 * { box-sizing: border-box; }
@@ -67,6 +79,22 @@ button { font: inherit; color: inherit; }
 }
 .tab:hover { background: rgba(255, 255, 255, 0.08); }
 .tab.on { background: var(--paper); color: var(--shiqing); font-weight: 600; }
+/* the language switch: names the other language, quiet until hovered */
+.lang-btn {
+  flex: none; min-height: 40px; min-width: 52px; padding: 0 12px; align-self: center; touch-action: manipulation;
+  border: 1.5px solid rgba(246, 241, 228, 0.5); border-radius: 999px; background: transparent; color: #f6f1e4;
+  font: 600 16px/1 var(--font); letter-spacing: 0.02em; cursor: pointer; white-space: nowrap;
+}
+.lang-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: #f6f1e4; }
+.lang-btn:lang(zh-CN) { font-family: var(--cjk-sans), sans-serif; }
+.bar > .tabs + .lang-btn { margin-left: -12px; }
+/* English needs none of the spacing the Chinese titles are set with */
+html[lang="en"] .mark { letter-spacing: 0; font-size: 28px; }
+html[lang="en"] .home-title { letter-spacing: 0; font-size: 44px; }
+@media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
+  html[lang="en"] .mark [data-i18n] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase; font-size: 15px; }
 
 /* ---------- layout ---------- */
 .layout { display: grid; grid-template-columns: 1fr var(--panel-w); min-height: 0; }
@@ -528,6 +556,9 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .seal { width: 32px; height: 32px; font-size: 22px; }
   .tabs { gap: 2px; }
   .tab { min-width: 0; min-height: 44px; padding: 0 14px; font-size: 19px; }
+  .bar > .tabs + .lang-btn { margin-left: 0; }
+  html[lang="en"] .tab { padding: 0 12px; }
+  html[lang="en"] .home-title { font-size: 38px; }
 
   .layout { grid-template-rows: minmax(0, 47%) minmax(0, 1fr); }
   body[data-mode="home"] .layout { grid-template-rows: minmax(0, 50%) minmax(0, 1fr); }
@@ -610,6 +641,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .mark { font-size: 24px; gap: 8px; }
   .seal { width: 30px; height: 30px; font-size: 21px; }
   .tab { min-height: 44px; min-width: 0; padding: 0 16px; font-size: 18px; }
+  .bar > .tabs + .lang-btn { margin-left: 0; }
   .panel { border-left-width: 6px; }
   .panel-body { padding: 10px 14px 14px; }
   .panel-title { font-size: 24px; }

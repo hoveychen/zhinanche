@@ -96,4 +96,14 @@
  * @property {LessonStep[]} steps
  */
 
+/**
+ * The words of a lesson in another language, laid over the lesson of the same
+ * id (js/teach/lessons.en.js): one entry per step, and per task / picture
+ * exactly the fields the original has.
+ * @typedef {object} LessonText
+ * @property {string} title
+ * @property {string} summary
+ * @property {{text: string, task?: {prompt: string, options?: string[], right?: string, wrong?: string, done?: string}, picture?: {alt: string, credit: string}}[]} steps
+ */
+
 export {};

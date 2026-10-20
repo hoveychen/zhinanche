@@ -3,8 +3,7 @@
 // directive, and ticks the task off when its check passes.
 
 import { h, s } from "./dom.js";
-import { LESSONS } from "../teach/lessons.js";
-import { STR } from "../teach/strings.js";
+import { S, bind, lessons } from "../i18n.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
 import { siteFoot } from "./about.js";
@@ -12,8 +11,6 @@ import { siteFoot } from "./about.js";
 /** @import { App } from "./app.js" */
 /** @import { Tools } from "./tools.js" */
 /** @import { Lesson, LessonStep, ChoiceTask, DoTask, ControlId } from "../teach/types.js" */
-
-const NUM = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
 
 /** The panel tool a "do" task is done with (the rest are done on the 3D view). */
 /** @type {Partial<Record<DoTask["check"], Exclude<ControlId, "drive" | "draw" | "gearsView">>>} */
@@ -49,10 +46,13 @@ export class Course {
     this.target = null;
     /** @type {HTMLElement | null} */
     this.scroller = null;
+    /** the option picked in this step's choice, so a relabel can pick it again */
+    /** @type {number | null} */
+    this.chosen = null;
     // In the nav bar, in place of the step count, so it never covers the task.
     this.cue = h("button", { type: "button", class: "more-cue", hidden: true, onclick: () => this.#reveal(true) }, [
       /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M12 21 L4 12 H9 V3 H15 V12 H20 Z" })]))),
-      h("span", { text: STR.ui.moreBelow }),
+      bind(h("span"), (s) => s.ui.moreBelow),
     ]);
     // Free driving on a phone: the panel is a sheet under the 3D view that
     // stays folded to this handle until it is wanted (CSS decides when).
@@ -68,11 +68,22 @@ export class Course {
 
   home() {
     this.mode = "home";
+    this.#renderHome();
+    this.app.idleLoop = true;
+    this.app.direct({ reset: true, view: "follow", play: "sCurve" }, {
+      jump: { ...this.app.state, mechanism: "differential", view: "follow", xray: false, explode: 0, highlight: [], trails: true, odometer: false, assist: true, faults: {}, slip: {}, speed: 1, demo: null, controls: [] },
+    });
+    this.app.idleLoop = true;
+    this.cb.onMode("home");
+  }
+
+  #renderHome() {
     this.doTask = null;
-    const t = STR.home;
-    const list = h("ol", { class: "lesson-list" }, LESSONS.map((l, i) => h("li", {}, [
+    const str = S();
+    const t = str.home;
+    const list = h("ol", { class: "lesson-list" }, lessons().map((l, i) => h("li", {}, [
       h("button", { type: "button", class: "lesson-item", onclick: () => this.open(i) }, [
-        h("span", { class: "lesson-num", "aria-hidden": "true", text: NUM[i] }),
+        h("span", { class: "lesson-num", "aria-hidden": "true", text: str.course.numeral(i) }),
         h("span", { class: "lesson-words" }, [
           h("span", { class: "lesson-title", text: l.title }),
           h("span", { class: "lesson-sum", text: l.summary }),
@@ -80,11 +91,11 @@ export class Course {
       ]),
     ])));
     // The questions people ask first, straight into the lesson step that answers them.
-    const asks = h("ul", { class: "asks" }, STR.asks.map((a) => h("li", {}, [
+    const asks = h("ul", { class: "asks" }, str.asks.map((a) => h("li", {}, [
       h("button", { type: "button", class: "ask", "data-ask": `${a.lesson}-${a.step}`, onclick: () => this.open(a.lesson - 1, a.step - 1) }, [
         h("span", { class: "ask-q", text: a.q }),
         h("span", { class: "ask-a", text: a.a }),
-        h("span", { class: "ask-go", "aria-hidden": "true", text: `第${NUM[a.lesson - 1]}课 →` }),
+        h("span", { class: "ask-go", "aria-hidden": "true", text: str.course.askGo(a.lesson - 1) }),
       ]),
     ])));
     const body = h("div", { class: "home" }, [
@@ -102,12 +113,6 @@ export class Course {
       siteFoot(),
     ]);
     this.#show(body, null);
-    this.app.idleLoop = true;
-    this.app.direct({ reset: true, view: "follow", play: "sCurve" }, {
-      jump: { ...this.app.state, mechanism: "differential", view: "follow", xray: false, explode: 0, highlight: [], trails: true, odometer: false, assist: true, faults: {}, slip: {}, speed: 1, demo: null, controls: [] },
-    });
-    this.app.idleLoop = true;
-    this.cb.onMode("home");
   }
 
   // ---------- free driving ----------
@@ -115,16 +120,41 @@ export class Course {
   /** @param {Partial<import("./directive.js").SceneState>} [over] a shared setup */
   free(over) {
     this.mode = "free";
-    this.doTask = null;
     this.setSheet(false);
-    const body = h("div", { class: "free" }, [
-      h("h2", { class: "panel-title", text: STR.free.title }),
-      h("p", { text: STR.free.howDrive }),
-      h("p", { text: STR.free.howDraw }),
-    ]);
-    this.#show(body, null, this.sheetBtn);
+    this.#renderFree();
     this.app.free(over);
     this.cb.onMode("free");
+  }
+
+  #renderFree() {
+    this.doTask = null;
+    const t = S().free;
+    const body = h("div", { class: "free" }, [
+      h("h2", { class: "panel-title", text: t.title }),
+      h("p", { text: t.howDrive }),
+      h("p", { text: t.howDraw }),
+    ]);
+    this.#show(body, null, this.sheetBtn);
+  }
+
+  /**
+   * Redraw the panel in the language just switched to, leaving the scene
+   * alone: same page, same step, a task already done stays done.
+   */
+  relabel() {
+    this.setSheet(document.body.dataset.sheet === "open");
+    const top = this.scroller?.scrollTop ?? 0;
+    if (this.mode === "home") this.#renderHome();
+    else if (this.mode === "free") this.#renderFree();
+    else {
+      const passed = this.doTask?.passed ?? false;
+      const chosen = this.chosen;
+      this.#render(this.current, this.current.steps[this.step], true);
+      if (passed && this.doTask) this.#pass(this.doTask);
+      if (chosen !== null) /** @type {HTMLButtonElement | undefined} */ (this.panel.querySelectorAll(".option")[chosen])?.click();
+    }
+    if (this.scroller) this.scroller.scrollTop = top;
+    this.#updateCue();
   }
 
   // ---------- lessons ----------
@@ -138,7 +168,7 @@ export class Course {
   }
 
   get current() {
-    return LESSONS[this.lesson];
+    return lessons()[this.lesson];
   }
 
   /**
@@ -161,24 +191,26 @@ export class Course {
   next() {
     const l = this.current;
     if (this.step < l.steps.length - 1) this.goto(this.step + 1, false);
-    else if (this.lesson < LESSONS.length - 1) this.open(this.lesson + 1);
+    else if (this.lesson < lessons().length - 1) this.open(this.lesson + 1);
     else this.home();
   }
 
   back() {
     if (this.step > 0) this.goto(this.step - 1, true);
-    else if (this.lesson > 0) this.open(this.lesson - 1, LESSONS[this.lesson - 1].steps.length - 1);
+    else if (this.lesson > 0) this.open(this.lesson - 1, lessons()[this.lesson - 1].steps.length - 1);
   }
 
-  /** @param {Lesson} lesson @param {LessonStep} step */
-  #render(lesson, step) {
+  /** @param {Lesson} lesson @param {LessonStep} step @param {boolean} [keep] a relabel: keep the scroll */
+  #render(lesson, step, keep = false) {
+    const t = S().course;
     const n = lesson.steps.length;
-    const dots = h("ol", { class: "dots", "aria-label": `第 ${this.step + 1} 步，共 ${n} 步` },
+    this.chosen = null;
+    const dots = h("ol", { class: "dots", "aria-label": t.stepsLabel(this.step + 1, n) },
       lesson.steps.map((_, i) => h("li", { class: i === this.step ? "now" : i < this.step ? "done" : "" })));
     /** @type {(HTMLElement | null)[]} */
     const parts = [
       h("header", { class: "lesson-head" }, [
-        h("p", { class: "lesson-kicker", text: `第${NUM[this.lesson]}课` }),
+        h("p", { class: "lesson-kicker", text: t.kicker(this.lesson) }),
         h("h2", { class: "panel-title", text: lesson.title, tabindex: "-1", "data-focus-home": true }),
         dots,
       ]),
@@ -192,11 +224,11 @@ export class Course {
     }
     this.replayBtn = null;
     if (step.scene?.play) {
-      this.replayBtn = h("button", { type: "button", class: "plain replay", onclick: () => this.app.replay() }, [h("span", { text: "再看一遍" })]);
+      this.replayBtn = h("button", { type: "button", class: "plain replay", onclick: () => this.app.replay() }, [h("span", { text: t.replay })]);
       parts.push(this.replayBtn);
     }
     if (step.scene?.demo === "holdHands" || (this.app.state.demo === "holdHands")) {
-      parts.push(h("button", { type: "button", class: "primary walk", "data-demo": "walk", onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: "让他们走一圈" })]));
+      parts.push(h("button", { type: "button", class: "primary walk", "data-demo": "walk", onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: t.walk })]));
     }
     this.doTask = null;
     this.target = null;
@@ -211,13 +243,13 @@ export class Course {
       if (tool) this.target = this.tools.blocks[tool];
     }
     const last = this.step === n - 1;
-    const nav = h("nav", { class: "panel-nav", "aria-label": "翻页" }, [
-      h("button", { type: "button", class: "plain", disabled: this.step === 0 && this.lesson === 0, onclick: () => this.back(), text: "上一步" }),
+    const nav = h("nav", { class: "panel-nav", "aria-label": t.navLabel }, [
+      h("button", { type: "button", class: "plain", disabled: this.step === 0 && this.lesson === 0, onclick: () => this.back(), text: t.back }),
       h("span", { class: "step-count", text: `${this.step + 1} / ${n}` }),
       this.cue,
-      h("button", { type: "button", class: "primary", "data-focus": "next", onclick: () => this.next(), text: !last ? "下一步" : this.lesson < LESSONS.length - 1 ? "下一课" : "回到目录" }),
+      h("button", { type: "button", class: "primary", "data-focus": "next", onclick: () => this.next(), text: !last ? t.next : this.lesson < lessons().length - 1 ? t.nextLesson : t.toc }),
     ]);
-    this.#show(h("article", { class: "lesson" }, parts), nav);
+    this.#show(h("article", { class: "lesson" }, parts), nav, null, keep);
   }
 
   /** @param {ChoiceTask} t */
@@ -229,6 +261,7 @@ export class Course {
       onclick: (e) => {
         const b = /** @type {HTMLButtonElement} */ (e.currentTarget);
         const right = i === t.answer;
+        this.chosen = i;
         for (const x of opts) x.classList.remove("wrong");
         b.classList.add(right ? "right" : "wrong");
         if (right) for (const x of opts) x.setAttribute("disabled", "");
@@ -255,28 +288,34 @@ export class Course {
   #tick() {
     const d = this.doTask;
     if (d && !d.passed && checkPassed(d.task.check, this.app.tracker, this.app.snapshot())) {
-      d.passed = true;
-      d.el.classList.add("passed");
-      const fb = d.el.querySelector(".feedback");
-      if (fb) fb.textContent = d.task.done;
+      this.#pass(d);
     }
     if (this.replayBtn) this.replayBtn.disabled = this.app.playing;
+  }
+
+  /** @param {NonNullable<Course["doTask"]>} d */
+  #pass(d) {
+    d.passed = true;
+    d.el.classList.add("passed");
+    const fb = d.el.querySelector(".feedback");
+    if (fb) fb.textContent = d.task.done;
   }
 
   /** @param {boolean} open */
   setSheet(open) {
     document.body.dataset.sheet = open ? "open" : "closed";
     this.sheetBtn.setAttribute("aria-expanded", String(open));
-    this.sheetText.textContent = open ? STR.ui.sheetClose : STR.ui.sheetOpen;
+    this.sheetText.textContent = open ? S().ui.sheetClose : S().ui.sheetOpen;
   }
 
-  /** @param {HTMLElement} body @param {HTMLElement | null} nav @param {HTMLElement | null} [handle] */
-  #show(body, nav, handle = null) {
+  /** @param {HTMLElement} body @param {HTMLElement | null} nav @param {HTMLElement | null} [handle] @param {boolean} [keep] */
+  #show(body, nav, handle = null, keep = false) {
     const scroller = h("div", { class: "panel-body", onscroll: () => this.#updateCue() }, [body, this.tools.el]);
     this.panel.replaceChildren(...(handle ? [handle] : []), scroller, ...(nav ? [nav] : []));
     this.scroller = scroller;
     scroller.scrollTop = 0;
     this.tools.sync(this.app.state);
+    if (keep) return;
     if (body.classList.contains("lesson")) this.#reveal(false);
     else this.target = null;
     this.#updateCue();

@@ -7,7 +7,7 @@
 // mountain, however far the chariot drives.
 
 import * as THREE from "three";
-import { STR } from "../teach/strings.js";
+import { S as strings, canvasFont, onLang } from "../i18n.js";
 
 /** How far south of the chariot the gate stands (chi). */
 export const LANDMARK_DISTANCE = 105;
@@ -21,27 +21,40 @@ function mat(hex, roughness = 0.8, metalness = 0) {
   return new THREE.MeshStandardMaterial({ color: hex, roughness, metalness });
 }
 
-/** The plaque: a big gold 南 on azurite, framed in gold. */
+/** The plaque: a big gold 南 on azurite, framed in gold (with a small line under it in some languages). */
 function plaqueTexture() {
   const S = 512;
   const c = document.createElement("canvas");
   c.width = c.height = S;
   const g = /** @type {CanvasRenderingContext2D} */ (c.getContext("2d"));
-  g.fillStyle = "#e0b04a";
-  g.fillRect(0, 0, S, S);
-  g.fillStyle = "#1f4a5c";
-  g.fillRect(26, 26, S - 52, S - 52);
-  g.strokeStyle = "#e0b04a";
-  g.lineWidth = 8;
-  g.strokeRect(48, 48, S - 96, S - 96);
-  g.fillStyle = "#f6d77a";
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.font = 'bold 340px "Kaiti SC", "STKaiti", "KaiTi", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", serif';
-  g.fillText(STR.landmarkPlaque, S / 2, S / 2 + 14);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  const draw = () => {
+    const str = strings();
+    const sub = str.scene.plaqueSub;
+    g.fillStyle = "#e0b04a";
+    g.fillRect(0, 0, S, S);
+    g.fillStyle = "#1f4a5c";
+    g.fillRect(26, 26, S - 52, S - 52);
+    g.strokeStyle = "#e0b04a";
+    g.lineWidth = 8;
+    g.strokeRect(48, 48, S - 96, S - 96);
+    g.fillStyle = "#f6d77a";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.font = `bold ${sub ? 270 : 340}px ${canvasFont()}`;
+    g.fillText(str.landmarkPlaque, S / 2, sub ? S / 2 - 34 : S / 2 + 14);
+    if (sub) {
+      g.font = `bold 84px ${canvasFont()}`;
+      g.letterSpacing = "10px";
+      g.fillText(sub, S / 2 + 5, S - 118);
+      g.letterSpacing = "0px";
+    }
+    t.needsUpdate = true;
+  };
+  draw();
+  onLang(draw);
   return t;
 }
 

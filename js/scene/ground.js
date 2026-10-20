@@ -3,6 +3,9 @@
 // where the figure points. Green when the arrow sits on 南, vermilion when not.
 
 import * as THREE from "three";
+import { S as strings, canvasFont, onLang } from "../i18n.js";
+
+/** @import { Strings } from "../teach/strings.js" */
 
 export const COLORS = {
   sky: 0xd5e4df,
@@ -102,7 +105,6 @@ export function dressGround(mesh, tex) {
 const RING_R = 8.2;
 const RING_SIZE = 22;
 
-const FONT = '"Kaiti SC", "STKaiti", "KaiTi", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", serif';
 
 /** Canvas for the ring: north up (canvas top = world −z = north). Marks only; the letters are separate (see Label). */
 function ringTexture() {
@@ -142,31 +144,40 @@ function ringTexture() {
 }
 
 /**
- * One direction letter on the ground, or 南 as a vermilion seal.
- * @param {string} ch @param {boolean} seal
+ * One direction letter on the ground, or 南 as a vermilion seal; redrawn when
+ * the language changes.
+ * @param {(s: Strings) => string} pick @param {boolean} seal
  */
-function letterTexture(ch, seal) {
+function letterTexture(pick, seal) {
   const S = 128;
   const c = document.createElement("canvas");
   c.width = c.height = S;
   const g = /** @type {CanvasRenderingContext2D} */ (c.getContext("2d"));
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  if (seal) {
-    g.fillStyle = "#c8361f";
-    g.beginPath();
-    g.roundRect(6, 6, S - 12, S - 12, 10);
-    g.fill();
-    g.fillStyle = "#fbf6ec";
-    g.font = `bold ${S * 0.7}px ${FONT}`;
-  } else {
-    g.fillStyle = "rgba(58,49,40,0.8)";
-    g.font = `${S * 0.78}px ${FONT}`;
-  }
-  g.fillText(ch, S / 2, S / 2 + S * 0.03);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  const draw = () => {
+    const ch = pick(strings());
+    const FONT = canvasFont();
+    g.clearRect(0, 0, S, S);
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    if (seal) {
+      g.fillStyle = "#c8361f";
+      g.beginPath();
+      g.roundRect(6, 6, S - 12, S - 12, 10);
+      g.fill();
+      g.fillStyle = "#fbf6ec";
+      g.font = `bold ${S * 0.7}px ${FONT}`;
+    } else {
+      g.fillStyle = "rgba(58,49,40,0.8)";
+      g.font = `${S * 0.78}px ${FONT}`;
+    }
+    g.fillText(ch, S / 2, S / 2 + S * 0.03);
+    t.needsUpdate = true;
+  };
+  draw();
+  onLang(draw);
   return t;
 }
 
@@ -191,7 +202,7 @@ function faceCamera(mesh, cam) {
 }
 
 /**
- * @param {string} ch @param {boolean} seal @param {number} size chi
+ * @param {(s: Strings) => string} ch @param {boolean} seal @param {number} size chi
  * @param {number} x @param {number} z ring-local
  */
 function label(ch, seal, size, x, z) {
@@ -238,11 +249,11 @@ export class CompassRing {
     // Letters stay upright for the camera (the follow view looks south, so
     // letters painted north-up would read upside down).
     const out = RING_R + 1.15;
-    this.group.add(label("北", false, 2.3, 0, -out - 0.3), label("东", false, 2.3, out + 0.3, 0), label("西", false, 2.3, -out - 0.3, 0));
+    this.group.add(label((s) => s.scene.north, false, 2.3, 0, -out - 0.3), label((s) => s.scene.east, false, 2.3, out + 0.3, 0), label((s) => s.scene.west, false, 2.3, -out - 0.3, 0));
     // 南: a seal, and its ghost, drawn faintly where the chariot hides it
     // (from the follow view, the south side of the ring is behind the chariot).
-    const seal = label("南", true, 2.4, 0, out + 0.4);
-    const ghost = label("南", true, 2.4, 0, out + 0.4);
+    const seal = label((s) => s.scene.south, true, 2.4, 0, out + 0.4);
+    const ghost = label((s) => s.scene.south, true, 2.4, 0, out + 0.4);
     const gm = /** @type {THREE.MeshBasicMaterial} */ (ghost.material);
     gm.depthFunc = THREE.GreaterDepth;
     gm.opacity = 0.55;

@@ -4,7 +4,7 @@
 // scrolling, and each task can be done through the real controls. Results go
 // to the console and to window.__selftest / body[data-selftest].
 
-import { LESSONS } from "../teach/lessons.js";
+import { S, lessons } from "../i18n.js";
 import { ALL_CONTROLS } from "./directive.js";
 
 /** @import { App } from "./app.js" */
@@ -76,16 +76,16 @@ export async function selftest({ app, course, world, input }) {
       app.followRoute(pts);
       for (let i = 0; i < 4000 && app.follow; i++) app.tick(0.05);
     },
-    opened: () => clickText("拆开"),
-    xrayOn: () => clickText("透视"),
-    switchedToSong: () => clickText("宋史式"),
+    opened: () => clickText(S().tools.apart),
+    xrayOn: () => clickText(S().tools.xray),
+    switchedToSong: () => clickText(S().tools.song),
     madeItDrift: () => {
-      clickText("轮距太宽");
+      clickText(S().tools.faultTrack);
       hold(["up", "left"], 3);
     },
     fixedDrift: () => {
-      clickText("造得刚好");
-      clickText("不打滑");
+      clickText(S().tools.faultNone);
+      clickText(S().tools.noSlip);
     },
     playedDemo: () => {
       click("[data-demo=walk]");
@@ -95,6 +95,7 @@ export async function selftest({ app, course, world, input }) {
 
   /** @type {{at: string, ok: boolean, problems: string[]}[]} */
   const results = [];
+  const LESSONS = lessons();
   for (let li = 0; li < LESSONS.length; li++) {
     const lesson = LESSONS[li];
     for (let si = 0; si < lesson.steps.length; si++) {
