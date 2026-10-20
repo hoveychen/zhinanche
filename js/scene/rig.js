@@ -317,14 +317,15 @@ export class Rig {
 
   /**
    * A box round the parts that stay in the picture (not the body flying off,
-   * nor the long pole), in world space.
-   * @param {THREE.Box3} out
+   * nor the long pole), in world space; with `gearsOnly` just the gears
+   * (close on the gears, the wheels may fly out of the picture).
+   * @param {THREE.Box3} out @param {boolean} [gearsOnly]
    */
-  bounds(out) {
+  bounds(out, gearsOnly = false) {
     this.root.updateMatrixWorld(true);
     const box = out.makeEmpty(), b = new THREE.Box3();
     for (const l of this.looks) {
-      if (l.group === "shell" || l.owner === "body.pole" || !l.mesh.visible) continue;
+      if (l.group === "shell" || l.owner === "body.pole" || !l.mesh.visible || (gearsOnly && l.group !== "gear")) continue;
       const g = l.mesh.geometry;
       if (!g.boundingBox) g.computeBoundingBox();
       box.union(b.copy(/** @type {THREE.Box3} */ (g.boundingBox)).applyMatrix4(l.mesh.matrixWorld));

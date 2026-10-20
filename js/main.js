@@ -50,6 +50,23 @@ const tools = new Tools({ direct: (d) => app.direct(d), resetChariot: () => app.
 const dial = new Dial();
 const odo = new Odometer();
 const hint = h("p", { class: "stage-hint", hidden: true, text: "用手指在地上画一条路，松手车就出发" });
+// Free driving: go close on the gears (seen through the body) and back.
+const gearsText = h("span", { text: STR.free.gearsOn });
+let xrayBeforeGears = false;
+const gearsBtn = h("button", {
+  type: "button", class: "draw-btn gears-btn", "data-control": "gearsView", "aria-pressed": "false",
+  onclick: () => {
+    const st = app.state;
+    if (st.view === "gears") app.direct({ view: "follow", xray: xrayBeforeGears });
+    else {
+      xrayBeforeGears = st.xray;
+      app.direct({ view: "gears", xray: true });
+    }
+  },
+}, [
+  /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M18.1 9.9 L20.9 9.9 L20.9 14.1 L18.1 14.1 L17.8 14.8 L19.8 16.8 L16.8 19.8 L14.8 17.8 L14.1 18.1 L14.1 20.9 L9.9 20.9 L9.9 18.1 L9.2 17.8 L7.2 19.8 L4.2 16.8 L6.2 14.8 L5.9 14.1 L3.1 14.1 L3.1 9.9 L5.9 9.9 L6.2 9.2 L4.2 7.2 L7.2 4.2 L9.2 6.2 L9.9 5.9 L9.9 3.1 L14.1 3.1 L14.1 5.9 L14.8 6.2 L16.8 4.2 L19.8 7.2 L17.8 9.2 Z M15 12 A3 3 0 1 0 9 12 A3 3 0 1 0 15 12" })]))),
+  gearsText,
+]);
 const demoCount = h("p", { class: "demo-count", hidden: true });
 const callout = h("div", { class: "callout", hidden: true, role: "status" });
 // Home page only (CSS): what to look at, and that the view can be dragged.
@@ -68,7 +85,7 @@ const pauseBtn = h("button", { type: "button", class: "pause-btn", "aria-pressed
   pauseText,
 ]);
 const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [h("b", { text: STR.ui.paused }), h("span", { text: STR.ui.pausedHow })]);
-overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [input.drawBtn, input.pad]), hint, demoCount, callout, stageHook, pauseBtn, pausedNote);
+overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), hint, demoCount, callout, stageHook, pauseBtn, pausedNote);
 
 const course = new Course(app, tools, byId("panel"), {
   onMode: (mode) => {
@@ -89,6 +106,11 @@ app.onState((st) => {
   odo.el.hidden = !st.odometer || st.demo === "holdHands";
   input.pad.hidden = !st.controls.includes("drive");
   input.drawBtn.hidden = !st.controls.includes("draw");
+  gearsBtn.hidden = !st.controls.includes("gearsView");
+  const gears = st.view === "gears";
+  gearsBtn.classList.toggle("on", gears);
+  gearsBtn.setAttribute("aria-pressed", String(gears));
+  gearsText.textContent = gears ? STR.free.gearsOff : STR.free.gearsOn;
   demoCount.hidden = st.demo !== "holdHands";
   dial.el.hidden = st.demo === "holdHands";
   hideCallout();
@@ -99,7 +121,7 @@ world.hudInsets = () => {
   const r = stage.getBoundingClientRect();
   const ins = { left: 0, right: 0, top: 0, bottom: 0 };
   if (!r.width || !r.height) return ins;
-  for (const el of [dial.el, odo.el, input.pad, input.drawBtn]) {
+  for (const el of [dial.el, odo.el, input.pad, input.drawBtn, gearsBtn]) {
     if (el.hidden || el.offsetParent === null) continue;
     const b = el.getBoundingClientRect();
     if ((b.left + b.right) / 2 < r.left + r.width / 2) ins.left = Math.max(ins.left, (b.right - r.left + 8) / r.width);

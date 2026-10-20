@@ -15,7 +15,7 @@ import { checkPassed } from "./checks.js";
 const NUM = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
 
 /** The panel tool a "do" task is done with (the rest are done on the 3D view). */
-/** @type {Partial<Record<DoTask["check"], Exclude<ControlId, "drive" | "draw">>>} */
+/** @type {Partial<Record<DoTask["check"], Exclude<ControlId, "drive" | "draw" | "gearsView">>>} */
 const TOOL_FOR = { xrayOn: "xray", opened: "explode", switchedToSong: "mechanism", madeItDrift: "faults", fixedDrift: "faults" };
 
 /** Lesson text: paragraphs split on blank lines; trusted inline HTML. @param {string} text */
