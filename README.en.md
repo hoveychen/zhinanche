@@ -4,7 +4,7 @@
 
 ![A wooden cart turning in a palace courtyard; the little wooden man on top keeps his arm pointed at the gate marked South](images/readme-hero.en.jpg)
 
-<p align="center"><img src="images/readme-lap.gif" width="560" alt="The cart spins a full circle on the spot while the wooden man's hand stays pointed at the south gate; the compass dial in the corner never moves off south"><br><sub>A full lap on the spot. The man never stops pointing south. (The camera keeps a fixed bearing; it only follows the cart.)</sub></p>
+<p align="center"><img src="images/readme-lap.en.gif" width="560" alt="The cart spins a full turn on the spot while the wooden man's arm stays pointed at the south gate on the left; the compass dial in the corner reads Pointing due south all the way round"><br><sub>A full turn on the spot. The man never stops pointing south.</sub></p>
 
 A two-wheeled cart with a wooden man standing on it. Drive it anywhere, turn it however you like, and the man's arm keeps pointing south.
 
