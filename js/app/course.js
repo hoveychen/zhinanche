@@ -2,16 +2,20 @@
 // driving. The player shows a step's text, picture and task, applies its scene
 // directive, and ticks the task off when its check passes.
 
-import { h } from "./dom.js";
+import { h, s } from "./dom.js";
 import { LESSONS } from "../teach/lessons.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
 
 /** @import { App } from "./app.js" */
 /** @import { Tools } from "./tools.js" */
-/** @import { Lesson, LessonStep, ChoiceTask, DoTask } from "../teach/types.js" */
+/** @import { Lesson, LessonStep, ChoiceTask, DoTask, ControlId } from "../teach/types.js" */
 
 const NUM = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
+
+/** The panel tool a "do" task is done with (the rest are done on the 3D view). */
+/** @type {Partial<Record<DoTask["check"], Exclude<ControlId, "drive" | "draw">>>} */
+const TOOL_FOR = { xrayOn: "xray", opened: "explode", switchedToSong: "mechanism", madeItDrift: "faults", fixedDrift: "faults" };
 
 /** Lesson text: paragraphs split on blank lines; trusted inline HTML. @param {string} text */
 function paragraphs(text) {
@@ -38,6 +42,16 @@ export class Course {
     this.doTask = null;
     /** @type {HTMLButtonElement | null} */
     this.replayBtn = null;
+    /** what the child has to press in this step: kept in view (short panels) */
+    /** @type {HTMLElement | null} */
+    this.target = null;
+    /** @type {HTMLElement | null} */
+    this.scroller = null;
+    this.cue = h("button", { type: "button", class: "more-cue", hidden: true, onclick: () => this.#reveal(true) }, [
+      /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M12 21 L4 12 H9 V3 H15 V12 H20 Z" })]))),
+      h("span", { text: "往下看" }),
+    ]);
+    new ResizeObserver(() => this.#updateCue()).observe(panel);
     app.onTick(() => this.#tick());
   }
 
@@ -158,8 +172,17 @@ export class Course {
       parts.push(h("button", { type: "button", class: "primary walk", "data-demo": "walk", onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: "让他们走一圈" })]));
     }
     this.doTask = null;
-    if (step.task?.kind === "choose") parts.push(this.#choose(step.task));
-    if (step.task?.kind === "do") parts.push(this.#do(step.task));
+    this.target = null;
+    if (step.task?.kind === "choose") {
+      const box = this.#choose(step.task);
+      parts.push(box);
+      this.target = box;
+    }
+    if (step.task?.kind === "do") {
+      parts.push(this.#do(step.task));
+      const tool = TOOL_FOR[step.task.check];
+      if (tool) this.target = this.tools.blocks[tool];
+    }
     const last = this.step === n - 1;
     const nav = h("nav", { class: "panel-nav", "aria-label": "翻页" }, [
       h("button", { type: "button", class: "plain", disabled: this.step === 0 && this.lesson === 0, onclick: () => this.back(), text: "上一步" }),
@@ -184,6 +207,7 @@ export class Course {
         fb.textContent = right ? t.right : t.wrong;
         box.classList.toggle("passed", right);
         fb.className = `feedback ${right ? "yes" : "hint"}`;
+        this.#reveal(true, fb);
       },
     }));
     box.append(h("p", { class: "task-prompt", text: t.prompt }), h("div", { class: "options" }, opts), fb);
@@ -213,9 +237,49 @@ export class Course {
 
   /** @param {HTMLElement} body @param {HTMLElement | null} nav */
   #show(body, nav) {
-    const scroller = h("div", { class: "panel-body" }, [body, this.tools.el]);
-    this.panel.replaceChildren(scroller, ...(nav ? [nav] : []));
+    const scroller = h("div", { class: "panel-body", onscroll: () => this.#updateCue() }, [body, this.tools.el]);
+    this.panel.replaceChildren(scroller, this.cue, ...(nav ? [nav] : []));
+    this.scroller = scroller;
     scroller.scrollTop = 0;
     this.tools.sync(this.app.state);
+    if (body.classList.contains("lesson")) this.#reveal(false);
+    else this.target = null;
+    this.#updateCue();
+  }
+
+  /** How far the element's bottom is below the panel's visible part (px). @param {HTMLElement} el */
+  #below(el) {
+    if (!this.scroller) return 0;
+    return el.getBoundingClientRect().bottom - this.scroller.getBoundingClientRect().bottom;
+  }
+
+  /**
+   * Scroll the panel so what the child has to press is in view. On opening a
+   * step (`all` false) scroll at most until the lesson text starts at the top,
+   * so it is still read from its first line; the cue covers the rest.
+   * @param {boolean} all
+   * @param {HTMLElement | null} [el] default: this step's target
+   */
+  #reveal(all, el = this.target) {
+    const sc = this.scroller;
+    if (!sc || !el) return;
+    const need = this.#below(el) + 14;
+    if (need <= 0) return;
+    const text = sc.querySelector(".lesson-text");
+    const room = text ? text.getBoundingClientRect().top - sc.getBoundingClientRect().top - 2 : 0;
+    const by = all ? need : Math.min(need, Math.max(0, room));
+    if (by <= 0) return;
+    if (all) sc.scrollBy({ top: by, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    else sc.scrollTop += by;
+  }
+
+  /** Show "往下看" while this step's target is still below the fold. */
+  #updateCue() {
+    const show = this.target !== null && this.#below(this.target) > 1;
+    this.cue.hidden = !show;
+    if (show) {
+      const nav = this.panel.querySelector(".panel-nav");
+      this.cue.style.bottom = `${(nav instanceof HTMLElement ? nav.offsetHeight : 0) + 12}px`;
+    }
   }
 }
