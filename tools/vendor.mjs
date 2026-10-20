@@ -13,6 +13,7 @@ export const FILES = [
   ["three/examples/jsm/controls/OrbitControls.js", "three/examples/jsm/controls/OrbitControls.js"],
   ["three/examples/jsm/loaders/GLTFLoader.js", "three/examples/jsm/loaders/GLTFLoader.js"],
   ["three/examples/jsm/utils/BufferGeometryUtils.js", "three/examples/jsm/utils/BufferGeometryUtils.js"],
+  ["three/examples/jsm/utils/SkeletonUtils.js", "three/examples/jsm/utils/SkeletonUtils.js"],
   ["three/examples/jsm/lines/Line2.js", "three/examples/jsm/lines/Line2.js"],
   ["three/examples/jsm/lines/LineSegments2.js", "three/examples/jsm/lines/LineSegments2.js"],
   ["three/examples/jsm/lines/LineGeometry.js", "three/examples/jsm/lines/LineGeometry.js"],

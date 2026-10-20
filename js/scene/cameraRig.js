@@ -87,8 +87,8 @@ export class CameraRig {
       }
       case "overview":
       default: {
-        const target = new THREE.Vector3(f.x, 5.2, f.z);
-        return { target, pos: target.clone().addScaledVector(new THREE.Vector3(0.8, 0.5, 0.62).normalize(), this.fit(Math.max(9, this.extraRadius))) };
+        const target = new THREE.Vector3(f.x, 5.8, f.z);
+        return { target, pos: target.clone().addScaledVector(new THREE.Vector3(0.8, 0.5, 0.62).normalize(), this.fit(Math.max(11.5, this.extraRadius))) };
       }
     }
   }

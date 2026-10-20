@@ -90,7 +90,7 @@ export class Odometer {
       const m = h("small", { class: "m" });
       const el = h("div", { class: `odo-col ${side}` }, [
         h("div", { class: "odo-read" }, [num, h("span", { class: "unit", text: "尺" }), m]),
-        h("div", { class: "bar" }, [h("div", { class: "zero" }), fill]),
+        h("div", { class: "odo-bar" }, [h("div", { class: "zero" }), fill]),
         h("div", { class: "odo-name", text: name }),
       ]);
       return { el, fill, num, m };

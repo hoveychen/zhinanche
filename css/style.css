@@ -265,13 +265,13 @@ button { font: inherit; color: inherit; }
 .odo-read .m { display: block; font-size: 14px; color: var(--ink-soft); }
 .odo-col.l .num { color: var(--left); }
 .odo-col.r .num { color: var(--right-ink); }
-.bar { position: relative; width: 44px; height: 96px; margin: 6px 0 2px; background: #ece4d3; border-radius: 4px; overflow: hidden; }
-.bar .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; }
+.odo-bar { position: relative; width: 44px; height: 96px; margin: 6px 0 2px; background: #ece4d3; border-radius: 4px; overflow: hidden; }
+.odo-bar .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; }
 .odo-col.l .fill { background: var(--left); }
 .odo-col.r .fill { background: var(--right); }
-.bar .fill.back { background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.45) 0 5px, transparent 5px 10px); }
-.bar .zero { display: none; position: absolute; left: -2px; right: -2px; top: 50%; height: 2px; background: var(--ink); z-index: 1; }
-.hud-odo.signed .bar .zero { display: block; }
+.odo-bar .fill.back { background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.45) 0 5px, transparent 5px 10px); }
+.odo-bar .zero { display: none; position: absolute; left: -2px; right: -2px; top: 50%; height: 2px; background: var(--ink); z-index: 1; }
+.hud-odo.signed .odo-bar .zero { display: block; }
 .odo-name { font-size: 17px; font-weight: 700; }
 .odo-col.l .odo-name { color: var(--left); }
 .odo-col.r .odo-name { color: var(--right-ink); }
@@ -330,7 +330,7 @@ button { font: inherit; color: inherit; }
   .dial-text { font-size: 16px; padding: 3px 9px; }
   .pad { grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(3, 62px); }
   .hud-odo { width: 212px; }
-  .bar { height: 76px; }
+  .odo-bar { height: 76px; }
 }
 @media (orientation: portrait) {
   .stage-hint { max-width: calc(100% - 300px); }

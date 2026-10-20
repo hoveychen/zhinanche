@@ -31,7 +31,7 @@ export class World {
     const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.type = THREE.PCFShadowMap;
     r.toneMapping = THREE.NeutralToneMapping;
     r.toneMappingExposure = 1.05;
     host.appendChild(r.domElement);
