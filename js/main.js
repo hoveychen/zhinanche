@@ -22,7 +22,8 @@ applyDocument();
 document.querySelector(".bar")?.append(langSwitch());
 
 const world = new World(glHost);
-// the other chariot's model is fetched the first time it is picked
+// the other chariot's model loads in idle time after the first picture (prefetchOther),
+// or at once if it is picked before that
 world.onLoading = (on, err) => {
   loading.hidden = !on && !err;
   if (err) {
@@ -291,6 +292,7 @@ try {
   }
   else course.home();
   requestAnimationFrame(frame);
+  world.prefetchOther();
   if (q.has("selftest")) {
     const { selftest } = await import("./app/selftest.js");
     await selftest({ app, course, world, tools, input });
