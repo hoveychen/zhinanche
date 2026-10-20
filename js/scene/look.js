@@ -47,10 +47,13 @@ export class Look {
     scene.add(this.ground);
     /** where the chariot is: the courtyard, gate and ground ride along */
     this.rider = new THREE.Vector2();
-    // The courtyard is built after the chariot's first frames (see render), in
-    // idle slices: ~50 ms of main thread (~170 ms at 4x CPU throttle) in all.
+    // The courtyard is built while the loading note is up (World.load calls
+    // buildYard), so the first picture is the whole scene, not a bare floor
+    // the court pops into a second later.
     /** @type {Courtyard | null} */
     this.yard = null;
+    /** @type {Promise<void> | undefined} */
+    this.yardBuilt = undefined;
     this.frames = 0;
     /** @type {Textures | null} */
     this.sceneTex = null;
@@ -60,17 +63,19 @@ export class Look {
     this.chariotMeshes = [];
     /** @type {PostFX | null} */
     this.postfx = null;
-    this.postfxLoading = false;
+    /** @type {Promise<void> | null} */
+    this.postfxLoading = null;
     this.governor = pick.forced ? null : new FrameGovernor(this.quality, (q) => this.setQuality(q));
     document.body.dataset.quality = this.quality;
     const tex = loadTextures(renderer, s.textures);
     /** @type {Promise<Textures>} */
     this.chariotTex = tex.chariot;
     /** @type {Promise<Textures>} */
+    // fetched alongside the model, ready for warm()
+    if (s.postfx) void this.#loadPostfx();
     this.texReady = tex.scene.then((tex) => {
       dressGround(this.ground, tex);
       this.sceneTex = tex;
-      this.yard?.dress(tex);
       this.env.bake(tex);
       return tex;
     });
@@ -104,31 +109,31 @@ export class Look {
   }
 
   /**
-   * Build the courtyard in idle slices, compile its shaders off the frame,
-   * then put it round the chariot and bake its shadows.
+   * Build the courtyard in short slices, compile its shaders, then put it
+   * round the chariot and bake its shadows. It runs while the loading note is
+   * up (World.load), so nothing is drawing yet: slices only give the model's
+   * download and parse a turn, and the programs are all compiled in one go.
    */
   async #buildYard() {
     const { scene, renderer, camera } = this.host;
-    const idle = () =>
-      new Promise((done) => {
-        if (typeof requestIdleCallback === "function") requestIdleCallback(() => done(undefined), { timeout: 120 });
-        else setTimeout(done, 16);
-      });
-    const yard = await Courtyard.build({ lite: this.quality === "lite" }, idle);
-    if (this.sceneTex) yard.dress(this.sceneTex);
+    let t0 = performance.now();
+    const slice = () => {
+      if (performance.now() - t0 < 12) return Promise.resolve();
+      return new Promise((done) => setTimeout(() => {
+        t0 = performance.now();
+        done(undefined);
+      }));
+    };
+    const yard = await Courtyard.build({ lite: this.quality === "lite" }, slice);
+    // dressed before it is compiled: the textures change its programs
+    yard.dress(this.sceneTex ?? (await this.texReady));
     const gate = scene.getObjectByName("landmark");
     for (const m of Object.values(yard.materials)) this.setShadow.patch(m);
     gate?.traverse((o) => {
       if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) this.setShadow.patch(o.material);
     });
     yard.group.position.set(this.rider.x, 0, this.rider.y);
-    // Compile the new programs (and the patched ground's and gate's) a mesh at
-    // a time, instead of stalling the first frame that draws them: three
-    // creates every program of a compile call at once (~300 ms at 4x throttle).
-    for (const o of [...yard.group.children, this.ground, ...(gate ? [gate] : [])]) {
-      await renderer.compileAsync(o, camera, scene).catch(() => {});
-      await idle();
-    }
+    await Promise.all([yard.group, this.ground, ...(gate ? [gate] : [])].map((o) => renderer.compileAsync(o, camera, scene).catch(() => {})));
     this.yard = yard;
     yard.group.position.set(this.rider.x, 0, this.rider.y);
     scene.add(yard.group);
@@ -137,6 +142,7 @@ export class Look {
     this.setShadow.move(this.rider.x, this.rider.y);
     this.setShadow.bake(renderer, gate ? [yard.group, gate] : [yard.group]);
     if (hills) hills.visible = true;
+    document.body.dataset.scene = "ready";
   }
 
   /** @param {number} dt */
@@ -144,9 +150,19 @@ export class Look {
     this.env.update(dt);
   }
 
+  /**
+   * The courtyard, built once: World.load starts it while the chariot model
+   * is still coming, so the first picture already has it.
+   * @returns {Promise<void>}
+   */
+  buildYard() {
+    this.yardBuilt ??= this.#buildYard().catch((err) => console.warn("courtyard unavailable", err));
+    return this.yardBuilt;
+  }
+
   render() {
     const { renderer, scene, camera } = this.host;
-    if (++this.frames === 3) void this.#buildYard();
+    if (++this.frames === 3) void this.buildYard();
     this.governor?.tick(performance.now());
     // Parts faded out for the x-ray view stop casting shadows, so the gears
     // inside aren't left in the shade of a body you can't see.
@@ -154,9 +170,39 @@ export class Look {
       const m = /** @type {THREE.Material} */ (o.material);
       o.castShadow = !(m.transparent && m.opacity < 0.5);
     }
-    if (SETTINGS[this.quality].postfx && !this.postfx && !this.postfxLoading) this.#loadPostfx();
+    if (SETTINGS[this.quality].postfx && !this.postfx && !this.postfxLoading) void this.#loadPostfx();
     if (this.postfx) this.postfx.render();
     else renderer.render(scene, camera);
+  }
+
+  /**
+   * Before the first picture (the loading note is still up), so the first
+   * frames after it goes, and the first close-up, don't stall on compiles
+   * (~150–250 ms on a laptop). Two halves: the post-processing passes (depth
+   * of field too) need nothing else and are drawn once while the textures
+   * are still being made; the scene's own programs are compiled once its
+   * textures are on (they change the programs).
+   */
+  async warmPasses() {
+    if (SETTINGS[this.quality].postfx && !this.postfx) await (this.postfxLoading || this.#loadPostfx());
+    this.postfx?.warm();
+  }
+
+  /**
+   * The second half of warming up: every program in the scene, then one
+   * frame drawn (it uploads the textures and fills the shadow maps).
+   */
+  async warm() {
+    const { renderer, scene, camera } = this.host;
+    await renderer.compileAsync(scene, camera).catch(() => {});
+    if (this.postfx) this.postfx.render();
+    else renderer.render(scene, camera);
+  }
+
+  /** Compile a model that is not on show yet (the other chariot). @param {THREE.Object3D} o */
+  precompile(o) {
+    const { renderer, scene, camera } = this.host;
+    return renderer.compileAsync(o, camera, scene).catch(() => {});
   }
 
   /** @param {number} w CSS px @param {number} h */
@@ -164,20 +210,23 @@ export class Look {
     this.postfx?.setSize(w, h);
   }
 
-  async #loadPostfx() {
-    this.postfxLoading = true;
-    try {
-      const { PostFX } = await import("./postfx.js");
-      if (!SETTINGS[this.quality].postfx) return;
-      const { renderer, scene, camera, controls } = this.host;
-      this.postfx = new PostFX(renderer, scene, camera, () => controls.target);
-    } catch (err) {
-      console.warn("post-processing unavailable", err);
-      this.quality = "medium";
-      document.body.dataset.quality = this.quality;
-    } finally {
-      this.postfxLoading = false;
-    }
+  /** @returns {Promise<void>} */
+  #loadPostfx() {
+    this.postfxLoading = (async () => {
+      try {
+        const { PostFX } = await import("./postfx.js");
+        if (!SETTINGS[this.quality].postfx) return;
+        const { renderer, scene, camera, controls } = this.host;
+        this.postfx = new PostFX(renderer, scene, camera, () => controls.target);
+      } catch (err) {
+        console.warn("post-processing unavailable", err);
+        this.quality = "medium";
+        document.body.dataset.quality = this.quality;
+      } finally {
+        this.postfxLoading = null;
+      }
+    })();
+    return this.postfxLoading;
   }
 
   /** Step to a tier (the governor calls this when frames are slow). @param {Quality} q */

@@ -52,18 +52,26 @@ export function loadTextures(renderer, level) {
     await new Promise((r) => setTimeout(r));
     got.scene(t.generateScene(level));
   };
+  // one worker per part, so the courtyard's textures are made alongside the
+  // chariot's instead of after them
   try {
-    const w = new Worker(new URL("./texgen.worker.js", import.meta.url), { type: "module" });
-    let n = 0;
-    w.onmessage = (e) => {
-      got[/** @type {"chariot" | "scene"} */ (e.data.part)](e.data.set);
-      if (++n === 2) w.terminate();
-    };
-    w.onerror = () => {
-      w.terminate();
-      fallback();
-    };
-    w.postMessage({ level });
+    /** @type {Worker[]} */
+    const workers = [];
+    let failed = false;
+    for (const part of /** @type {const} */ (["chariot", "scene"])) {
+      const w = new Worker(new URL("./texgen.worker.js", import.meta.url), { type: "module" });
+      workers.push(w);
+      w.onmessage = (e) => {
+        got[part](e.data.set);
+        w.terminate();
+      };
+      w.onerror = () => {
+        for (const x of workers) x.terminate();
+        if (!failed) fallback();
+        failed = true;
+      };
+      w.postMessage({ level, parts: [part] });
+    }
   } catch {
     fallback();
   }

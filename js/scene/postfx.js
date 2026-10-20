@@ -116,6 +116,14 @@ export class PostFX {
     this.composer.render();
   }
 
+  /** Draw a frame through every pass (depth of field too), compiling them all. */
+  warm() {
+    const on = this.dof.enabled;
+    this.dof.enabled = true;
+    this.composer.render();
+    this.dof.enabled = on;
+  }
+
   dispose() {
     this.composer.dispose();
     this.ao.dispose();

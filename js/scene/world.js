@@ -37,6 +37,7 @@ export class World {
   /** @type {{xray: boolean, highlight: PartId[]}} */
   #lookState = { xray: false, highlight: [] };
   #figureBig = true;
+  #viewed = false;
 
   /** @param {HTMLElement} host */
   constructor(host) {
@@ -115,13 +116,20 @@ export class World {
   /**
    * Load the chariot on show; the other one waits until it is first wanted
    * (setMechanism) or the page is idle (prefetchOther), so the first picture
-   * costs one model, not two.
+   * costs one model, not two. Resolves when the first picture is ready to
+   * show whole: courtyard built, textures on, every shader compiled.
    * @param {string} [base]
    */
   async load(base = "assets/") {
     this.base = base;
-    await this.ensure(this.mechanism);
+    await Promise.all([
+      this.ensure(this.mechanism),
+      this.look.warmPasses(),
+      this.look.buildYard(),
+      this.look.texReady.catch(() => {}),
+    ]);
     this.setMechanism(this.mechanism);
+    await this.look.warm();
   }
 
   /**
@@ -131,8 +139,9 @@ export class World {
   prefetchOther() {
     /** @type {MechanismId} */
     const other = this.mechanism === "song" ? "differential" : "song";
-    const go = () => this.ensure(other).catch(() => {}); // a failure shows when it is picked
-    // after the first frames and the courtyard's own idle work
+    // a failure shows when it is picked; compiled now, so showing it doesn't stall
+    const go = () => this.ensure(other).then((rig) => this.look.precompile(rig.root), () => {});
+    // after the first frames
     setTimeout(() => {
       if (typeof requestIdleCallback === "function") requestIdleCallback(go, { timeout: 3000 });
       else go();
@@ -280,7 +289,10 @@ export class World {
   /** @param {ViewId} v @param {boolean} [instant] */
   setView(v, instant = false) {
     this.cam.extraRadius = this.demo === "holdHands" ? this.holdHands.radius : this.demo === "compass" ? 14 : 0;
-    this.cam.setView(v, this.camFocus(), instant);
+    // the first view is where the first picture is taken: no glide in from
+    // the constructor's placeholder spot
+    this.cam.setView(v, this.camFocus(), instant || !this.#viewed);
+    this.#viewed = true;
   }
 
   /**
