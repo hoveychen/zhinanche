@@ -16,7 +16,7 @@ import { siteFoot } from "./about.js";
 const NUM = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
 
 /** The panel tool a "do" task is done with (the rest are done on the 3D view). */
-/** @type {Partial<Record<DoTask["check"], Exclude<ControlId, "drive" | "draw">>>} */
+/** @type {Partial<Record<DoTask["check"], Exclude<ControlId, "drive" | "draw" | "gearsView">>>} */
 const TOOL_FOR = { xrayOn: "xray", opened: "explode", switchedToSong: "mechanism", madeItDrift: "faults", fixedDrift: "faults" };
 
 /** Lesson text: paragraphs split on blank lines; trusted inline HTML. @param {string} text */
@@ -290,8 +290,9 @@ export class Course {
 
   /**
    * Scroll the panel so what the child has to press is in view. On opening a
-   * step (`all` false) scroll at most until the lesson text starts at the top,
-   * so it is still read from its first line; the cue covers the rest.
+   * step (`all` false) scroll at most until the lesson's title is at the top,
+   * so the child still sees which lesson this is and reads the text from its
+   * first line (phones held upright: the panel is short); the cue covers the rest.
    * @param {boolean} all
    * @param {HTMLElement | null} [el] default: this step's target
    */
@@ -300,8 +301,8 @@ export class Course {
     if (!sc || !el) return;
     const need = this.#below(el) + 14;
     if (need <= 0) return;
-    const text = sc.querySelector(".lesson-text");
-    const room = text ? text.getBoundingClientRect().top - sc.getBoundingClientRect().top - 2 : 0;
+    const top = sc.querySelector(".panel-title");
+    const room = top ? top.getBoundingClientRect().top - sc.getBoundingClientRect().top - 2 : 0;
     const by = all ? need : Math.min(need, Math.max(0, room));
     if (by <= 0) return;
     if (all) sc.scrollBy({ top: by, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });

@@ -4,7 +4,8 @@
 // The GLB has no UVs, so every flat face gets a planar projection: long faces
 // (boards, beams, spokes, rim felloes) run the grain along their length,
 // squarish faces (gear discs, hubs) are box-projected as if cut from a plank.
-// Left/right gear trains keep the site's blue/orange as painted lacquer.
+// Left/right gear trains keep the site's blue/orange as painted lacquer, in
+// three shades per train so a wheel and the gears it drives read as apart.
 
 import * as THREE from "three";
 
@@ -108,6 +109,27 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   skin: { color: 0xf0cda4, map: "woodSoft", roughness: 0.5, clearcoat: 0.4, clearcoatRoughness: 0.3, normal: 0.15, scale: 1.5 },
   hat: { color: 0x1c1b1e, map: "woodSoft", roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.1, normal: 0.2, scale: 1.5 },
 });
+
+/**
+ * Each train's parts in three shades of its colour, so parts that touch or
+ * mesh never share one: the wheel a deep lacquer, the upright gear on its
+ * axle the train's own colour, the flat gear that gear drives a light tint.
+ * Node → sRGB, for the "blue" and "orange" roles.
+ * @type {Record<string, number>}
+ */
+export const TRAIN_SHADES = {
+  "wheel.L": 0x173a85, "diff.crown.L": 0x2c64c8, "song.foot.L": 0x2c64c8, "diff.sideA": 0x7db8ff, "song.small.L": 0x7db8ff,
+  "wheel.R": 0xb95e12, "diff.crown.R": 0xea7d1c, "song.foot.R": 0xea7d1c, "diff.sideB": 0xffa860, "song.small.R": 0xffa860,
+};
+
+/** The TRAIN_SHADES node a mesh belongs to, if any. @param {THREE.Object3D} o */
+function shadeOf(o) {
+  for (let n = /** @type {THREE.Object3D | null} */ (o); n; n = n.parent) {
+    const c = TRAIN_SHADES[n.userData.name ?? n.name];
+    if (c !== undefined) return c;
+  }
+  return null;
+}
 
 /**
  * @param {Recipe} r
@@ -246,11 +268,13 @@ export function dressChariot(root, tex) {
     if (!r) return;
     o.geometry = o.geometry.clone();
     faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
-    let m = made.get(src.name);
+    const shade = src.name === "blue" || src.name === "orange" ? shadeOf(o) : null;
+    const key = shade === null ? src.name : `${src.name}.${shade}`;
+    let m = made.get(key);
     if (!m) {
-      m = makeMaterial(r, tex);
+      m = makeMaterial(shade === null ? r : { ...r, color: shade }, tex);
       m.name = src.name;
-      made.set(src.name, m);
+      made.set(key, m);
     }
     o.material = m;
   });

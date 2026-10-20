@@ -103,16 +103,16 @@ export class CameraRig {
         return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(r)) };
       }
       case "gears": {
-        // From behind and well above, so the left wheel is on the left of the
+        // From behind and above, so the left wheel is on the left of the
         // screen: the wheels stand at the sides (local ±Z, radius 3) and would
-        // hide the gears from any side-on angle. High enough that the figure
-        // on top of its shaft is in the picture too; a little to the right so
-        // the big left crown wheel shows its face. The boards go see-through
-        // with x-ray.
+        // hide the gears from any side-on angle. Close on the gears, which
+        // fill the view (the figure is up its shaft, out of the picture: the
+        // dial shows where it points); a little to the right so the big left
+        // crown wheel shows its face. The boards go see-through with x-ray.
         const song = f.mechanism === "song";
-        const target = song ? local(1.6, 5.4, 0) : local(0.7, 5.2, 0);
-        const r = song ? 6.9 : 6.6;
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.25, 0.3), this.fit(r)) };
+        const target = song ? local(1.1, 3.7, 0) : local(0.2, 2.5, -0.5);
+        const r = song ? 4.9 : 4.4;
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.35, 0.75), this.fit(r)) };
       }
       case "wheels": {
         const target = local(0, 2.8, 0);
