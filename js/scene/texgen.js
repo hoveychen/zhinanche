@@ -243,18 +243,18 @@ export function stone(size = 1024) {
       const bevel = smooth(0.0, 0.14, d);
       const m = mottle(u, v), s = stain(u, v);
       const gr = grit.at(u * 192, v * 192);
-      let lum = 1.08 * tone * (0.88 + 0.22 * (m - 0.5)) * (1 - 0.12 * smooth(0.55, 0.85, s)) + 0.05 * (gr - 0.5);
+      let lum = 1.08 * tone * (0.9 + 0.12 * (m - 0.5)) * (1 - 0.05 * smooth(0.55, 0.85, s)) + 0.09 * (gr - 0.5);
       lum = lum * (1 - joint) + 0.58 * joint;
       const i = yy * size + xx, o = i * 4;
-      albedo.data[o] = byte(lum * (0.7 + 0.025 * warm));
-      albedo.data[o + 1] = byte(lum * 0.675);
-      albedo.data[o + 2] = byte(lum * (0.63 - 0.025 * warm));
+      albedo.data[o] = byte(lum * (0.72 + 0.025 * warm));
+      albedo.data[o + 1] = byte(lum * 0.68);
+      albedo.data[o + 2] = byte(lum * (0.62 - 0.025 * warm));
       albedo.data[o + 3] = 255;
       rough.data[o] = 255;
       rough.data[o + 1] = byte(0.86 + 0.1 * (gr - 0.5) - 0.18 * smooth(0.45, 0.75, m) * (1 - joint) + 0.14 * joint);
       rough.data[o + 2] = 0;
       rough.data[o + 3] = 255;
-      height[i] = bevel * (1 + 0.12 * (m - 0.5)) + 0.05 * gr;
+      height[i] = bevel * (1 + 0.04 * (m - 0.5)) + 0.05 * gr;
     }
   }
   return { stone: albedo, stoneRough: rough, stoneNormal: normalFromHeight(height, size, 9) };
