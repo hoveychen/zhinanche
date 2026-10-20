@@ -7,8 +7,9 @@ import { DriveInput } from "./app/drive.js";
 import { Tools } from "./app/tools.js";
 import { Course } from "./app/course.js";
 import { Dial, Odometer } from "./app/hud.js";
-import { byId, h } from "./app/dom.js";
+import { byId, h, s } from "./app/dom.js";
 import { LESSONS } from "./teach/lessons.js";
+import { STR } from "./teach/strings.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -34,7 +35,15 @@ const odo = new Odometer();
 const hint = h("p", { class: "stage-hint", hidden: true, text: "用手指在地上画一条路，松手车就出发" });
 const demoCount = h("p", { class: "demo-count", hidden: true });
 const callout = h("div", { class: "callout", hidden: true, role: "status" });
-overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [input.drawBtn, input.pad]), hint, demoCount, callout);
+// Home page only (CSS): what to look at, and that the view can be dragged.
+const stageHook = h("div", { class: "stage-hook" }, [
+  h("p", { class: "stage-hook-line", text: STR.stage.hook }),
+  h("p", { class: "drag-hint" }, [
+    /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M4 12 L8 8 V10.5 H16 V8 L20 12 L16 16 V13.5 H8 V16 Z" })]))),
+    h("span", { text: STR.stage.dragHint }),
+  ]),
+]);
+overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [input.drawBtn, input.pad]), hint, demoCount, callout, stageHook);
 
 const course = new Course(app, tools, byId("panel"), {
   onMode: (mode) => {
@@ -84,6 +93,7 @@ const canvas = world.renderer.domElement;
 
 canvas.addEventListener("pointerdown", (e) => {
   press = { x: e.clientX, y: e.clientY, t: performance.now() };
+  stage.classList.add("touched");
   if (!input.drawOn || !e.isPrimary) return;
   const p = world.groundAt(e.clientX, e.clientY);
   if (!p) return;

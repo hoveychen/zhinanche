@@ -4,6 +4,7 @@
 
 import { h } from "./dom.js";
 import { hasFaults, hasSlip } from "./directive.js";
+import { STR } from "../teach/strings.js";
 
 /** @import { SceneDirective, ControlId } from "../teach/types.js" */
 /** @import { SceneState } from "./directive.js" */
@@ -104,7 +105,14 @@ export class Tools {
       speed: block("快慢", "speed", speed.el),
       reset: block("重新开始", "reset", resetBtn),
     };
-    this.el = h("div", { class: "tools", role: "group", "aria-label": "工具" }, Object.values(this.blocks));
+    // The faults first and set apart: "does it drift?" is what people ask.
+    const b = this.blocks;
+    this.trouble = h("div", { class: "trouble", role: "group", "aria-label": STR.free.breakHead }, [
+      h("p", { class: "trouble-head", text: STR.free.breakHead }),
+      h("p", { class: "trouble-note", text: STR.free.breakNote }),
+      b.faults, b.slip,
+    ]);
+    this.el = h("div", { class: "tools", role: "group", "aria-label": "工具" }, [this.trouble, b.mechanism, b.assist, b.xray, b.explode, b.speed, b.reset]);
     /** @type {SceneState | null} */
     this.state = null;
   }
@@ -129,5 +137,6 @@ export class Tools {
     p.speed.sync((v) => v === st.speed);
     for (const [id, el] of Object.entries(this.blocks)) el.hidden = !st.controls.includes(/** @type {ControlId} */ (id));
     this.el.hidden = Object.values(this.blocks).every((b) => b.hidden);
+    this.trouble.hidden = this.blocks.faults.hidden && this.blocks.slip.hidden;
   }
 }

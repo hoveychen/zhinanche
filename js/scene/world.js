@@ -6,7 +6,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Rig } from "./rig.js";
-import { ArmBeam, COLORS, CompassRing } from "./ground.js";
+import { COLORS, CompassRing } from "./ground.js";
+import { Pointer } from "./pointer.js";
+import { Landmark } from "./landmark.js";
 import { Ribbon, RouteLine } from "./trails.js";
 import { CompassDemo, HoldHands } from "./demos.js";
 import { CameraRig } from "./cameraRig.js";
@@ -54,6 +56,7 @@ export class World {
 
     this.ring = new CompassRing();
     scene.add(this.ring.group);
+    this.ring.group.add(new Landmark().group);
     this.trackL = new Ribbon(COLORS.left, 0.32);
     this.trackR = new Ribbon(COLORS.right, 0.32);
     scene.add(this.trackL.mesh, this.trackR.mesh);
@@ -74,7 +77,7 @@ export class World {
     this.rigs = {};
     /** @type {MechanismId} */
     this.mechanism = "differential";
-    /** @type {Partial<Record<MechanismId, ArmBeam>>} */
+    /** @type {Partial<Record<MechanismId, Pointer>>} */
     this.beams = {};
     this.explode = 0;
     this.explodeTarget = 0;
@@ -107,7 +110,7 @@ export class World {
       this.rigs[rig.mechanism] = rig;
       const fig = rig.node("figure");
       if (fig) {
-        const beam = new ArmBeam(rig.armTip);
+        const beam = new Pointer(rig.armTip);
         fig.add(beam.mesh);
         this.beams[rig.mechanism] = beam;
       }

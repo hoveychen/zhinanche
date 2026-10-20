@@ -4,6 +4,7 @@
 
 import { h, s } from "./dom.js";
 import { LESSONS } from "../teach/lessons.js";
+import { STR } from "../teach/strings.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
 
@@ -60,6 +61,7 @@ export class Course {
   home() {
     this.mode = "home";
     this.doTask = null;
+    const t = STR.home;
     const list = h("ol", { class: "lesson-list" }, LESSONS.map((l, i) => h("li", {}, [
       h("button", { type: "button", class: "lesson-item", onclick: () => this.open(i) }, [
         h("span", { class: "lesson-num", "aria-hidden": "true", text: NUM[i] }),
@@ -69,17 +71,31 @@ export class Course {
         ]),
       ]),
     ])));
+    // The questions people ask first, straight into the lesson step that answers them.
+    const asks = h("ul", { class: "asks" }, STR.asks.map((a) => h("li", {}, [
+      h("button", { type: "button", class: "ask", "data-ask": `${a.lesson}-${a.step}`, onclick: () => this.open(a.lesson - 1, a.step - 1) }, [
+        h("span", { class: "ask-q", text: a.q }),
+        h("span", { class: "ask-a", text: a.a }),
+        h("span", { class: "ask-go", "aria-hidden": "true", text: `第${NUM[a.lesson - 1]}课 →` }),
+      ]),
+    ])));
     const body = h("div", { class: "home" }, [
-      h("h2", { class: "home-title", text: "指南车" }),
-      h("p", { class: "home-lede", text: "车怎么拐弯，车上木人的手都指着南。车里没有磁铁，只有齿轮。" }),
-      h("button", { type: "button", class: "primary big", "data-focus": "free", onclick: () => this.free() }, [h("span", { text: "自己开一开" })]),
-      h("h3", { class: "list-head", text: "六节课" }),
+      h("p", { class: "home-kicker", text: t.kicker }),
+      h("h2", { class: "home-title", text: t.title }),
+      h("p", { class: "home-hook", text: t.hook }),
+      h("div", { class: "home-cta" }, [
+        h("button", { type: "button", class: "primary big", "data-focus": "free", onclick: () => this.free() }, [h("span", { text: t.drive })]),
+        h("button", { type: "button", class: "plain big", onclick: () => this.open(0) }, [h("span", { text: t.start })]),
+      ]),
+      h("h3", { class: "list-head", text: t.askHead }),
+      asks,
+      h("h3", { class: "list-head", text: t.lessonsHead }),
       list,
     ]);
     this.#show(body, null);
     this.app.idleLoop = true;
-    this.app.direct({ reset: true, view: "overview", play: "sCurve" }, {
-      jump: { ...this.app.state, mechanism: "differential", view: "overview", xray: false, explode: 0, highlight: [], trails: true, odometer: false, assist: true, faults: {}, slip: {}, speed: 1, demo: null, controls: [] },
+    this.app.direct({ reset: true, view: "follow", play: "sCurve" }, {
+      jump: { ...this.app.state, mechanism: "differential", view: "follow", xray: false, explode: 0, highlight: [], trails: true, odometer: false, assist: true, faults: {}, slip: {}, speed: 1, demo: null, controls: [] },
     });
     this.app.idleLoop = true;
     this.cb.onMode("home");
@@ -91,9 +107,9 @@ export class Course {
     this.mode = "free";
     this.doTask = null;
     const body = h("div", { class: "free" }, [
-      h("h2", { class: "panel-title", text: "自己开" }),
-      h("p", { text: "按住方向按钮开车，或者用键盘的方向键。" }),
-      h("p", { text: "按「画路线」，在地上画一条路，车会沿着它走。点一点齿轮，看看它叫什么。" }),
+      h("h2", { class: "panel-title", text: STR.free.title }),
+      h("p", { text: STR.free.howDrive }),
+      h("p", { text: STR.free.howDraw }),
     ]);
     this.#show(body, null);
     this.app.free();
