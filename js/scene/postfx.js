@@ -17,7 +17,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 const DOF_NEAR = 24;
 
 /**
- * GTAO that skips transparent meshes and the sky in its depth/normal pass,
+ * GTAO that skips transparent meshes and sprites and the sky in its depth/normal pass,
  * and works at half resolution (occlusion is soft; full res cost ~14 ms a
  * frame at DPR 2 on a laptop GPU).
  */
@@ -38,7 +38,9 @@ class OpaqueGTAOPass extends GTAOPass {
     /** @type {THREE.Object3D[]} */
     const hidden = [];
     this.scene.traverseVisible((o) => {
-      if (!(o instanceof THREE.Mesh)) return;
+      // sprites too (the name tags in the hold-hands demo): drawn with the
+      // normal/depth override they come out as black blocks
+      if (!(o instanceof THREE.Mesh || o instanceof THREE.Sprite)) return;
       const m = /** @type {THREE.Material} */ (o.material);
       if (m.transparent || o.name === "sky" || o.userData.noAO) hidden.push(o);
     });

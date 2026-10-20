@@ -20,7 +20,7 @@ export const STR_EN = {
   },
 
   bar: {
-    brand: "South-Pointing Chariot",
+    brand: "South\u2011Pointing Chariot",
     tabsLabel: "Pages",
     tabHome: "Lessons",
     tabFree: "Drive",
@@ -34,7 +34,7 @@ export const STR_EN = {
 
   home: {
     kicker: "A 1,000-year-old gear machine",
-    title: "The South-Pointing Chariot",
+    title: "The South\u2011Pointing Chariot",
     hook: "No magnets. Just wooden gears. Turn the chariot any way you like — the little wooden man keeps pointing south. How?",
     drive: "Take it for a drive",
     start: "Start at lesson 1",
