@@ -104,6 +104,7 @@ export const LESSONS = [
       },
       {
         text: "车头一直在变，木人却不变。\n\n他是怎么知道南在哪里的？下一节，我们先看看车轮。",
+        scene: { controls: ["reset"] },
         task: {
           kind: "choose",
           prompt: "不管车怎么开，木人会怎样？",
