@@ -29,6 +29,17 @@ export const STR = {
     dragHint: "拖一拖，换个角度看",
   },
 
+  /** buttons on the page itself */
+  ui: {
+    pause: "暂停",
+    resume: "继续",
+    paused: "停住了",
+    pausedHow: "按「继续」或空格键接着走",
+    moreBelow: "往下看",
+    sheetOpen: "更多玩法：让它出错、透视、拆开",
+    sheetClose: "收起",
+  },
+
   free: {
     title: "自己开",
     howDrive: "按住方向按钮开车，或者用键盘的方向键。",

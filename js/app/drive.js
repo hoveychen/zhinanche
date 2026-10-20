@@ -1,5 +1,6 @@
 // Driving by hand: the arrow pad on the 3D view (hold a button to drive),
-// the keyboard (arrow keys or WASD), and the "draw a route" button.
+// the keyboard (arrow keys or WASD), the "draw a route" button, and how fast
+// the chariot gets going and stops (ease, used by js/app/app.js).
 
 import { h } from "./dom.js";
 
@@ -12,6 +13,24 @@ const ARROW = {
   right: "M20 12 L10 20 V15 H4 V9 H10 V4 Z",
 };
 const LABEL = { up: "前进", down: "后退", left: "左拐", right: "右拐" };
+/**
+ * Seconds from standing to full speed, from full speed to a stop, and to
+ * swing the steering fully over: a short roll-off and a short brake instead of
+ * jumping between still and full speed, while still "hold to drive".
+ */
+export const RAMP = { up: 0.35, brake: 0.25, steer: 0.2 };
+
+/**
+ * Move `now` toward `want` (both −1..1) at the ramp's rates.
+ * @param {number} now @param {number} want @param {number} dt
+ * @param {number} up seconds 0 → 1 @param {number} down seconds 1 → 0
+ */
+export function ease(now, want, dt, up, down) {
+  const speeding = Math.abs(want) > Math.abs(now) && Math.sign(want) * Math.sign(now) >= 0;
+  const rate = dt / (speeding ? up : down);
+  return now + Math.max(-rate, Math.min(rate, want - now));
+}
+
 /** @type {Record<string, Dir>} */
 const KEYS = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
 
