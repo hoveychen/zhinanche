@@ -90,7 +90,10 @@ button { font: inherit; color: inherit; }
 .bar > .tabs + .lang-btn { margin-left: -12px; }
 /* English needs none of the spacing the Chinese titles are set with */
 html[lang="en"] .mark { letter-spacing: 0; font-size: 28px; }
-html[lang="en"] .home-title { letter-spacing: 0; }
+html[lang="en"] .home-title { letter-spacing: 0; font-size: 44px; }
+@media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
+  html[lang="en"] .mark [data-i18n] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase; font-size: 15px; }
 
 /* ---------- layout ---------- */
@@ -537,6 +540,9 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .seal { width: 32px; height: 32px; font-size: 22px; }
   .tabs { gap: 2px; }
   .tab { min-width: 0; min-height: 44px; padding: 0 14px; font-size: 19px; }
+  .bar > .tabs + .lang-btn { margin-left: 0; }
+  html[lang="en"] .tab { padding: 0 12px; }
+  html[lang="en"] .home-title { font-size: 38px; }
 
   .layout { grid-template-rows: minmax(0, 47%) minmax(0, 1fr); }
   body[data-mode="home"] .layout { grid-template-rows: minmax(0, 50%) minmax(0, 1fr); }
@@ -617,6 +623,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .mark { font-size: 24px; gap: 8px; }
   .seal { width: 30px; height: 30px; font-size: 21px; }
   .tab { min-height: 44px; min-width: 0; padding: 0 16px; font-size: 18px; }
+  .bar > .tabs + .lang-btn { margin-left: 0; }
   .panel { border-left-width: 6px; }
   .panel-body { padding: 10px 14px 14px; }
   .panel-title { font-size: 24px; }
