@@ -101,6 +101,9 @@ button { font: inherit; color: inherit; }
   .pic img { max-height: 200px; }
 }
 
+.site-foot { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--wood-mid); font-size: 15px; }
+.site-foot a { color: var(--shiqing); }
+
 .loading {
   position: absolute; inset: 0; display: grid; place-items: center; margin: 0;
   font: 400 30px var(--kai); color: var(--shiqing); background: var(--sky);
