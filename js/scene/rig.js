@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { ClutchDisplay } from "./clutchPhase.js";
 import { LEFT_NODES, PART_NODES, RIGHT_NODES, ownerOf } from "./parts.js";
 import { OUTLINES, SpinArc, TRAIN, WIRE_OPACITY, makeHull, makeWire } from "./gearviz.js";
+import { TRAIN_SHADES } from "./materials.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { PartId } from "../teach/types.js" */
@@ -55,6 +56,8 @@ const SPIN_GLOW = 0.2;
 /** Angular speed (rad/s) at which a gear counts as fully "turning". */
 const SPIN_FULL = 0.35;
 const TMP = new THREE.Color();
+/** A turning part glows in its own shade of its train's colour (materials.js). */
+const GLOW_OF = new Map(Object.entries(TRAIN_SHADES).map(([k, v]) => [k, new THREE.Color(v)]));
 /** Groups whose parts fade back (highlights) or light up (turning). */
 const MOVING_GROUPS = new Set(["gear", "wheel", "figure"]);
 
@@ -435,7 +438,8 @@ export class Rig {
       l.mat.color.copy(l.color).lerp(FADE, f);
       if (this.lit.has(l.owner)) l.mat.emissive.copy(l.color).multiplyScalar(k);
       else l.mat.emissive.setRGB(0, 0, 0);
-      if (act > 0.001 && sp && l.owner !== "figure") l.mat.emissive.add(TMP.copy(sp.color).multiplyScalar(act * SPIN_GLOW));
+      // in the part's own shade, so a turning wheel and its gear stay apart
+      if (act > 0.001 && sp && l.owner !== "figure") l.mat.emissive.add(TMP.copy(GLOW_OF.get(l.owner) ?? sp.color).multiplyScalar(act * SPIN_GLOW));
     }
   }
 
