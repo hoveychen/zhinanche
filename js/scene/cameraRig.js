@@ -29,7 +29,7 @@ const GLIDE = 0.8;
  * The follow view looks along a fixed bearing in the world: from the north
  * and a little west, south past the chariot at the gate (js/scene/landmark.js).
  */
-const CHASE_DIR = new THREE.Vector3(-0.2, 0.25, -1).normalize();
+const CHASE_DIR = new THREE.Vector3(-0.2, 0.125, -1).normalize();
 
 export class CameraRig {
   /**

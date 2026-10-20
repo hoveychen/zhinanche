@@ -4,7 +4,7 @@
 // (postfx.js, high tier only) and the quality tiers (quality.js).
 
 import * as THREE from "three";
-import { Environment, contactShadow } from "./environment.js";
+import { Environment, SetShadow, contactShadow } from "./environment.js";
 import { Courtyard } from "./courtyard.js";
 import { dressGround, makeGround } from "./ground.js";
 import { dressChariot, loadTextures } from "./materials.js";
@@ -40,8 +40,13 @@ export class Look {
     const s = SETTINGS[this.quality];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, s.maxPixelRatio));
     this.env = new Environment(renderer, scene, { shadowSize: s.shadowSize, clouds: true });
+    // Sun shadows of the courtyard, baked once it exists (see render).
+    this.setShadow = new SetShadow(this.quality === "lite" ? 1024 : 2048, 240);
     this.ground = makeGround();
+    this.setShadow.patch(/** @type {THREE.Material} */ (this.ground.material));
     scene.add(this.ground);
+    /** where the chariot is: the courtyard, gate and ground ride along */
+    this.rider = new THREE.Vector2();
     // The courtyard is built after the chariot's first frames (see render):
     // ~45 ms of main thread (175 ms on a slow phone) that loading needn't wait for.
     /** @type {Courtyard | null} */
@@ -91,7 +96,31 @@ export class Look {
 
   /** @param {number} x @param {number} z chariot position (world) */
   follow(x, z) {
+    this.rider.set(x, z);
     this.env.follow(x, z);
+    this.ground.position.set(x, 0, z);
+    this.yard?.group.position.set(x, 0, z);
+    this.setShadow.move(x, z);
+  }
+
+  /** Build the courtyard, put it round the chariot and bake its shadows. */
+  #buildYard() {
+    const { scene, renderer } = this.host;
+    const yard = new Courtyard({ lite: this.quality === "lite" });
+    this.yard = yard;
+    if (this.sceneTex) yard.dress(this.sceneTex);
+    yard.group.position.set(this.rider.x, 0, this.rider.y);
+    scene.add(yard.group);
+    const gate = scene.getObjectByName("landmark");
+    for (const m of Object.values(yard.materials)) this.setShadow.patch(m);
+    gate?.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) this.setShadow.patch(o.material);
+    });
+    const hills = yard.group.getObjectByName("courtyard.hills");
+    if (hills) hills.visible = false;
+    this.setShadow.move(this.rider.x, this.rider.y);
+    this.setShadow.bake(renderer, gate ? [yard.group, gate] : [yard.group]);
+    if (hills) hills.visible = true;
   }
 
   /** @param {number} dt */
@@ -102,11 +131,7 @@ export class Look {
   render() {
     const { renderer, scene, camera } = this.host;
     if (++this.frames === 3) {
-      const build = () => {
-        this.yard = new Courtyard();
-        if (this.sceneTex) this.yard.dress(this.sceneTex);
-        scene.add(this.yard.group);
-      };
+      const build = () => this.#buildYard();
       if (typeof requestIdleCallback === "function") requestIdleCallback(build, { timeout: 1500 });
       else setTimeout(build, 50);
     }
