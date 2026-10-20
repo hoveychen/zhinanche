@@ -110,7 +110,8 @@ export class Course {
 
   // ---------- free driving ----------
 
-  free() {
+  /** @param {Partial<import("./directive.js").SceneState>} [over] a shared setup */
+  free(over) {
     this.mode = "free";
     this.doTask = null;
     this.setSheet(false);
@@ -120,7 +121,7 @@ export class Course {
       h("p", { text: STR.free.howDraw }),
     ]);
     this.#show(body, null, this.sheetBtn);
-    this.app.free();
+    this.app.free(over);
     this.cb.onMode("free");
   }
 

@@ -16,6 +16,7 @@ import { toSim, toWorld } from "../scene/world.js";
 /** @import { Player } from "./playback.js" */
 /** @import { DriveInput } from "./drive.js" */
 /** @import { CheckSnapshot } from "./checks.js" */
+/** @import { DrawnRoute } from "./share.js" */
 
 /** Hand driving: body speed (chi/s) and turn rate (rad/s) at speed 1. */
 const DRIVE_V = 5;
@@ -40,6 +41,9 @@ export class App {
     /** following a route the child drew */
     /** @type {FollowPlayer | null} */
     this.follow = null;
+    /** the last route drawn and where the chariot set off from (for a shared link) */
+    /** @type {DrawnRoute | null} */
+    this.drawn = null;
     /** loop the home page's demo drive */
     this.idleLoop = false;
     this.tracker = new Tracker();
@@ -132,10 +136,25 @@ export class App {
     return hasFaults(this.state.faults) || hasSlip(this.state.slip);
   }
 
-  /** Free driving, everything on show. */
-  free() {
+  /** Free driving, everything on show. @param {Partial<SceneState>} [over] a shared setup */
+  free(over = {}) {
     this.idleLoop = false;
-    this.direct({ reset: true }, { jump: { ...freeBase(), view: "follow" } });
+    this.drawn = null;
+    this.direct({ reset: true }, { jump: { ...freeBase(), view: "follow", ...over } });
+  }
+
+  /** Drive a drawn route from where it set off (a shared link). @param {DrawnRoute} r */
+  driveDrawn(r) {
+    this.resetChariot(false);
+    const st = this.state;
+    this.chariot = new Chariot({ mechanism: st.mechanism, faults: st.faults, x: r.x, y: r.y, heading: r.heading });
+    this.world.clearTrails();
+    this.world.showPose(this.chariot.pose(), 0);
+    this.world.setView(st.view, true);
+    for (const fn of this.stateListeners) fn(st);
+    const pts = r.pts.map(toWorld);
+    this.followRoute(pts);
+    this.world.route.set([toWorld(r), ...pts]);
   }
 
   /**
@@ -216,7 +235,9 @@ export class App {
   followRoute(worldPts) {
     this.player = null;
     this.setPaused(false);
-    const pts = [{ x: this.chariot.x, y: this.chariot.y }, ...worldPts.map(toSim)];
+    const c = this.chariot;
+    this.drawn = { x: c.x, y: c.y, heading: c.heading, pts: worldPts.map(toSim) };
+    const pts = [{ x: c.x, y: c.y }, ...worldPts.map(toSim)];
     const st = this.state;
     const style = st.mechanism === "song" && st.assist ? "pivot" : "smooth";
     this.follow = new FollowPlayer(pts, style, st.slip);
