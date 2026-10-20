@@ -1,24 +1,61 @@
-// Light and air: a layered sky (zenith to warm horizon haze, sun glow, a
-// drifting cloud deck), the same sky baked into a PMREM environment map for
-// reflections on brass and lacquer, a late-afternoon sun from the south-west
-// whose soft shadow map hugs the chariot, and a contact shadow under it.
+// Light and air: a late-afternoon sky (deep blue overhead, a warm haze low
+// down, scattered cumulus lit gold on the sun side), the same sky baked into
+// a PMREM environment map for reflections on brass and lacquer, a low sun
+// from the west-north-west (behind the follow camera's right shoulder, so the
+// chariot and the red walls ahead are lit from the side and throw long
+// shadows away from the viewer), the sun's soft shadow map that hugs the
+// chariot, a contact shadow under it, and a one-off baked shadow map for the
+// courtyard (SetShadow), which never moves relative to the sun.
 
 import * as THREE from "three";
 
 /** @import { Textures } from "./materials.js" */
 
-/** Direction to the sun: south-west (south = +z, west = −x), ~45° up. */
-export const SUN_DIR = new THREE.Vector3(-0.52, 0.72, 0.46).normalize();
+/**
+ * Direction to the sun: west, a little north (south = +z, west = −x), 28° up.
+ * The follow camera looks south from the north, so the sun is behind it on
+ * the right: side light on the chariot, shadows falling left and away.
+ */
+export const SUN_DIR = (() => {
+  const elev = THREE.MathUtils.degToRad(28), az = THREE.MathUtils.degToRad(24);
+  return new THREE.Vector3(-Math.cos(elev) * Math.cos(az), Math.sin(elev), -Math.cos(elev) * Math.sin(az)).normalize();
+})();
 
+/** Sky palette (sRGB hex → linear THREE.Color). */
 export const SKY = {
-  zenith: new THREE.Color(0x3f78c4),
-  horizon: new THREE.Color(0xc9d8e2),
-  haze: new THREE.Color(0xe8dccb),
-  ground: new THREE.Color(0x8d8578),
+  zenith: new THREE.Color(0x2a5fae),
+  mid: new THREE.Color(0x5c90cc),
+  horizon: new THREE.Color(0xaec8de),
+  /** low haze on the sun's side */
+  haze: new THREE.Color(0xf3d6ae),
+  /** low haze on the far side: the faint pink of the anti-solar belt */
+  antiHaze: new THREE.Color(0xdcccc8),
+  glow: new THREE.Color(0xffc98a),
+  ground: new THREE.Color(0x857c70),
 };
 
-/** Fog colour: the haze where ground meets sky, so far things melt into it. */
-export const FOG = new THREE.Color(0xd7d6cf);
+/**
+ * The sky's colour (no clouds) in a direction: the same formula as the
+ * shader, so fog and anything pre-tinted with the sky match it.
+ * @param {THREE.Vector3} dir unit
+ * @param {THREE.Color} [out]
+ */
+export function skyAt(dir, out = new THREE.Color()) {
+  const up = Math.max(dir.y, 0);
+  out.copy(SKY.horizon).lerp(SKY.mid, Math.min(1, up * 5));
+  out.lerp(SKY.zenith, Math.pow(up, 0.6));
+  const flat = Math.hypot(dir.x, dir.z) || 1, sflat = Math.hypot(SUN_DIR.x, SUN_DIR.z);
+  const az = (dir.x * SUN_DIR.x + dir.z * SUN_DIR.z) / (flat * sflat);
+  const band = Math.exp(-up * 14);
+  const low = SKY.antiHaze.clone().lerp(SKY.haze, Math.pow(Math.min(1, Math.max(0, 0.5 + 0.5 * az)), 1.5));
+  out.lerp(low, band * 0.9);
+  const s = Math.max(0, dir.dot(SUN_DIR));
+  out.add(SKY.glow.clone().multiplyScalar(Math.pow(s, 5) * 0.22 + Math.pow(s, 40) * 0.5));
+  return out;
+}
+
+/** Fog colour: the sky just above the horizon looking south (where the view goes). */
+export const FOG = skyAt(new THREE.Vector3(0, 0.03, 1).normalize());
 
 const SKY_VERT = /* glsl */ `
 varying vec3 vDir;
@@ -32,33 +69,51 @@ void main() {
 const SKY_FRAG = /* glsl */ `
 uniform vec3 sunDir;
 uniform vec3 zenith;
+uniform vec3 mid;
 uniform vec3 horizon;
 uniform vec3 haze;
+uniform vec3 antiHaze;
+uniform vec3 glow;
 uniform vec3 groundCol;
 uniform sampler2D clouds;
 uniform float time;
 uniform float cloudAmount;
 uniform float brightness;
 varying vec3 vDir;
+float cloud(vec2 uv) {
+  return texture2D(clouds, uv).r * 0.65 + texture2D(clouds, uv * 2.3 + 0.31).r * 0.35;
+}
 void main() {
   vec3 d = normalize(vDir);
   float h = d.y;
   float up = max(h, 0.0);
-  vec3 col = mix(horizon, zenith, pow(up, 0.45));
-  float toSun = max(dot(d, sunDir), 0.0);
-  // warm haze piles up low in the sky, more towards the sun
-  col = mix(col, haze, exp(-up * 9.0) * (0.55 + 0.45 * toSun));
-  col += vec3(1.0, 0.85, 0.62) * (pow(toSun, 9.0) * 0.35 + pow(toSun, 90.0) * 0.8);
-  col += vec3(1.0, 0.95, 0.85) * smoothstep(0.9993, 0.9997, toSun) * 18.0;
+  vec3 col = mix(horizon, mid, min(1.0, up * 5.0));
+  col = mix(col, zenith, pow(up, 0.6));
+  vec2 sflat = normalize(sunDir.xz);
+  float az = dot(normalize(d.xz + 1e-5), sflat);
+  vec3 low = mix(antiHaze, haze, pow(clamp(0.5 + 0.5 * az, 0.0, 1.0), 1.5));
+  col = mix(col, low, exp(-up * 14.0) * 0.9);
+  float s = max(dot(d, sunDir), 0.0);
+  col += glow * (pow(s, 5.0) * 0.22 + pow(s, 40.0) * 0.5);
+  col += vec3(1.0, 0.92, 0.8) * smoothstep(0.9994, 0.9997, s) * 16.0;
   if (cloudAmount > 0.0 && h > 0.0) {
-    vec2 uv = d.xz / (h + 0.12) * 0.11 + vec2(time * 0.0015, time * 0.0006);
-    float c = texture2D(clouds, uv).r * 0.7 + texture2D(clouds, uv * 2.7 + 0.31).r * 0.3;
-    float cover = smoothstep(0.52, 0.78, c) * smoothstep(0.0, 0.22, h) * cloudAmount;
-    vec3 lit = mix(vec3(0.82, 0.83, 0.86), vec3(1.08, 1.0, 0.92), pow(toSun, 3.0) + 0.35);
-    vec3 cloudCol = mix(lit, lit * 0.72, smoothstep(0.62, 0.9, c));
-    col = mix(col, cloudCol, cover * 0.85);
+    // A flat cloud deck: uv from where the ray meets it.
+    vec2 uv = d.xz / (h + 0.08) * 0.075 + vec2(time * 0.0012, time * 0.0005);
+    float c = cloud(uv);
+    // Lit edge: denser towards the sun means this side is in the cloud's shade.
+    float towards = cloud(uv + sflat * 0.012);
+    float cover = smoothstep(0.5, 0.72, c) * smoothstep(0.0, 0.16, h) * cloudAmount;
+    float lit = clamp(0.62 + (c - towards) * 9.0, 0.0, 1.0);
+    vec3 sunSide = vec3(1.08, 0.97, 0.86) + glow * 0.25 * (0.5 + 0.5 * az);
+    vec3 shade = vec3(0.6, 0.64, 0.74);
+    vec3 cc = mix(shade, sunSide, lit);
+    // thick cores darker, thin edges let the blue through
+    cc = mix(cc, cc * 0.84, smoothstep(0.7, 0.9, c));
+    // far clouds melt into the haze
+    cc = mix(low * 1.02, cc, smoothstep(0.02, 0.3, h));
+    col = mix(col, cc, cover * 0.92);
   }
-  if (h < 0.0) col = mix(haze, groundCol, smoothstep(0.0, 0.25, -h));
+  if (h < 0.0) col = mix(low, groundCol, smoothstep(0.0, 0.2, -h));
   gl_FragColor = vec4(col * brightness, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -70,8 +125,11 @@ function skyMaterial(clouds) {
     uniforms: {
       sunDir: { value: SUN_DIR },
       zenith: { value: SKY.zenith },
+      mid: { value: SKY.mid },
       horizon: { value: SKY.horizon },
       haze: { value: SKY.haze },
+      antiHaze: { value: SKY.antiHaze },
+      glow: { value: SKY.glow },
       groundCol: { value: SKY.ground },
       clouds: { value: clouds },
       time: { value: 0 },
@@ -137,6 +195,149 @@ export function contactShadow() {
   return g;
 }
 
+/**
+ * Sun shadows for the courtyard. The courtyard moves with the chariot but
+ * never turns, and the sun never moves, so its shadows are fixed relative to
+ * it: render its depth from the sun once, and let the courtyard's and the
+ * ground's materials look it up (patch). Only the sun's direct light is
+ * shaded; sky light still fills the shadows.
+ */
+export class SetShadow {
+  /** @param {number} size map size (texels) @param {number} half half width of the covered square (chi) */
+  constructor(size, half) {
+    this.size = size;
+    const cam = new THREE.OrthographicCamera(-half, half, half, -half, 1, 1600);
+    cam.position.copy(SUN_DIR).multiplyScalar(700);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld();
+    this.camera = cam;
+    this.rt = new THREE.WebGLRenderTarget(size, size, { depthBuffer: true });
+    this.rt.depthTexture = new THREE.DepthTexture(size, size, THREE.UnsignedIntType);
+    this.rt.depthTexture.minFilter = this.rt.depthTexture.magFilter = THREE.NearestFilter;
+    /** world → shadow map [0, 1]³, for the courtyard at the origin */
+    this.base = new THREE.Matrix4()
+      .set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
+      .multiply(cam.projectionMatrix)
+      .multiply(cam.matrixWorldInverse);
+    this.uniforms = {
+      setShadowMap: { value: /** @type {THREE.Texture | null} */ (null) },
+      setShadowMatrix: { value: new THREE.Matrix4() },
+      setShadowTexel: { value: 1 / size },
+      setShadowOn: { value: 0 },
+    };
+    this.offset = new THREE.Vector3();
+  }
+
+  /**
+   * Render the casters' depth (they must sit as at the origin). Reparents
+   * them into a scratch scene for the render and puts them back.
+   * @param {THREE.WebGLRenderer} renderer @param {THREE.Object3D[]} casters
+   */
+  bake(renderer, casters) {
+    const scratch = new THREE.Scene();
+    scratch.overrideMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
+    /** @type {[THREE.Object3D, THREE.Object3D | null, THREE.Matrix4][]} */
+    const back = [];
+    for (const o of casters) {
+      o.updateWorldMatrix(true, false);
+      back.push([o, o.parent, o.matrixWorld.clone()]);
+      scratch.add(o);
+    }
+    for (const [o, , mw] of back) {
+      // keep the caster's placement relative to its rider (no rider offset)
+      const local = mw.clone();
+      local.elements[12] -= this.offset.x;
+      local.elements[14] -= this.offset.z;
+      local.decompose(o.position, o.quaternion, o.scale);
+    }
+    const prev = renderer.getRenderTarget();
+    const shadowOn = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.setRenderTarget(this.rt);
+    renderer.clear();
+    renderer.render(scratch, this.camera);
+    renderer.setRenderTarget(prev);
+    renderer.shadowMap.autoUpdate = shadowOn;
+    for (const [o, parent, mw] of back) {
+      if (parent) {
+        parent.add(o);
+        const local = parent.matrixWorld.clone().invert().multiply(mw);
+        local.decompose(o.position, o.quaternion, o.scale);
+      }
+    }
+    scratch.overrideMaterial.dispose();
+    this.uniforms.setShadowMap.value = this.rt.depthTexture;
+    this.uniforms.setShadowOn.value = 1;
+    this.move(this.offset.x, this.offset.z);
+  }
+
+  /** The courtyard is now at (x, 0, z). @param {number} x @param {number} z */
+  move(x, z) {
+    this.offset.set(x, 0, z);
+    this.uniforms.setShadowMatrix.value.copy(this.base).multiply(new THREE.Matrix4().makeTranslation(-x, 0, -z));
+  }
+
+  /**
+   * Make a lit material take the baked shadow. Chains any onBeforeCompile
+   * already set (call after the material's own patches).
+   * @param {THREE.Material} mat
+   */
+  patch(mat) {
+    if (mat.userData.setShadow) return;
+    mat.userData.setShadow = true;
+    const prev = mat.onBeforeCompile.bind(mat);
+    const u = this.uniforms;
+    mat.onBeforeCompile = (shader, r) => {
+      prev(shader, r);
+      Object.assign(shader.uniforms, u);
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nvarying vec3 vSetWorld;\nvarying vec3 vSetNormal;")
+        .replace(
+          "#include <project_vertex>",
+          `#include <project_vertex>
+          vSetWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
+          vSetNormal = normalize(mat3(modelMatrix) * objectNormal);`,
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+          uniform sampler2D setShadowMap;
+          uniform mat4 setShadowMatrix;
+          uniform float setShadowTexel;
+          uniform float setShadowOn;
+          varying vec3 vSetWorld;
+          varying vec3 vSetNormal;
+          float setShadow() {
+            if (setShadowOn < 0.5) return 1.0;
+            vec4 p = setShadowMatrix * vec4(vSetWorld + normalize(vSetNormal) * 0.35, 1.0);
+            if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0;
+            float z = p.z - 0.0004;
+            float lit = 0.0;
+            for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
+              lit += step(z, texture2D(setShadowMap, p.xy + vec2(float(i), float(j)) * setShadowTexel).r);
+            }
+            return lit / 9.0;
+          }`,
+        )
+        .replace(
+          "#include <lights_fragment_end>",
+          `#include <lights_fragment_end>
+          float setLit = setShadow();
+          reflectedLight.directDiffuse *= setLit;
+          reflectedLight.directSpecular *= setLit;`,
+        );
+    };
+    const prevKey = mat.customProgramCacheKey.bind(mat);
+    mat.customProgramCacheKey = () => `${prevKey()}|setShadow`;
+    mat.needsUpdate = true;
+  }
+
+  dispose() {
+    this.rt.dispose();
+  }
+}
+
 export class Environment {
   /**
    * @param {THREE.WebGLRenderer} renderer
@@ -152,7 +353,7 @@ export class Environment {
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     scene.background = FOG.clone();
-    scene.fog = new THREE.FogExp2(FOG, 0.0011);
+    scene.fog = new THREE.FogExp2(FOG, 0.0016);
 
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(1000, 32, 16), skyMaterial(null));
     this.sky.name = "sky";
@@ -163,19 +364,20 @@ export class Environment {
 
     // Fill from the sky comes from the environment map; a faint hemisphere
     // light keeps the shade side from going dead before the map is ready.
-    this.hemi = new THREE.HemisphereLight(0xcfe0ee, 0x8a7a66, 0.35);
+    this.hemi = new THREE.HemisphereLight(0xbcd3ea, 0x8a7a66, 0.45);
     scene.add(this.hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff0dc, 3.1);
+    const sun = new THREE.DirectionalLight(0xffdcb0, 3.4);
     sun.castShadow = true;
     sun.shadow.mapSize.set(opts.shadowSize, opts.shadowSize);
+    // Low sun, long shadows: the box reaches out on the side they fall.
     const sc = sun.shadow.camera;
-    sc.left = sc.bottom = -13;
-    sc.right = sc.top = 13;
+    sc.left = sc.bottom = -21;
+    sc.right = sc.top = 21;
     sc.near = 5;
-    sc.far = 90;
+    sc.far = 110;
     sun.shadow.bias = -0.0004;
-    sun.shadow.normalBias = 0.025;
+    sun.shadow.normalBias = 0.03;
     sun.shadow.radius = 2.5;
     scene.add(sun, sun.target);
     this.sun = sun;
@@ -195,26 +397,26 @@ export class Environment {
     envMat.uniforms.cloudAmount.value = tex ? 0.7 : 0;
     envScene.add(envSky);
     // The courtyard as the chariot sees it: paving below, a red wall band
-    // and dark roofs round the horizon (walls are ~150 chi off).
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(38, 32), new THREE.MeshBasicMaterial({ color: 0x77736b }));
+    // and dark-gold roofs round the horizon (walls are ~70–180 chi off).
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(38, 32), new THREE.MeshBasicMaterial({ color: 0x8a8378 }));
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -1.5;
     envScene.add(floor);
     const wall = new THREE.Mesh(
-      new THREE.CylinderGeometry(36, 36, 1.6, 48, 1, true, Math.PI * 0.12, Math.PI * 1.76),
-      new THREE.MeshBasicMaterial({ color: 0x6e2a20, side: THREE.BackSide }),
+      new THREE.CylinderGeometry(36, 36, 2.4, 48, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x8a3020, side: THREE.BackSide }),
     );
-    wall.position.y = -0.6;
+    wall.position.y = -0.3;
     envScene.add(wall);
-    // Dark tiled roofs over the wall: a hard light/dark line for metal to catch.
+    // Roofs over the wall: a hard light/dark line for metal to catch.
     const eaves = new THREE.Mesh(
-      new THREE.CylinderGeometry(35.5, 35.5, 1.4, 48, 1, true, Math.PI * 0.12, Math.PI * 1.76),
-      new THREE.MeshBasicMaterial({ color: 0x23282c, side: THREE.BackSide }),
+      new THREE.CylinderGeometry(35.5, 35.5, 1.2, 48, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x6a5228, side: THREE.BackSide }),
     );
-    eaves.position.y = 0.9;
+    eaves.position.y = 1.4;
     envScene.add(eaves);
     // The sun itself, as a small very bright disc: the glint on brass and lacquer.
-    const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(2.2, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(28, 25, 21) }));
+    const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(2.2, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(28, 23, 17) }));
     sunDisc.position.copy(SUN_DIR).multiplyScalar(30);
     sunDisc.lookAt(0, 0, 0);
     envScene.add(sunDisc);
@@ -223,14 +425,16 @@ export class Environment {
     pmrem.dispose();
     this.scene.environment?.dispose();
     this.scene.environment = rt.texture;
-    this.scene.environmentIntensity = 0.85;
+    this.scene.environmentIntensity = 0.9;
     this.hemi.intensity = 0.12;
   }
 
   /** Keep the shadow camera on the chariot. @param {number} x @param {number} z */
   follow(x, z) {
-    this.sun.position.set(x + SUN_DIR.x * 45, SUN_DIR.y * 45, z + SUN_DIR.z * 45);
-    this.sun.target.position.set(x, 0, z);
+    // Centre the box a little down-sun, where the long shadows fall.
+    const cx = x - SUN_DIR.x * 9, cz = z - SUN_DIR.z * 9;
+    this.sun.position.set(cx + SUN_DIR.x * 60, SUN_DIR.y * 60, cz + SUN_DIR.z * 60);
+    this.sun.target.position.set(cx, 0, cz);
   }
 
   /** @param {number} dt */

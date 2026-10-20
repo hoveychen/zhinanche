@@ -12,14 +12,13 @@ import { STR } from "../teach/strings.js";
 /** How far south of the chariot the gate stands (chi). */
 export const LANDMARK_DISTANCE = 105;
 
-/** Haze mixed into the gate's colours: it is far away. Not fogged (the fog would hide it). */
-const SKY = new THREE.Color(0xd5e4df);
-const HAZE = 0.16;
-
-/** @param {number} hex */
-function mat(hex) {
-  const c = new THREE.Color(hex).lerp(SKY, HAZE);
-  return new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0, fog: false });
+/**
+ * @param {number} hex @param {number} [roughness] @param {number} [metalness]
+ * Lit by the sun and fogged like the courtyard round it, so its distance
+ * haze is the sky's own colour (environment.js FOG).
+ */
+function mat(hex, roughness = 0.8, metalness = 0) {
+  return new THREE.MeshStandardMaterial({ color: hex, roughness, metalness });
 }
 
 /** The plaque: a big gold 南 on azurite, framed in gold. */
@@ -96,7 +95,7 @@ export class Landmark {
     add(roofGeometry(inner * 2 + 7, 5, 3.6), tile, 0, hi - 1.6, 0);
     add(new THREE.BoxGeometry(inner * 2 - 2, 0.5, 0.6), gold, 0, hi + 2.1, 0);
     const PL = 11;
-    const plaque = add(new THREE.PlaneGeometry(PL, PL), new THREE.MeshBasicMaterial({ map: plaqueTexture(), fog: false }), 0, hi - 3.6 - PL / 2 - 0.2, -0.8);
+    const plaque = add(new THREE.PlaneGeometry(PL, PL), new THREE.MeshBasicMaterial({ map: plaqueTexture() }), 0, hi - 3.6 - PL / 2 - 0.2, -0.8);
     // face north, towards the chariot (a plane faces +z)
     plaque.rotation.y = Math.PI;
     g.position.set(0, 0, LANDMARK_DISTANCE);
