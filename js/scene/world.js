@@ -251,6 +251,8 @@ export class World {
 
   render() {
     updateOutlines(this.renderer, this.time);
+    // looking at the works is a diagram: every gear sharp, near or far
+    if (this.look.postfx) this.look.postfx.dofOn = !this.rig.inside;
     this.look.render();
   }
 

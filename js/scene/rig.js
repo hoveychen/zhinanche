@@ -51,7 +51,7 @@ const nameOf = (o) => /** @type {string} */ (o.userData.name ?? o.name);
 const FADE = new THREE.Color(0xb8b0a4);
 const FADE_K = 0.62;
 /** How bright a turning gear glows in its train's colour (x-ray / taken apart). */
-const SPIN_GLOW = 0.55;
+const SPIN_GLOW = 0.2;
 /** Angular speed (rad/s) at which a gear counts as fully "turning". */
 const SPIN_FULL = 0.35;
 const TMP = new THREE.Color();
@@ -76,7 +76,7 @@ const ARCS = {
   "song.bigFlat": { pad: 0.25, lift: 0.35, toward: "body.pole" },
 };
 /** The differential's carrier sits between the side gears: its arc goes on the shaft, above them. */
-const SHAFT_ARC = { radius: 0.75, lift: 2.4 };
+const SHAFT_ARC = { radius: 1.25, lift: 2.4 };
 
 /**
  * @typedef {object} Spinner a turning part, watched for how fast it turns
@@ -410,7 +410,10 @@ export class Rig {
         const step = sp.angle - sp.prev;
         const omega = Math.abs(step) > 0.8 ? 0 : step / dt;
         sp.prev = sp.angle;
-        const want = inside ? Math.min(1, Math.abs(omega) / SPIN_FULL) : 0;
+        // with parts highlighted only they light up and get an arc: the step
+        // is about them, and every gear glowing at once reads as a blur
+        const shown = inside && (!this.dimming || this.lit.has(sp.m.name));
+        const want = shown ? Math.min(1, Math.abs(omega) / SPIN_FULL) : 0;
         sp.act += (want - sp.act) * (want > sp.act ? rise : fall);
         if (sp.arc) {
           const g = sp.arc.group;
@@ -423,7 +426,7 @@ export class Rig {
     // driving stands out in its own colour.
     let moving = 0;
     for (const sp of this.spinners) moving = Math.max(moving, sp.act);
-    const k = 0.18 + 0.14 * Math.sin(t * 4);
+    const k = 0.07 + 0.05 * Math.sin(t * 4);
     for (const l of this.looks) {
       if (!MOVING_GROUPS.has(l.group)) continue;
       const sp = this.spinOf.get(l.owner);
