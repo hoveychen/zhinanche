@@ -214,6 +214,12 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 .r { color: var(--right-ink); font-weight: 700; }
 .pic { margin: 6px 0 18px; }
 .pic img { display: block; width: 100%; max-height: 260px; object-fit: contain; background: #efe7d6; border: 2px solid var(--wood-mid); border-radius: 4px; }
+/* the museum photo of the gears is shot in a dark case: lift it so the gears read in a thumbnail */
+.pic img[src$="taiwan-museum-gears.jpg"] {
+  filter: brightness(1.6) contrast(0.92);
+  /* the filter lifts the frame too: these come out as the other pictures' #efe7d6 and --wood-mid */
+  background: #9b968a; border-color: #8f7b58;
+}
 .pic figcaption { margin-top: 6px; font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
 .replay, .walk { margin: 4px 0 16px; }
 
