@@ -74,8 +74,8 @@ export class CameraRig {
         return { target: new THREE.Vector3(f.x, 0, f.z), pos: new THREE.Vector3(f.x, h, f.z + 0.01) };
       }
       case "follow": {
-        const target = local(2, 5, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.62, 0.42), this.fit(11)) };
+        const target = local(1.5, 2.6, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.7, 0.08), this.fit(12)) };
       }
       case "gears": {
         // From behind and well above, so the left wheel is on the left of the
@@ -99,8 +99,8 @@ export class CameraRig {
       }
       case "overview":
       default: {
-        const target = new THREE.Vector3(f.x, 5.8, f.z);
-        return { target, pos: target.clone().addScaledVector(new THREE.Vector3(0.8, 0.5, 0.62).normalize(), this.fit(Math.max(11.5, this.extraRadius))) };
+        const target = new THREE.Vector3(f.x, 3.4, f.z + 4.6);
+        return { target, pos: target.clone().addScaledVector(new THREE.Vector3(0.66, 0.62, 0.78).normalize(), this.fit(Math.max(13.5, this.extraRadius))) };
       }
     }
   }
