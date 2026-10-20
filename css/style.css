@@ -18,10 +18,22 @@
   --left: #2e70d6;
   --right: #f08a24;
   --right-ink: #b9580a;
-  --font: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Hiragino Sans GB", "Source Han Sans SC", system-ui, sans-serif;
-  --kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "BiauKai", var(--font);
+  /* Chinese first; Linux / Android have no Kai or PingFang, so Noto CJK
+     (Android, most Linux desktops), WenQuanYi and the old Droid fallback follow */
+  --cjk-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", "Droid Sans Fallback";
+  --cjk-kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "BiauKai", "AR PL UKai CN", "AR PL UKai TW", "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC";
+  --font: var(--cjk-sans), system-ui, sans-serif;
+  --kai: var(--cjk-kai), var(--font);
   --panel-w: 400px;
   --bar-h: 60px;
+}
+
+/* English: the system UI face for reading, a book serif where the Chinese
+   pages use Kai (titles, the hook); Chinese characters still fall through to
+   the CJK lists (the 南 seals). */
+html[lang="en"] {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--cjk-sans), sans-serif;
+  --kai: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", P052, Georgia, var(--cjk-kai), serif;
 }
 
 * { box-sizing: border-box; }
@@ -67,6 +79,19 @@ button { font: inherit; color: inherit; }
 }
 .tab:hover { background: rgba(255, 255, 255, 0.08); }
 .tab.on { background: var(--paper); color: var(--shiqing); font-weight: 600; }
+/* the language switch: names the other language, quiet until hovered */
+.lang-btn {
+  flex: none; min-height: 40px; min-width: 52px; padding: 0 12px; align-self: center; touch-action: manipulation;
+  border: 1.5px solid rgba(246, 241, 228, 0.5); border-radius: 999px; background: transparent; color: #f6f1e4;
+  font: 600 16px/1 var(--font); letter-spacing: 0.02em; cursor: pointer; white-space: nowrap;
+}
+.lang-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: #f6f1e4; }
+.lang-btn:lang(zh-CN) { font-family: var(--cjk-sans), sans-serif; }
+.bar > .tabs + .lang-btn { margin-left: -12px; }
+/* English needs none of the spacing the Chinese titles are set with */
+html[lang="en"] .mark { letter-spacing: 0; font-size: 28px; }
+html[lang="en"] .home-title { letter-spacing: 0; }
+html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase; font-size: 15px; }
 
 /* ---------- layout ---------- */
 .layout { display: grid; grid-template-columns: 1fr var(--panel-w); min-height: 0; }

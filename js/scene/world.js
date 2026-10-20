@@ -13,6 +13,7 @@ import { Ribbon, RouteLine } from "./trails.js";
 import { CompassDemo, HoldHands } from "./demos.js";
 import { CameraRig } from "./cameraRig.js";
 import { partCaption } from "./parts.js";
+import { bind } from "../i18n.js";
 import { Look } from "./look.js";
 import { updateOutlines } from "./gearviz.js";
 
@@ -35,7 +36,7 @@ export class World {
     this.host = host;
     const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     host.appendChild(r.domElement);
-    r.domElement.setAttribute("aria-label", "指南车三维场景");
+    bind(r.domElement, (s) => s.stage.sceneLabel, "aria-label");
     this.renderer = r;
 
     const scene = new THREE.Scene();
