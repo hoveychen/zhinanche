@@ -14,7 +14,8 @@
     "vendor": "node tools/vendor.mjs",
     "serve": "node tools/serve.mjs",
     "build:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/build_chariot.py --",
-    "check:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/check_clearance.py --"
+    "check:model": "node tools/export-poses.mjs && \"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/check_clearance.py --",
+    "render:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/render_previews.py --"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
