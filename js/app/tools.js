@@ -45,6 +45,28 @@ function segmented(label, choices, pick) {
 }
 
 /**
+ * A slider from 0 to 1, with a word at each end that jumps there.
+ * @param {string} label
+ * @param {(v: number) => void} pick
+ */
+function slider(label, pick) {
+  const range = h("input", {
+    type: "range", min: 0, max: 100, step: 1, value: 0, class: "slider-range", "aria-label": label,
+    oninput: () => pick(Number(range.value) / 100),
+  });
+  const end = (/** @type {string} */ text, /** @type {number} */ v) => h("button", { type: "button", class: "slider-end", text, onclick: () => pick(v) });
+  const el = h("div", { class: "slider" }, [end("合上", 0), range, end("拆开", 1)]);
+  return {
+    el,
+    /** @param {number} v */
+    sync(v) {
+      range.value = String(Math.round(v * 100));
+      range.style.setProperty("--fill", `${Math.round(v * 100)}%`);
+    },
+  };
+}
+
+/**
  * @param {string} title
  * @param {ControlId} id
  * @param {HTMLElement} body
@@ -81,11 +103,7 @@ export class Tools {
     const xrayBtn = h("button", { type: "button", class: "toggle", "aria-pressed": "false", onclick: () => host.direct({ xray: !this.state?.xray }) }, [
       h("span", { class: "toggle-icon", "aria-hidden": "true" }), h("span", { text: "透视" }),
     ]);
-    const explode = segmented("拆开", [
-      { label: "合上", value: 0 },
-      { label: "拆开", value: 0.5 },
-      { label: "全拆开", value: 1 },
-    ], (v) => host.direct({ explode: v }));
+    const explode = slider("拆开多少", (v) => host.direct({ explode: v }));
     const speed = segmented("快慢", [
       { label: "慢", value: 0.5 },
       { label: "中", value: 1 },
@@ -133,7 +151,7 @@ export class Tools {
     p.slip.sync((v) => v === hasSlip(st.slip));
     p.xrayBtn.setAttribute("aria-pressed", String(st.xray));
     p.xrayBtn.classList.toggle("on", st.xray);
-    p.explode.sync((v) => Math.abs(v - st.explode) < 0.01);
+    p.explode.sync(st.explode);
     p.speed.sync((v) => v === st.speed);
     for (const [id, el] of Object.entries(this.blocks)) el.hidden = !st.controls.includes(/** @type {ControlId} */ (id));
     this.el.hidden = Object.values(this.blocks).every((b) => b.hidden);

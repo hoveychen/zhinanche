@@ -99,7 +99,8 @@ export function makeHull(mesh) {
   return hull;
 }
 
-const SHELL_LINES = new THREE.LineBasicMaterial({ color: 0x2a1d12, transparent: true, opacity: 0.2, depthWrite: false });
+export const WIRE_OPACITY = 0.2;
+const SHELL_LINES = new THREE.LineBasicMaterial({ color: 0x2a1d12, transparent: true, opacity: WIRE_OPACITY, depthWrite: false });
 
 /** The body as a fine wireframe, for x-ray. @param {THREE.Mesh} mesh */
 export function makeWire(mesh) {

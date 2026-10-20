@@ -82,6 +82,8 @@ export class World {
     this.beams = {};
     this.explode = 0;
     this.explodeTarget = 0;
+    /** where the parts are while taken apart (the camera keeps them in the picture) */
+    this.partsBox = new THREE.Box3();
     /** @type {DemoId | null} */
     this.demo = null;
     this.trailsOn = true;
@@ -146,6 +148,8 @@ export class World {
 
   /** @param {number} v 0..1 @param {boolean} [instant] */
   setExplode(v, instant = false) {
+    // closing up: glide back to the view's own framing
+    if (v === 0 && this.explodeTarget > 0 && !instant) this.cam.setView(this.cam.view, this.camFocus());
     this.explodeTarget = v;
     if (instant) {
       this.explode = v;
@@ -227,11 +231,15 @@ export class World {
     this.time += dt;
     this.look.update(dt);
     if (this.explode !== this.explodeTarget) {
-      const step = dt / 0.6;
+      // a press on 合上/拆开 plays the whole sequence (about 1.4 s); dragging
+      // the slider follows the finger closely
       const gap = this.explodeTarget - this.explode;
+      const step = dt * Math.max(0.7, Math.abs(gap) * 5);
       this.explode += Math.sign(gap) * Math.min(Math.abs(gap), step);
       this.rig.setExplode(this.explode);
+      this.cam.reframe = this.explode > 0.001 ? 0.9 : 0;
     }
+    if (this.cam.reframe > 0) this.cam.parts = this.rig.bounds(this.partsBox);
     this.rig.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);

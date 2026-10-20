@@ -253,6 +253,28 @@ button { font: inherit; color: inherit; }
 .seg-btn:first-child { margin-left: 0; border-radius: 8px 0 0 8px; }
 .seg-btn:last-child { border-radius: 0 8px 8px 0; }
 .seg-btn.on { background: var(--shiqing); border-color: var(--shiqing); color: #fff; font-weight: 600; position: relative; }
+/* explode slider (js/app/tools.js): drag to take the chariot apart */
+.slider { display: flex; align-items: center; gap: 10px; }
+.slider-end { flex: none; min-height: 48px; padding: 0 10px; border: none; background: none; font-size: 18px; color: var(--wood-dark); }
+.slider-range {
+  flex: 1 1 auto; min-width: 0; height: 48px; margin: 0; background: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+}
+.slider-range::-webkit-slider-runnable-track {
+  height: 10px; border-radius: 5px;
+  background: linear-gradient(to right, var(--shiqing) var(--fill, 0%), var(--wood-light) var(--fill, 0%));
+  border: 2px solid var(--wood-mid);
+}
+.slider-range::-moz-range-track { height: 10px; border-radius: 5px; background: var(--wood-light); border: 2px solid var(--wood-mid); }
+.slider-range::-moz-range-progress { height: 10px; border-radius: 5px; background: var(--shiqing); }
+.slider-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 34px; height: 34px; margin-top: -14px; border-radius: 50%;
+  background: var(--paper); border: 3px solid var(--shiqing); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+.slider-range::-moz-range-thumb {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--paper); border: 3px solid var(--shiqing);
+}
+.slider-range:focus-visible { outline: 3px solid var(--zhu); outline-offset: 2px; border-radius: 8px; }
 .toggle {
   display: inline-flex; align-items: center; gap: 10px; padding: 0 20px;
   border: 2px solid var(--wood-mid); border-radius: 8px; background: var(--wood-light);

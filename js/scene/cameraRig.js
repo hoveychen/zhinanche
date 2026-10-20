@@ -48,6 +48,10 @@ export class CameraRig {
     this.box = null;
     this.last = { x: 0, z: 0, heading: Math.PI / 2 };
     this.extraRadius = 0;
+    /** seconds left to keep the taken-apart parts framed (set while they move) */
+    this.reframe = 0;
+    /** @type {THREE.Box3 | null} round the parts, world space */
+    this.parts = null;
   }
 
   /** Distance at which a sphere of radius r fills the view. @param {number} r */
@@ -212,7 +216,37 @@ export class CameraRig {
         }
       }
     }
+    if (this.reframe > 0 && this.parts && !this.glide && this.view !== "top") this.#frameParts(dt, this.parts);
+    this.reframe = Math.max(0, this.reframe - dt);
     this.last = { x: f.x, z: f.z, heading: f.heading };
     ctl.update(dt);
+  }
+
+  /**
+   * While the chariot comes apart, keep every part in the picture: same
+   * direction of view (the child may have turned it), centre and distance
+   * eased so the box round the parts just fits.
+   * @param {number} dt @param {THREE.Box3} box
+   */
+  #frameParts(dt, box) {
+    const cam = this.camera, ctl = this.controls;
+    const a = 1 - Math.exp(-dt * 5);
+    const off = cam.position.clone().sub(ctl.target);
+    const dist = off.length();
+    off.divideScalar(dist);
+    const centre = box.getCenter(new THREE.Vector3());
+    const right = new THREE.Vector3().crossVectors(cam.up, off).normalize();
+    const up = new THREE.Vector3().crossVectors(off, right);
+    const tv = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th = tv * cam.aspect;
+    let want = 0;
+    const c = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) {
+      c.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(centre);
+      const z = c.dot(off);
+      want = Math.max(want, z + Math.abs(c.dot(right)) / th, z + Math.abs(c.dot(up)) / tv);
+    }
+    want *= 1.08;
+    ctl.target.lerp(centre, a);
+    cam.position.copy(ctl.target).addScaledVector(off, dist + (want - dist) * a);
   }
 }

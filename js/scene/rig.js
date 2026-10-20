@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { ClutchDisplay } from "./clutchPhase.js";
 import { LEFT_NODES, PART_NODES, RIGHT_NODES, ownerOf } from "./parts.js";
-import { OUTLINES, SpinArc, TRAIN, makeHull, makeWire } from "./gearviz.js";
+import { OUTLINES, SpinArc, TRAIN, WIRE_OPACITY, makeHull, makeWire } from "./gearviz.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { PartId } from "../teach/types.js" */
@@ -30,6 +30,18 @@ import { OUTLINES, SpinArc, TRAIN, makeHull, makeWire } from "./gearviz.js";
  * @property {string} owner node name the mesh belongs to (marker teeth → their gear)
  * @property {boolean} wire drawn as a wireframe in x-ray (the body and the frame round the gears)
  * @property {boolean} [dim] faded back because other parts are highlighted
+ * @property {THREE.Mesh} mesh
+ * @property {THREE.LineSegments | null} lines its x-ray wireframe
+ * @property {Placed | null} place the exploding node it moves with
+ */
+
+/**
+ * @typedef {object} Placed a node that moves when taken apart (or lifts with the clutch)
+ * @property {THREE.Vector3} rest
+ * @property {THREE.Vector3} explode offset at explode = 1
+ * @property {Motion | null} lift
+ * @property {number} stage when it starts to move, 0..1 of the explode slider
+ * @property {number} k how far it has moved, 0..1, eased
  */
 
 /** @param {THREE.Object3D} o @returns {string} */
@@ -98,7 +110,7 @@ export class Rig {
     this.mechanism = root.userData.mechanism;
     /** @type {Motion[]} */
     this.motions = [];
-    /** @type {Map<THREE.Object3D, {rest: THREE.Vector3, explode: THREE.Vector3, lift: Motion | null}>} */
+    /** @type {Map<THREE.Object3D, Placed>} */
     this.placed = new Map();
     /** @type {Look[]} */
     this.looks = [];
@@ -114,8 +126,6 @@ export class Rig {
     this.dimming = false;
     /** @type {{hull: THREE.Mesh, owner: string}[]} */
     this.hulls = [];
-    /** @type {THREE.LineSegments[]} */
-    this.wires = [];
     /** @type {Spinner[]} */
     this.spinners = [];
     /** @type {Map<string, Spinner>} */
@@ -143,6 +153,8 @@ export class Rig {
           rest: o.position.clone(),
           explode: new THREE.Vector3().fromArray(Array.isArray(ex) ? ex : [0, 0, 0]),
           lift: motion?.motion === "lift" ? motion : null,
+          stage: stageOf(name),
+          k: 0,
         });
       }
     });
@@ -165,11 +177,16 @@ export class Rig {
       const mat = src.clone();
       o.material = mat;
       const wire = group === "shell" || owner === "body.frame";
-      this.looks.push({ mat, color: mat.color.clone(), group, owner, wire });
+      let place = null;
+      for (let a = /** @type {THREE.Object3D | null} */ (o); a && !place; a = a.parent) place = this.placed.get(a) ?? null;
+      /** @type {Look} */
+      const look = { mat, color: mat.color.clone(), group, owner, wire, mesh: o, lines: null, place };
+      this.looks.push(look);
       if (wire) {
         const lines = makeWire(o);
+        lines.material = lines.material.clone();
         o.add(lines);
-        this.wires.push(lines);
+        look.lines = lines;
       } else if (group === "gear" || group === "wheel" || group === "figure") {
         if (n && nameOf(n).endsWith(".marker")) continue;
         const hull = makeHull(o);
@@ -250,7 +267,9 @@ export class Rig {
   /** Positions from explode and lift. */
   #place() {
     for (const [node, p] of this.placed) {
-      node.position.copy(p.rest).addScaledVector(p.explode, this.explode);
+      // one after another: the body first, then the wheels, then the gears from the outside in
+      p.k = ease(THREE.MathUtils.clamp((this.explode - p.stage) / STAGE_SPAN, 0, 1));
+      node.position.copy(p.rest).addScaledVector(p.explode, p.k);
       if (p.lift) {
         const e = this.clutch.eased(p.lift.key === "clutchL" ? "L" : "R");
         node.position.addScaledVector(p.lift.axis, p.lift.distance * (1 - e));
@@ -263,7 +282,51 @@ export class Rig {
     const was = this.inside;
     this.explode = v;
     this.#place();
+    this.#shell();
     if (this.inside !== was) this.#outline();
+  }
+
+  /**
+   * The body: solid, a faint wireframe in x-ray, and fading away as it flies
+   * off when taken apart (it hides the gears, and would fly out of the picture).
+   */
+  #shell() {
+    const see = this.xray;
+    for (const l of this.looks) {
+      if (!l.wire) continue;
+      const gone = l.group === "shell" && l.place ? THREE.MathUtils.smoothstep(l.place.k, 0.25, 0.8) : 0;
+      const m = l.mat;
+      const transparent = see || gone > 0;
+      if (m.transparent !== transparent) {
+        m.transparent = transparent;
+        m.needsUpdate = true;
+      }
+      m.opacity = see ? 0 : 1 - gone;
+      m.depthWrite = !see && gone < 0.5;
+      m.colorWrite = !see;
+      l.mesh.visible = gone < 0.999;
+      if (l.lines) {
+        l.lines.visible = see;
+        /** @type {THREE.LineBasicMaterial} */ (l.lines.material).opacity = WIRE_OPACITY * (1 - gone);
+      }
+    }
+  }
+
+  /**
+   * A box round the parts that stay in the picture (not the body flying off,
+   * nor the long pole), in world space.
+   * @param {THREE.Box3} out
+   */
+  bounds(out) {
+    this.root.updateMatrixWorld(true);
+    const box = out.makeEmpty(), b = new THREE.Box3();
+    for (const l of this.looks) {
+      if (l.group === "shell" || l.owner === "body.pole" || !l.mesh.visible) continue;
+      const g = l.mesh.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      box.union(b.copy(/** @type {THREE.Box3} */ (g.boundingBox)).applyMatrix4(l.mesh.matrixWorld));
+    }
+    return box;
   }
 
   /** Looking at the works: x-ray on, or taken apart. */
@@ -296,20 +359,15 @@ export class Rig {
     this.dimming = dimming;
     for (const l of this.looks) {
       const m = l.mat;
-      // x-ray: the body stops drawing (it still writes nothing, casts no
-      // shadow) and its wireframe shows instead; no stacked see-through layers
-      const see = xray && l.wire;
-      m.transparent = see;
-      m.opacity = see ? 0 : 1;
-      m.depthWrite = !see;
-      m.colorWrite = !see;
       m.color.copy(l.color);
       m.emissive.setRGB(0, 0, 0);
       l.dim = dimming && !this.lit.has(l.owner) && MOVING_GROUPS.has(l.group);
       if (l.dim) m.color.lerp(FADE, FADE_K);
       m.needsUpdate = true;
     }
-    for (const w of this.wires) w.visible = xray;
+    // x-ray: the body stops drawing (it writes nothing, casts no shadow) and
+    // its wireframe shows instead; no stacked see-through layers
+    this.#shell();
     this.#outline();
   }
 
@@ -384,7 +442,7 @@ export class Rig {
    * @returns {{node: THREE.Object3D, point: THREE.Vector3} | null}
    */
   pick(ray) {
-    const targets = this.xray ? this.meshes.filter((_, i) => !this.looks[i].wire) : this.meshes;
+    const targets = this.meshes.filter((m, i) => m.visible && !(this.xray && this.looks[i].wire));
     const hit = ray.intersectObjects(targets, false)[0];
     if (!hit) return null;
     let n = /** @type {THREE.Object3D | null} */ (hit.object.userData.partNode);
@@ -397,6 +455,33 @@ export class Rig {
   node(name) {
     return this.byName.get(name) ?? null;
   }
+}
+
+/** Share of the slider over which one part makes its move. */
+const STAGE_SPAN = 0.45;
+
+/**
+ * When a part starts to move as the chariot comes apart. Parts that would
+ * run into each other go in the right order: the wheels before the gears on
+ * their axles, the upper side gear before the carrier under it, the figure
+ * before the shaft it stands on.
+ * @type {[RegExp, number][]}
+ */
+const STAGES = [
+  [/^body\.roof/, 0], [/^body\.tier/, 0.04], [/^body\.deck/, 0.08], [/^body\./, 0.12],
+  [/^wheel\./, 0.28], [/crown\.L|foot\./, 0.36], [/crown\.R|sideB/, 0.42], [/bigFlat/, 0.4],
+  [/^figure$/, 0.44], [/carrier|smallLift|roller/, 0.48], [/figure\.shaft/, 0.5],
+];
+
+/** @param {string} name */
+function stageOf(name) {
+  for (const [re, s] of STAGES) if (re.test(name)) return s;
+  return 0.3;
+}
+
+/** ease in and out @param {number} x 0..1 */
+function ease(x) {
+  return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2;
 }
 
 /**
