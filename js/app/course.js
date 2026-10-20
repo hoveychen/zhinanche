@@ -6,6 +6,7 @@ import { h, s } from "./dom.js";
 import { S, bind, lessons } from "../i18n.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
+import { siteFoot } from "./about.js";
 
 /** @import { App } from "./app.js" */
 /** @import { Tools } from "./tools.js" */
@@ -109,17 +110,19 @@ export class Course {
       asks,
       h("h3", { class: "list-head", text: t.lessonsHead }),
       list,
+      siteFoot(),
     ]);
     this.#show(body, null);
   }
 
   // ---------- free driving ----------
 
-  free() {
+  /** @param {Partial<import("./directive.js").SceneState>} [over] a shared setup */
+  free(over) {
     this.mode = "free";
     this.setSheet(false);
     this.#renderFree();
-    this.app.free();
+    this.app.free(over);
     this.cb.onMode("free");
   }
 

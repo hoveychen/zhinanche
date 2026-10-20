@@ -9,6 +9,8 @@ import { Course } from "./app/course.js";
 import { Dial, Odometer } from "./app/hud.js";
 import { byId, h, s } from "./app/dom.js";
 import { S, bind, onLang, applyDocument, langSwitch, lessons } from "./i18n.js";
+import { decodeShare, setupOf } from "./app/share.js";
+import { ShareButton } from "./app/sharelink.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -20,6 +22,14 @@ applyDocument();
 document.querySelector(".bar")?.append(langSwitch());
 
 const world = new World(glHost);
+// the other chariot's model is fetched the first time it is picked
+world.onLoading = (on, err) => {
+  loading.hidden = !on && !err;
+  if (err) {
+    loading.textContent = S().ui.modelFailed;
+    loading.classList.add("error");
+  }
+};
 const input = new DriveInput({
   onDraw: (on) => {
     world.controls.enabled = !on;
@@ -85,8 +95,9 @@ const pauseBtn = bind(h("button", { type: "button", class: "pause-btn", "aria-pr
   /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { class: "i-pause", d: "M6 4 H10 V20 H6 Z M14 4 H18 V20 H14 Z" }), s("path", { class: "i-play", d: "M7 4 L20 12 L7 20 Z" })]))),
   pauseText,
 ]), (s) => s.ui.pauseKey, "title");
+const share = new ShareButton(() => setupOf(app.state, app.drawn));
 const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [bind(h("b"), (s) => s.ui.paused), bind(h("span"), (s) => s.ui.pausedHow)]);
-overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), hint, demoCount, callout, stageHook, pauseBtn, pausedNote);
+overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), hint, demoCount, callout, stageHook, pauseBtn, share.el, share.status, pausedNote);
 
 const course = new Course(app, tools, byId("panel"), {
   onMode: (mode) => {
@@ -247,14 +258,33 @@ function frame(/** @type {number} */ now) {
   requestAnimationFrame(frame);
 }
 
+/**
+ * A shared link (#s=1&…, js/app/share.js): free driving set up as it was,
+ * driving the route that was drawn.
+ * @param {import("./app/share.js").ShareSetup} sh
+ */
+function openShared(sh) {
+  const { route, ...setup } = sh;
+  course.free(setup);
+  if (route) app.driveDrawn(route);
+}
+window.addEventListener("hashchange", () => {
+  const sh = decodeShare(location.hash);
+  if (sh) openShared(sh);
+});
+
 try {
+  const shared = decodeShare(location.hash);
+  // load the shared chariot first, not the default one
+  if (shared) world.mechanism = shared.mechanism;
   await world.load();
   loading.hidden = true;
   // ?free opens free driving; ?lesson=N&step=K (1-based) opens a lesson step.
   const q = new URLSearchParams(location.search);
   const LESSONS = lessons();
   const li = Number(q.get("lesson")) - 1;
-  if (q.has("free")) course.free();
+  if (shared) openShared(shared);
+  else if (q.has("free")) course.free();
   else if (Number.isInteger(li) && li >= 0 && li < LESSONS.length) {
     const k = Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1)));
     course.open(li, k - 1);

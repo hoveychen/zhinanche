@@ -64,6 +64,19 @@ export const STR_EN = {
     moreBelow: "More",
     sheetOpen: "More to try: break it, X-ray it, take it apart",
     sheetClose: "Close",
+    modelFailed: "This chariot got stuck on the way out. Please reload the page and try again.",
+  },
+
+  share: {
+    copy: "Copy link",
+    copied: "Copied!",
+    hint: "Saves the gears, the switches and the road you drew into a link: whoever opens it sees the same chariot drive the same road",
+    manual: "Couldn't copy it. Here's the link to copy yourself:",
+  },
+
+  about: {
+    source: "Source code",
+    license: "Open source, Apache-2.0",
   },
 
   free: {
