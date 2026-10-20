@@ -31,6 +31,21 @@ const GLIDE = 0.8;
  */
 const CHASE_DIR = new THREE.Vector3(-0.2, 0.125, -1).normalize();
 
+/**
+ * Where the camera may go, relative to the chariot (the courtyard rides along
+ * with it, js/scene/look.js): inside the corridor columns (x ±63.5), short of
+ * the lions and the south gate (z 92, 105) and the pines and cauldrons in
+ * the north (z −108). A drag that would take it further brings it in closer
+ * along the line of sight instead of through a wall.
+ */
+const ROOM = { x: 56, north: -100, south: 84 };
+
+/** The chariot's bulk (centre height, radius): the wide views keep out of it. */
+const BULK = { y: 5, r: 9 };
+
+/** Views close in on the works on purpose: they may look from inside the body. */
+const CLOSE = new Set(["gears", "wheels", "figure"]);
+
 export class CameraRig {
   /**
    * @param {THREE.PerspectiveCamera} camera
@@ -54,6 +69,58 @@ export class CameraRig {
     this.parts = null;
     /** @type {Insets} the HUD's margins, kept clear when framing the parts */
     this.partsInset = { left: 0, right: 0, top: 0, bottom: 0 };
+    /** how far from the target the camera wanted to be when last kept in the room (0: it wasn't) */
+    this.wantDist = 0;
+    /** the camera is where its view put it (nobody has dragged it since) */
+    this.atPreset = false;
+    controls.addEventListener("start", () => {
+      this.atPreset = false;
+    });
+  }
+
+  /**
+   * Keep the camera in the courtyard and out of the chariot, moving it along
+   * its line of sight (the view keeps its direction). Remembers how far it
+   * wanted to be, so it eases back out once the way is clear.
+   * @param {Focus} f
+   */
+  #keepIn(f) {
+    const cam = this.camera.position, tgt = this.controls.target;
+    const off = cam.clone().sub(tgt);
+    const want = off.length();
+    // the room: shrink the offset until the camera is inside
+    let t = 1;
+    const lim = (/** @type {number} */ o, /** @type {number} */ base, /** @type {number} */ lo, /** @type {number} */ hi) => {
+      const p = base + o;
+      if (p > hi && o > 0) t = Math.min(t, (hi - base) / o);
+      if (p < lo && o < 0) t = Math.min(t, (lo - base) / o);
+    };
+    lim(off.x, tgt.x - f.x, -ROOM.x, ROOM.x);
+    lim(off.z, tgt.z - f.z, ROOM.north, ROOM.south);
+    t = Math.max(0, t);
+    off.multiplyScalar(t);
+    if (!CLOSE.has(this.view)) {
+      // out of the chariot: if inside its sphere, go on along the line of
+      // sight to the far side of it, or back toward the target if nearer
+      const c = new THREE.Vector3(f.x, BULK.y, f.z).sub(tgt);
+      const d = off.clone();
+      const len = d.length();
+      if (len > 1e-6) {
+        d.divideScalar(len);
+        const b = d.dot(c), cc = c.lengthSq() - BULK.r * BULK.r;
+        const disc = b * b - cc;
+        if (disc > 0) {
+          const s0 = b - Math.sqrt(disc), s1 = b + Math.sqrt(disc);
+          if (len > s0 && len < s1) off.copy(d).multiplyScalar(s0 > 0.5 ? s0 : s1);
+        }
+      }
+    }
+    const got = off.length();
+    if (Math.abs(got - want) < 1e-4) return;
+    cam.copy(tgt).add(off);
+    // brought in by a wall: ease back out later; pushed out of the chariot:
+    // that is simply where it is now (zooming out again starts from there)
+    this.wantDist = got < want ? want : 0;
   }
 
   /** Distance at which a sphere of radius r fills the view. @param {number} r */
@@ -96,7 +163,7 @@ export class CameraRig {
       case "follow": {
         // A chase camera that does not turn with the chariot: the chariot
         // turns on screen while the figure's hand keeps pointing at the gate.
-        const target = new THREE.Vector3(f.x + 2.4, 8, f.z + 9);
+        const target = new THREE.Vector3(f.x + 1, 7.5, f.z + 3.5);
         // Phones held upright (polish-mobile): fit() goes by the narrow width
         // there and leaves the chariot small, so come in closer.
         const r = this.camera.aspect < 0.8 ? 15.5 : 19;
@@ -139,6 +206,10 @@ export class CameraRig {
    */
   setView(view, f, instant = false) {
     this.view = view;
+    this.atPreset = true;
+    // zooming in stops short of the chariot, except in the views that look inside it
+    this.controls.minDistance = CLOSE.has(view) ? 2 : 16;
+    this.wantDist = 0;
     if (view !== "top") this.box = null;
     this.last = { x: f.x, z: f.z, heading: f.heading };
     if (instant) {
@@ -189,6 +260,13 @@ export class CameraRig {
    */
   update(dt, f) {
     const cam = this.camera, ctl = this.controls;
+    // put back the distance taken off last frame, so the camera eases out
+    // again once the way is clear (a glide or a jump places it afresh)
+    if (this.wantDist && !this.glide) {
+      const off = cam.position.clone().sub(ctl.target);
+      cam.position.copy(ctl.target).addScaledVector(off.normalize(), this.wantDist);
+    }
+    this.wantDist = 0;
     if (this.glide) {
       const g = this.glide;
       g.t = Math.min(1, g.t + dt / GLIDE);
@@ -225,6 +303,7 @@ export class CameraRig {
     this.reframe = Math.max(0, this.reframe - dt);
     this.last = { x: f.x, z: f.z, heading: f.heading };
     ctl.update(dt);
+    this.#keepIn(f);
   }
 
   /**

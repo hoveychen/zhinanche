@@ -344,6 +344,11 @@ export class World {
     this.renderer.domElement.style.height = "100%";
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    // OrbitControls turns 2π × rotateSpeed per view height dragged: about a
+    // quarter turn for 300 px, slow enough for a child to stop where they mean to
+    this.controls.rotateSpeed = THREE.MathUtils.clamp(h / 1200, 0.25, 1);
+    // a view placed before the layout settled was framed for the old shape
+    if (this.#viewed && this.cam.atPreset && !this.cam.glide) this.cam.setView(this.cam.view, this.camFocus(), true);
     this.route.resize(w, h);
     this.look?.resize(w, h);
   }
