@@ -1,0 +1,179 @@
+// Page entry: builds the 3D view, the HUD, the controls and the lesson panel,
+// wires pointer input (drawing routes, tapping parts) and runs the frame loop.
+
+import { World, toWorld } from "./scene/world.js";
+import { App } from "./app/app.js";
+import { DriveInput } from "./app/drive.js";
+import { Tools } from "./app/tools.js";
+import { Course } from "./app/course.js";
+import { Dial, Odometer } from "./app/hud.js";
+import { byId, h } from "./app/dom.js";
+
+/** @import { Object3D, Vector3 } from "three" */
+
+const stage = byId("stage");
+const glHost = byId("stage-gl");
+const overlay = byId("stage-overlay");
+const loading = byId("loading");
+
+const world = new World(glHost);
+const input = new DriveInput({
+  onDraw: (on) => {
+    world.controls.enabled = !on;
+    stage.classList.toggle("drawing", on);
+    hint.hidden = !on;
+    if (on && app.state.view !== "top") app.direct({ view: "top" });
+  },
+  onDrive: () => app.takeOver(),
+});
+const app = new App(world, input);
+const tools = new Tools({ direct: (d) => app.direct(d), resetChariot: () => app.resetChariot() });
+const dial = new Dial();
+const odo = new Odometer();
+const hint = h("p", { class: "stage-hint", hidden: true, text: "用手指在地上画一条路，松手车就出发" });
+const demoCount = h("p", { class: "demo-count", hidden: true });
+const callout = h("div", { class: "callout", hidden: true, role: "status" });
+overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [input.drawBtn, input.pad]), hint, demoCount, callout);
+
+const course = new Course(app, tools, byId("panel"), {
+  onMode: (mode) => {
+    for (const b of document.querySelectorAll("[data-go]")) {
+      const on = /** @type {HTMLElement} */ (b).dataset.go === mode || (mode === "lesson" && /** @type {HTMLElement} */ (b).dataset.go === "home");
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-current", on ? "page" : "false");
+    }
+    document.body.dataset.mode = mode;
+  },
+});
+for (const b of document.querySelectorAll("[data-go]")) {
+  b.addEventListener("click", () => ((/** @type {HTMLElement} */ (b)).dataset.go === "free" ? course.free() : course.home()));
+}
+
+app.onState((st) => {
+  tools.sync(st);
+  odo.el.hidden = !st.odometer || st.demo === "holdHands";
+  input.pad.hidden = !st.controls.includes("drive");
+  input.drawBtn.hidden = !st.controls.includes("draw");
+  demoCount.hidden = st.demo !== "holdHands";
+  dial.el.hidden = st.demo === "holdHands";
+  hideCallout();
+});
+world.holdHands.onLap = () => app.tracker.demoLap();
+
+// ---------- pointer: draw a route, or tap a part ----------
+
+/** @type {{x: number, z: number}[] | null} */
+let drawing = null;
+/** @type {{x: number, y: number, t: number} | null} */
+let press = null;
+const canvas = world.renderer.domElement;
+
+canvas.addEventListener("pointerdown", (e) => {
+  press = { x: e.clientX, y: e.clientY, t: performance.now() };
+  if (!input.drawOn || !e.isPrimary) return;
+  const p = world.groundAt(e.clientX, e.clientY);
+  if (!p) return;
+  canvas.setPointerCapture(e.pointerId);
+  app.takeOver();
+  drawing = [p];
+  world.route.set([toWorld(app.chariot), p]);
+});
+canvas.addEventListener("pointermove", (e) => {
+  if (!drawing) return;
+  const p = world.groundAt(e.clientX, e.clientY);
+  const last = drawing[drawing.length - 1];
+  if (p && Math.hypot(p.x - last.x, p.z - last.z) > 0.4 && drawing.length < 600) {
+    drawing.push(p);
+    world.route.set([toWorld(app.chariot), ...drawing]);
+  }
+});
+const endDraw = () => {
+  if (!drawing) return;
+  const pts = drawing;
+  drawing = null;
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+  if (len < 4) world.route.clear();
+  else app.followRoute(pts);
+};
+canvas.addEventListener("pointerup", (e) => {
+  if (drawing) {
+    endDraw();
+    return;
+  }
+  if (press && !input.drawOn && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 8 && performance.now() - press.t < 500) {
+    const hit = world.pick(e.clientX, e.clientY);
+    if (hit) showCallout(hit);
+    else hideCallout();
+  }
+  press = null;
+});
+canvas.addEventListener("pointercancel", endDraw);
+
+// ---------- the part callout ----------
+
+/** @type {{node: Object3D, local: Vector3, until: number} | null} */
+let pinned = null;
+
+/** @param {NonNullable<ReturnType<World["pick"]>>} hit */
+function showCallout(hit) {
+  callout.replaceChildren(h("b", { text: hit.title }), hit.detail ? h("span", { text: hit.detail }) : "");
+  callout.className = `callout${hit.side ? ` ${hit.side}` : ""}`;
+  callout.hidden = false;
+  const node = world.holder;
+  pinned = { node, local: node.worldToLocal(hit.point.clone()), until: performance.now() + 6000 };
+}
+
+function hideCallout() {
+  callout.hidden = true;
+  pinned = null;
+}
+
+function placeCallout() {
+  if (!pinned) return;
+  if (performance.now() > pinned.until) return hideCallout();
+  const p = world.project(pinned.node.localToWorld(pinned.local.clone()));
+  if (p.behind) return hideCallout();
+  const w = overlay.clientWidth;
+  callout.style.left = `${Math.max(8, Math.min(w - callout.offsetWidth - 8, p.x - callout.offsetWidth / 2))}px`;
+  callout.style.top = `${Math.max(8, p.y - callout.offsetHeight - 18)}px`;
+}
+
+// ---------- frame loop ----------
+
+let last = performance.now();
+let hudClock = 0;
+function frame(/** @type {number} */ now) {
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+  last = now;
+  app.tick(dt);
+  world.animate(dt);
+  hudClock += dt;
+  if (hudClock > 1 / 30) {
+    hudClock = 0;
+    const pose = app.chariot.pose();
+    const cam = world.camera.position, tgt = world.controls.target;
+    const camBearing = Math.atan2(-(tgt.z - cam.z), tgt.x - cam.x);
+    dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
+    if (!odo.el.hidden) odo.update(pose.distL, pose.distR);
+    if (!demoCount.hidden) demoCount.textContent = `里圈走了 ${world.holdHands.steps.in} 步，外圈走了 ${world.holdHands.steps.out} 步`;
+    placeCallout();
+  }
+  world.render();
+  requestAnimationFrame(frame);
+}
+
+try {
+  await world.load();
+  loading.hidden = true;
+  course.home();
+  requestAnimationFrame(frame);
+  if (new URLSearchParams(location.search).has("selftest")) {
+    const { selftest } = await import("./app/selftest.js");
+    await selftest({ app, course, world, tools, input });
+  }
+} catch (err) {
+  loading.textContent = "车没能搬出来，请刷新页面再试一次。";
+  loading.classList.add("error");
+  throw err;
+}
