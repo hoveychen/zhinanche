@@ -206,6 +206,18 @@ export class Environment {
     );
     wall.position.y = -0.6;
     envScene.add(wall);
+    // Dark tiled roofs over the wall: a hard light/dark line for metal to catch.
+    const eaves = new THREE.Mesh(
+      new THREE.CylinderGeometry(35.5, 35.5, 1.4, 48, 1, true, Math.PI * 0.12, Math.PI * 1.76),
+      new THREE.MeshBasicMaterial({ color: 0x23282c, side: THREE.BackSide }),
+    );
+    eaves.position.y = 0.9;
+    envScene.add(eaves);
+    // The sun itself, as a small very bright disc: the glint on brass and lacquer.
+    const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(2.2, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(28, 25, 21) }));
+    sunDisc.position.copy(SUN_DIR).multiplyScalar(30);
+    sunDisc.lookAt(0, 0, 0);
+    envScene.add(sunDisc);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     const rt = pmrem.fromScene(envScene, 0.02, 0.1, 100);
     pmrem.dispose();

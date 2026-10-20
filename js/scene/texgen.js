@@ -115,6 +115,8 @@ export function wood(size = 512) {
   const pores = new Lattice(6, 256, 13);
   const pores2 = new Lattice(12, 128, 14);
   const figure = fbm(2, 4, 3, 15);
+  // Long streaks along the grain: what still reads as wood from a distance.
+  const streak = fbm(1, 6, 3, 17);
   const rings = 24;
   const albedo = blank(size), soft = blank(size), rough = blank(size);
   const height = new Float32Array(size * size);
@@ -130,8 +132,9 @@ export function wood(size = 512) {
       const p = Math.max(pores.at(u * 6, v * 256), 0.85 * pores2.at(u * 12, v * 128));
       const pore = smooth(0.7, 0.92, p) * (1 - 0.6 * late);
       const f = figure(u, v) - 0.5;
-      const g = 0.9 - 0.3 * late - 0.1 * pore + 0.1 * f + 0.06 * ringTone;
-      const gs = 0.94 - 0.08 * late - 0.03 * pore + 0.04 * f + 0.02 * ringTone;
+      const st = streak(u, v) - 0.5;
+      const g = 0.88 - 0.3 * late - 0.1 * pore + 0.14 * f + 0.06 * ringTone + 0.3 * st;
+      const gs = 0.93 - 0.08 * late - 0.03 * pore + 0.04 * f + 0.02 * ringTone + 0.1 * st;
       const i = y * size + x, o = i * 4;
       albedo.data[o] = byte(g);
       albedo.data[o + 1] = byte(g * 0.97);

@@ -87,7 +87,7 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },
   orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },
   // Centre train, shaft and the figure's base: cast brass.
-  gold: { color: 0xd9b57c, map: "metal", roughness: 0.3, metalness: 1, normal: 0.25, scale: 0.8 },
+  gold: { color: 0xe6c98c, map: "metal", roughness: 0.2, metalness: 1, normal: 0.2, scale: 0.8 },
   marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1 },
   iron: { color: 0x55565a, map: "metal", roughness: 0.62, metalness: 0.9, normal: 0.5, scale: 1.2 },
   rope: { color: 0xb59a68, map: "wood", roughness: 0.95, normal: 1, scale: 3, sheen: 0.4 },

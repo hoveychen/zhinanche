@@ -8,7 +8,7 @@
 // Units: chi. South = +z, east = +x.
 
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 
 /** @import { Textures } from "./materials.js" */
 
@@ -37,7 +37,7 @@ class Bucket {
   add(key, g) {
     let geo = g.index ? g.toNonIndexed() : g;
     if (!geo.getAttribute("uv")) geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(geo.getAttribute("position").count * 2), 2));
-    for (const k of Object.keys(geo.attributes)) if (!["position", "normal", "uv"].includes(k)) geo.deleteAttribute(k);
+    for (const k of Object.keys(geo.attributes)) if (!["position", "normal", "uv", "color"].includes(k)) geo.deleteAttribute(k);
     const list = this.parts.get(key);
     if (list) list.push(geo);
     else this.parts.set(key, [geo]);
@@ -224,22 +224,49 @@ function balustrade(b, z, x0, x1) {
   b.box("marble", [x0 - 1, 0, z - 1.2], [x1 + 1, 0.5, z + 1.2]);
 }
 
-/** Cypress-ish tree: trunk and lumpy crown. @param {Bucket} b @param {number} x @param {number} z @param {number} h @param {number} seed */
-function tree(b, x, z, h, seed) {
+/**
+ * Cypress-ish tree: trunk and a crown of ragged clumps, darker underneath.
+ * @param {Bucket} b @param {number} x @param {number} z @param {number} h @param {number} seed
+ * @param {boolean} [near] inside the yard: more and finer clumps
+ */
+function tree(b, x, z, h, seed, near = false) {
   const r = rand(seed);
-  b.column("trunk", x, z, 0, h * 0.45, h * 0.035, 7);
-  const blobs = 6;
-  for (let k = 0; k < blobs; k++) {
-    const t = k / (blobs - 1);
-    const rad = h * (0.2 - 0.1 * t) * (0.85 + 0.3 * r());
-    const g = new THREE.IcosahedronGeometry(rad, 1);
+  b.column("trunk", x, z, 0, h * 0.5, h * 0.03, 7);
+  const clumps = near ? 24 : 16;
+  const top = h * 1.02, bottom = h * 0.36;
+  const tint = 0.85 + 0.25 * r();
+  for (let k = 0; k < clumps; k++) {
+    const t = k < 4 ? 0.15 + 0.2 * k : r();
+    const y = bottom + (top - bottom) * t;
+    const spread = h * 0.13 * (1 - 0.65 * t);
+    const a = r() * Math.PI * 2;
+    const d = k < 4 ? 0 : spread * (0.55 + 0.45 * r());
+    const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
+    const small = near ? 1 : 1.25;
+    const rad = h * small * (k < 4 ? 0.13 - 0.06 * t : 0.09 - 0.045 * t) * (0.85 + 0.3 * r());
+    // Icosahedrons come unindexed: weld them so the normals come out smooth.
+    const g = mergeVertices(new THREE.IcosahedronGeometry(rad, 2).deleteAttribute("uv").deleteAttribute("normal"));
     const p = g.getAttribute("position");
+    const ph = r() * 10;
+    // Ragged leaf-spray surface: two octaves of bumps, no smooth "boulder".
     for (let i = 0; i < p.count; i++) {
-      const s = 0.82 + 0.3 * Math.abs(Math.sin(p.getX(i) * 1.7 + p.getY(i) * 2.3 + seed)) * r();
-      p.setXYZ(i, p.getX(i) * s, p.getY(i) * s * 0.9, p.getZ(i) * s);
+      const X = p.getX(i) / rad, Y = p.getY(i) / rad, Z = p.getZ(i) / rad;
+      const n1 = Math.sin(X * 4.1 + ph) * Math.sin(Y * 3.7 - ph) * Math.sin(Z * 4.3 + 2 * ph);
+      const n2 = Math.sin(X * 11.3 - ph) * Math.sin(Y * 9.7 + ph) * Math.sin(Z * 10.9);
+      const s = 0.9 + 0.22 * n1 + 0.14 * n2;
+      p.setXYZ(i, p.getX(i) * s, p.getY(i) * s, p.getZ(i) * s);
     }
     g.computeVertexNormals();
-    g.translate(x + (r() - 0.5) * h * 0.12, h * (0.38 + 0.55 * t), z + (r() - 0.5) * h * 0.12);
+    g.translate(cx, y, cz);
+    // Light falls off into the crown and towards its base (cheap ambient occlusion).
+    const col = new Float32Array(p.count * 3);
+    for (let i = 0; i < p.count; i++) {
+      const up = (p.getY(i) - bottom) / (top - bottom);
+      const out = Math.hypot(p.getX(i) - x, p.getZ(i) - z) / (h * 0.25);
+      const v = Math.min(1.15, (0.4 + 0.45 * up + 0.3 * Math.min(1, out)) * tint * (0.8 + 0.3 * r()));
+      col.set([v * 0.95, v, v * 0.9], i * 3);
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
     b.add("leaves", g);
   }
 }
@@ -301,7 +328,7 @@ function materials() {
     column: M(0x8f2318, 0.55),
     bracket: M(0x2f6458, 0.7),
     roofYellow: M(0xd6a02c, 0.38, { side: THREE.DoubleSide }),
-    leaves: M(0x3c5530, 0.9, { flatShading: true }),
+    leaves: M(0x2b4425, 0.85, { vertexColors: true }),
     trunk: M(0x4a3626, 0.95),
     bronze: M(0x7a6a45, 0.45, { metalness: 0.9 }),
     hills: M(0x7d8c86, 1, { flatShading: true }),
@@ -328,7 +355,7 @@ export class Courtyard {
     balustrade(b, Y.south, Y.stairHalf, Y.east - 2);
     // trees: inside the north corners, and beyond the walls
     const r = rand(5);
-    for (const [x, z, h] of [[-112, -140, 44], [112, -140, 46], [-92, -150, 36], [92, -152, 38]]) tree(b, x, z, h, Math.floor(r() * 1e6));
+    for (const [x, z, h] of [[-112, -140, 44], [112, -140, 46], [-92, -150, 36], [92, -152, 38]]) tree(b, x, z, h, Math.floor(r() * 1e6), true);
     for (let k = 0; k < 26; k++) {
       const side = k % 2 ? 1 : -1;
       const x = side * (215 + r() * 120), z = -260 + r() * 330;

@@ -66,6 +66,7 @@ export class PostFX {
     if (debug === "aoraw") ao.output = GTAOPass.OUTPUT.AO;
     if (debug === "depth") ao.output = GTAOPass.OUTPUT.Depth;
     if (debug === "normal") ao.output = GTAOPass.OUTPUT.Normal;
+    if (debug === "noao") ao.enabled = false;
     composer.addPass(ao);
 
     const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.16, 0.55, 0.88);
