@@ -240,7 +240,7 @@ export class World {
       this.cam.reframe = this.explode > 0.001 ? 0.9 : 0;
     }
     if (this.cam.reframe > 0) {
-      this.cam.parts = this.rig.bounds(this.partsBox);
+      this.cam.parts = this.rig.bounds(this.partsBox, this.cam.view === "gears");
       this.cam.partsInset = this.hudInsets();
     }
     this.rig.pulse(this.time);
@@ -251,6 +251,8 @@ export class World {
 
   render() {
     updateOutlines(this.renderer, this.time);
+    // looking at the works is a diagram: every gear sharp, near or far
+    if (this.look.postfx) this.look.postfx.dofOn = !this.rig.inside;
     this.look.render();
   }
 

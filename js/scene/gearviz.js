@@ -148,7 +148,7 @@ export class SpinArc {
    * @param {THREE.Color} color
    * @param {number} [tube] chi
    */
-  constructor(radius, color, tube = 0.13) {
+  constructor(radius, color, tube = 0.085) {
     this.group = new THREE.Group();
     this.group.name = "spinArc";
     this.spin = new THREE.Group(); // mirrored for the other way round
@@ -159,12 +159,13 @@ export class SpinArc {
     tex.repeat.set(n, 1);
     tex.needsUpdate = true;
     this.tex = tex;
-    this.mat = new THREE.MeshBasicMaterial({ color, map: tex, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
-    this.headMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+    // tone-mapped like the rest of the scene: crisp dashes, not a glow the bloom smears into flames
+    this.mat = new THREE.MeshBasicMaterial({ color, map: tex, transparent: true, opacity: 0, depthWrite: false });
+    this.headMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false });
     const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 6, Math.max(24, Math.round(radius * 40)), ARC), this.mat);
-    const head = new THREE.Mesh(new THREE.ConeGeometry(tube * 3.2, tube * 7, 16), this.headMat);
+    const head = new THREE.Mesh(new THREE.ConeGeometry(tube * 3.6, tube * 8, 16), this.headMat);
     // the cone's middle sits on the arc's end, pointing along it
-    const a = ARC + (tube * 3.5) / radius;
+    const a = ARC + (tube * 4) / radius;
     head.position.set(radius * Math.cos(a), radius * Math.sin(a), 0);
     head.rotation.z = a;
     for (const m of [ring, head]) {
