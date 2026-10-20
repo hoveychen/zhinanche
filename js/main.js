@@ -10,6 +10,7 @@ import { Dial, Odometer } from "./app/hud.js";
 import { byId, h, s } from "./app/dom.js";
 import { S, bind, onLang, applyDocument, langSwitch, lessons } from "./i18n.js";
 import { decodeShare, setupOf } from "./app/share.js";
+import { placeCallout as placeCalloutBox } from "./app/callout.js";
 import { ShareButton } from "./app/sharelink.js";
 
 /** @import { Object3D, Vector3 } from "three" */
@@ -226,9 +227,16 @@ function placeCallout() {
   if (performance.now() > pinned.until) return hideCallout();
   const p = world.project(pinned.node.localToWorld(pinned.local.clone()));
   if (p.behind) return hideCallout();
-  const w = overlay.clientWidth;
-  callout.style.left = `${Math.max(8, Math.min(w - callout.offsetWidth - 8, p.x - callout.offsetWidth / 2))}px`;
-  callout.style.top = `${Math.max(8, p.y - callout.offsetHeight - 18)}px`;
+  const o = overlay.getBoundingClientRect();
+  const controls = [];
+  // the dial's words can run wider than the dial on a phone
+  for (const el of [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote]) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) controls.push({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
+  }
+  const at = placeCalloutBox(p, { w: callout.offsetWidth, h: callout.offsetHeight }, { w: overlay.clientWidth, h: overlay.clientHeight }, controls);
+  callout.style.left = `${at.x}px`;
+  callout.style.top = `${at.y}px`;
 }
 
 // ---------- frame loop ----------
