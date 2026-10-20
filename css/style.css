@@ -323,7 +323,8 @@ button { font: inherit; color: inherit; }
 
 .stage-hint, .demo-count {
   position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-  margin: 0; padding: 8px 18px; max-width: calc(100% - 360px); text-align: center;
+  /* left: 50% leaves only half the stage for shrink-to-fit; size to the text instead */
+  margin: 0; padding: 8px 18px; width: max-content; max-width: calc(100% - 360px); text-align: center;
   background: rgba(251, 248, 241, 0.95); border: 2px solid var(--wood-mid); border-radius: 8px;
   font-weight: 700; font-size: 19px; line-height: 1.4; pointer-events: none;
 }
