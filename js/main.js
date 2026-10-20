@@ -8,6 +8,7 @@ import { Tools } from "./app/tools.js";
 import { Course } from "./app/course.js";
 import { Dial, Odometer } from "./app/hud.js";
 import { byId, h } from "./app/dom.js";
+import { LESSONS } from "./teach/lessons.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -166,9 +167,17 @@ function frame(/** @type {number} */ now) {
 try {
   await world.load();
   loading.hidden = true;
-  course.home();
+  // ?free opens free driving; ?lesson=N&step=K (1-based) opens a lesson step.
+  const q = new URLSearchParams(location.search);
+  const li = Number(q.get("lesson")) - 1;
+  if (q.has("free")) course.free();
+  else if (Number.isInteger(li) && li >= 0 && li < LESSONS.length) {
+    const k = Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1)));
+    course.open(li, k - 1);
+  }
+  else course.home();
   requestAnimationFrame(frame);
-  if (new URLSearchParams(location.search).has("selftest")) {
+  if (q.has("selftest")) {
     const { selftest } = await import("./app/selftest.js");
     await selftest({ app, course, world, tools, input });
   }

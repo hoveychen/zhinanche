@@ -98,7 +98,9 @@ export class FollowPlayer {
    * @param {Slip} [slip]
    */
   constructor(points, style, slip) {
-    this.follower = new RouteFollower(points, { style });
+    // Children draw tight wiggles; with the default turn rate the pursuit
+    // can orbit a point inside its turning circle forever, so turn harder.
+    this.follower = new RouteFollower(points, style === "smooth" ? { style, turnRate: 3, lookahead: 3 } : { style });
     this.slip = slip;
     this.done = this.follower.done;
     /** guard against a route the follower can never finish */

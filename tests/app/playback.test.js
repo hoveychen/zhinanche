@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { Chariot } from "../../js/sim/chariot.js";
 import { run } from "../../js/sim/drive.js";
 import { MANOEUVRES } from "../../js/sim/scenarios.js";
-import { StepPlayer, isPivotOnly, planPlayback, recordSteps, tracePath } from "../../js/app/playback.js";
+import { FollowPlayer, StepPlayer, isPivotOnly, planPlayback, recordSteps, tracePath } from "../../js/app/playback.js";
 
 /** @param {{done: boolean, update: (c: Chariot, dt: number, s: number) => void}} p @param {Chariot} c */
 function finish(p, c) {
@@ -65,4 +65,23 @@ test("Song pivot route with help is played exactly as written (lesson 5: a right
   assert.ok(player instanceof StepPlayer);
   finish(player, c);
   assert.ok(Math.abs(c.pose().errorDeg) < 1e-9);
+});
+
+test("a drawn route that starts sideways or zigzags is driven to its end, not orbited", () => {
+  const routes = {
+    sideways: Array.from({ length: 30 }, (_, i) => ({ x: 2 + i * 0.5, y: 0.5 })),
+    zigzag: Array.from({ length: 60 }, (_, i) => ({ x: (i % 20 < 10 ? i % 10 : 10 - (i % 10)) * 0.8, y: i * 0.4 })),
+  };
+  for (const [name, pts] of Object.entries(routes)) {
+    const c = new Chariot({ mechanism: "differential" });
+    const p = new FollowPlayer([{ x: c.x, y: c.y }, ...pts], "smooth");
+    let t = 0;
+    while (!p.done && t < 60) {
+      p.update(c, 0.05, 1);
+      t += 0.05;
+    }
+    const end = pts[pts.length - 1];
+    assert.ok(t < 30, `${name} took ${t.toFixed(1)}s`);
+    assert.ok(Math.hypot(end.x - c.x, end.y - c.y) < 1, `${name} ended near its end`);
+  }
 });

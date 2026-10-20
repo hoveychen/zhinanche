@@ -172,7 +172,7 @@ export class HoldHands {
 
   /** Radius that frames the demo. */
   get radius() {
-    return R_OUT + 1.5;
+    return R_OUT + 3;
   }
 }
 

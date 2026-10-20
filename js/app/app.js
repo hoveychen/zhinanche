@@ -191,11 +191,14 @@ export class App {
     const st = this.state;
     const style = st.mechanism === "song" && st.assist ? "pivot" : "smooth";
     this.follow = new FollowPlayer(pts, style, st.slip);
+    // Keep the whole drawing (and the chariot on it) clear of the HUD.
+    if (st.view === "top") this.world.frameRoute(pts);
   }
 
   /** The child took the wheel: stop any auto-play. */
   takeOver() {
     if (this.player) this.player = null;
+    this.world.cam.unframe();
     if (this.follow) {
       this.follow = null;
       this.world.route.clear();

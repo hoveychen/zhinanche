@@ -64,7 +64,13 @@ export class CameraRig {
         if (this.box) {
           return { target: new THREE.Vector3(this.box.cx, 0, this.box.cz), pos: new THREE.Vector3(this.box.cx, this.box.h, this.box.cz + 0.01) };
         }
-        const h = this.fit(16 + this.extraRadius) * 1.0;
+        if (this.extraRadius) {
+          // A demo on the ground: frame just the demo, tipped a little (north
+          // still up) so the walkers read as people, not dots.
+          const d = this.fit(this.extraRadius), tip = THREE.MathUtils.degToRad(28);
+          return { target: new THREE.Vector3(f.x, 0, f.z), pos: new THREE.Vector3(f.x, d * Math.cos(tip), f.z + d * Math.sin(tip)) };
+        }
+        const h = this.fit(16);
         return { target: new THREE.Vector3(f.x, 0, f.z), pos: new THREE.Vector3(f.x, h, f.z + 0.01) };
       }
       case "follow": {
@@ -72,10 +78,13 @@ export class CameraRig {
         return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.62, 0.42), this.fit(11)) };
       }
       case "gears": {
+        // From the front and above: the wheels stand at the sides (local ±Z,
+        // radius 3) and would hide the gears from any side-on angle; the front
+        // board goes see-through with x-ray.
         const song = f.mechanism === "song";
-        const target = song ? local(1.1, 4.1, 0) : local(0, 1.55, 0);
-        const r = song ? 3.9 : 2.3;
-        return { target, pos: target.clone().addScaledVector(dirLocal(0.55, 0.62, 0.75), this.fit(r)) };
+        const target = song ? local(1.1, 4.1, 0) : local(0, 2.2, -0.6);
+        const r = song ? 3.9 : 3.3;
+        return { target, pos: target.clone().addScaledVector(dirLocal(1, 0.72, 0.28), this.fit(r)) };
       }
       case "wheels": {
         const target = local(0, 2.8, 0);
@@ -125,7 +134,7 @@ export class CameraRig {
       x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
       z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z);
     }
-    const pad = 9;
+    const pad = 13; // room for the HUD (dial, odometer, drive pad) round the edges
     const ex = (x1 - x0) / 2 + pad, ez = (z1 - z0) / 2 + pad;
     const v = THREE.MathUtils.degToRad(this.camera.fov);
     const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
@@ -162,8 +171,8 @@ export class CameraRig {
         const v = THREE.MathUtils.degToRad(cam.fov);
         const ez = h * Math.tan(v / 2), ex = ez * cam.aspect;
         const ox = f.x - ctl.target.x, oz = f.z - ctl.target.z;
-        dx = Math.abs(ox) > ex * 0.6 ? ox - Math.sign(ox) * ex * 0.6 : 0;
-        dz = Math.abs(oz) > ez * 0.6 ? oz - Math.sign(oz) * ez * 0.6 : 0;
+        dx = Math.abs(ox) > ex * 0.45 ? ox - Math.sign(ox) * ex * 0.45 : 0;
+        dz = Math.abs(oz) > ez * 0.45 ? oz - Math.sign(oz) * ez * 0.45 : 0;
       }
       cam.position.x += dx; cam.position.z += dz;
       ctl.target.x += dx; ctl.target.z += dz;
