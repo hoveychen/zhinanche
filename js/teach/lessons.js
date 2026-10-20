@@ -10,17 +10,17 @@ const PICTURES = {
   sancai: {
     src: "images/lessons/sancai-tuhui.jpg",
     alt: "古书里的一幅画：一个木人站在底座上，伸手指着前方",
-    credit: "明代《三才图会》，公有领域，图片来自 Wikimedia Commons",
+    credit: "明代王圻、王思义编《三才图会》（1609 年），公有领域，Wikimedia Commons",
   },
   museum: {
     src: "images/lessons/science-museum-model.jpg",
-    alt: "一辆木头做的指南车模型，车顶站着伸手的木人",
-    credit: "伦敦科学博物馆的指南车模型。摄影：Andy Dingley，CC BY 3.0，Wikimedia Commons",
+    alt: "一辆木头做的指南车模型，车顶站着伸手的木人。这个模型按差动式做的",
+    credit: "伦敦科学博物馆的指南车模型（差动式）。摄影：Andy Dingley，CC BY 3.0，Wikimedia Commons",
   },
   gears: {
     src: "images/lessons/taiwan-museum-gears.jpg",
     alt: "指南车模型里面的一组齿轮，叠在一根竖轴旁边",
-    credit: "台湾自然科学博物馆复原的指南车齿轮。摄影：SSR2000，CC BY-SA 3.0，Wikimedia Commons",
+    credit: "台湾国立自然科学博物馆复原的指南车齿轮。摄影：SSR2000，CC BY-SA 3.0，Wikimedia Commons",
   },
 };
 
@@ -48,7 +48,7 @@ export const LESSONS = [
         },
       },
       {
-        text: "传说很久以前，黄帝打仗遇到大雾。士兵认不出方向，他就造了指南车。\n\n这只是传说。真正写下造法的，是宋朝的一本书，叫《宋史》。",
+        text: "传说很久以前，黄帝打仗遇到大雾。士兵认不出方向，他就造了指南车。\n\n这只是传说。真正把造法写下来的，是一本讲宋朝历史的书，叫《宋史》。",
         picture: PICTURES.sancai,
       },
       {
@@ -64,7 +64,7 @@ export const LESSONS = [
         },
       },
       {
-        text: "古时候还有「司南」，是用磁石做的小勺子。\n\n指南车又叫「司南车」。名字很像，可是完全不一样：司南靠磁石，指南车靠齿轮。",
+        text: "古书里还有一种「司南」。人们认为，它是用磁石做的小勺子。\n\n指南车又叫「司南车」。名字很像，可是完全不一样：司南靠磁石，指南车靠齿轮。",
         scene: { demo: null },
       },
       {
@@ -95,7 +95,7 @@ export const LESSONS = [
       },
       {
         text: "来个难的：让车掉头，往回开。",
-        task: { kind: "do", prompt: "让车头转到后面去", check: "turnedAround", done: "车头朝北了，木人还是指南。" },
+        task: { kind: "do", prompt: "让车头转到后面去", check: "turnedAround", done: "车头掉过来了，木人还是指南。" },
       },
       {
         text: "在地上画一条弯弯曲曲的路。\n\n车会沿着你画的路走。",
@@ -160,7 +160,7 @@ export const LESSONS = [
       {
         text: "<b>记住：</b>车转得越多，两个轮子走的路就差得越多。\n\n反过来，只要知道两个轮子差了多少，就知道车转了多少。",
         scene: { reset: true, view: "follow", controls: ["drive", "reset"] },
-        task: { kind: "do", prompt: "自己开车拐个弯，看看两个轮子的路程", check: "turnedRight", done: "外边的轮子又走多了！" },
+        task: { kind: "do", prompt: "开车向右拐，看哪个轮子走得多", check: "turnedRight", done: "左轮在外边，这回左轮走得多！" },
       },
     ],
   },
@@ -196,7 +196,7 @@ export const LESSONS = [
         },
       },
       {
-        text: "刚才那个弯，外边的车轮比里边<b>多转了一圈</b>。\n\n多转一圈，车身正好掉了个头。木人就反着转半圈，还是指着南。",
+        text: "刚才车拐了两个弯，一共掉了个头。外边的车轮比里边<b>多转了一圈</b>。\n\n车身转了半圈，木人就反着转半圈，还是指着南。",
         scene: { view: "top", highlight: ["figure"] },
       },
       {
@@ -222,7 +222,7 @@ export const LESSONS = [
         picture: PICTURES.museum,
       },
       {
-        text: "《宋史》里记了两辆指南车。\n\n一辆是燕肃在 1027 年造的。一辆是吴德仁在 1107 年造的。书里写了齿轮多大，有几个齿。",
+        text: "《宋史》里记了两个人的造法。\n\n燕肃在 1027 年造了一辆。吴德仁在 1107 年又造了一辆。书里写了齿轮多大，有几个齿。",
       },
       {
         text: "我们来看燕肃的车。按「宋史式」，换一种齿轮。",
@@ -230,7 +230,7 @@ export const LESSONS = [
         task: { kind: "do", prompt: "换成「宋史式」", check: "switchedToSong", done: "这就是燕肃的造法。" },
       },
       {
-        text: "每个车轮旁边，立着一个齿轮，叫立子轮，有 24 个齿。\n\n两边各有一个小平轮，有 12 个齿。中间的大平轮有 48 个齿，木人就站在它上面。",
+        text: "每个车轮旁边，立着一个齿轮，叫立子轮，有 24 个齿。\n\n两边各有一个小平轮，有 12 个齿。中间的大平轮有 48 个齿。它的竖轴通到车顶，木人就站在轴上。",
         scene: { reset: true, mechanism: "song", xray: true, view: "gears", highlight: ["footL", "footR", "smallL", "smallR", "bigFlat"] },
         task: {
           kind: "choose",
@@ -242,15 +242,15 @@ export const LESSONS = [
         },
       },
       {
-        text: "车直着走，两个小平轮都抬起来，木人不动。\n\n车夫一拐弯，外边的小平轮就落下去，把外边的车轮和大平轮连起来。",
+        text: "车直着走，两个小平轮都抬着，木人不动。\n\n一拐弯，车辕一偏，外边的小平轮就落下去。外边的车轮就和大平轮连上了。",
         scene: { reset: true, assist: true, highlight: ["footR", "smallR", "bigFlat"], play: "pivotLeft" },
       },
       {
-        text: "车轮转一圈，立子轮带过 24 个齿。小平轮转两圈，大平轮转半圈。\n\n拐一个直角弯，外边的车轮转半圈。大平轮转 12 个齿，就是四分之一圈。《宋史》里就是这么写的。",
+        text: "车轮转一圈，立子轮的 24 个齿都推过去。小平轮就转两圈，大平轮转半圈。\n\n拐一个直角弯，外边的车轮转半圈。大平轮转 12 个齿，就是四分之一圈。《宋史》里就是这么写的。",
         scene: { view: "top", highlight: ["bigFlat", "figure"] },
       },
       {
-        text: "燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。现在把「车夫帮忙」关掉，让车随便绕一个大圈。",
+        text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。现在把「车夫帮忙」关掉，让车随便绕一个大圈。",
         scene: { reset: true, assist: false, view: "top", trails: true, highlight: [], play: "circle", controls: ["assist", "reset"] },
         task: {
           kind: "choose",
@@ -262,7 +262,10 @@ export const LESSONS = [
         },
       },
       {
-        text: "差动式是谁想出来的？是 20 世纪的英国人兰彻斯特，按机械的道理猜出来的。\n\n古书里<b>没有</b>写差动式，可它怎么走都准。所以这个网页先用差动式，你也能换成宋史式比一比。\n\n吴德仁的车更大，大平轮有 100 个齿。可书里没写清齿轮怎么接，今天还没人能确定。",
+        text: "吴德仁的车齿轮更多，大平轮有 100 个齿。\n\n可书里没写清这些齿轮是怎么一个接一个的。到今天，还没人能确定。",
+      },
+      {
+        text: "那差动式是谁想出来的？是 20 世纪的英国工程师兰彻斯特。他按机械的道理猜出来的。\n\n古书里<b>没有</b>写差动式，可它怎么走都准。所以这个网页先用差动式，你也能换成宋史式比一比。",
         scene: { mechanism: "differential", assist: true, controls: ["mechanism", "assist", "drive", "reset"] },
         task: {
           kind: "choose",
@@ -315,7 +318,7 @@ export const LESSONS = [
         task: { kind: "do", prompt: "把毛病改好", check: "fixedDrift", done: "修好了！你是个好工匠。" },
       },
       {
-        text: "指南针不怕打滑，因为它靠磁铁感觉南北。\n\n指南车没有磁铁。它只是一直在<b>数</b>车轮转了几圈。数错了，就指错了。",
+        text: "指南针不怕打滑。它靠磁针指南北，和车轮没关系。\n\n指南车没有磁铁。它只是一直在<b>数</b>车轮转了几圈。数错了，就指错了。",
         scene: { reset: true, demo: "compass", slip: { slipR: 0.2 }, play: "straight", view: "overview", controls: [] },
         task: {
           kind: "choose",
