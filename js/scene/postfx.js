@@ -14,7 +14,7 @@ import { BokehPass } from "three/addons/postprocessing/BokehPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 /** Camera-to-target distance (chi) below which depth of field fades in. */
-const DOF_NEAR = 15;
+const DOF_NEAR = 24;
 
 /** GTAO that skips transparent meshes and the sky in its depth/normal pass. */
 class OpaqueGTAOPass extends GTAOPass {
@@ -70,6 +70,7 @@ export class PostFX {
     composer.addPass(ao);
 
     const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.16, 0.55, 0.88);
+    if (debug === "nobloom") bloom.enabled = false;
     composer.addPass(bloom);
 
     const dof = new BokehPass(scene, camera, { focus: 12, aperture: 0.0016, maxblur: 0.006 });
@@ -95,6 +96,7 @@ export class PostFX {
     const dist = this.camera.position.distanceTo(this.target());
     const u = /** @type {Record<string, THREE.IUniform>} */ (/** @type {any} */ (this.dof).uniforms);
     const close = this.dofOn && dist < DOF_NEAR;
+    if (close !== this.dof.enabled) document.body.dataset.dof = close ? "on" : "off";
     this.dof.enabled = close;
     if (close) {
       u.focus.value = dist;

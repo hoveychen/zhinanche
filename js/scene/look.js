@@ -46,6 +46,8 @@ export class Look {
     scene.add(this.yard.group);
     camera.far = 2600;
     camera.updateProjectionMatrix();
+    /** @type {THREE.Mesh[]} */
+    this.chariotMeshes = [];
     /** @type {PostFX | null} */
     this.postfx = null;
     this.postfxLoading = false;
@@ -68,6 +70,9 @@ export class Look {
   /** Swap a loaded chariot's flat colours for real materials. @param {THREE.Object3D} root */
   async dress(root) {
     dressChariot(root, await this.texReady);
+    root.traverse((o) => {
+      if (o instanceof THREE.Mesh) this.chariotMeshes.push(o);
+    });
   }
 
   /** Contact shadow under the chariot. @param {THREE.Object3D} holder */
@@ -88,6 +93,12 @@ export class Look {
   render() {
     const { renderer, scene, camera } = this.host;
     this.governor?.tick(performance.now());
+    // Parts faded out for the x-ray view stop casting shadows, so the gears
+    // inside aren't left in the shade of a body you can't see.
+    for (const o of this.chariotMeshes) {
+      const m = /** @type {THREE.Material} */ (o.material);
+      o.castShadow = !(m.transparent && m.opacity < 0.5);
+    }
     if (SETTINGS[this.quality].postfx && !this.postfx && !this.postfxLoading) this.#loadPostfx();
     if (this.postfx) this.postfx.render();
     else renderer.render(scene, camera);
