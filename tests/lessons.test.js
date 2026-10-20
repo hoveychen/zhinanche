@@ -176,3 +176,11 @@ test("the chariot is never said to use a magnet", () => {
   assert.ok(all.includes("没有磁铁"), "some step must say the chariot has no magnet");
   assert.ok(all.includes("司南"), "some step must separate it from 司南");
 });
+
+test("every src tag in params/chariot.json is explained in docs/sources.md", () => {
+  const params = readFileSync(new URL("params/chariot.json", root), "utf8");
+  const sources = readFileSync(new URL("docs/sources.md", root), "utf8");
+  const tags = new Set([...params.matchAll(/"src":\s*"([^"]+)"/g)].map((m) => m[1]));
+  assert.ok(tags.size > 0);
+  for (const tag of tags) assert.ok(sources.includes(`| \`${tag}\` |`), `docs/sources.md has no row for ${tag}`);
+});
