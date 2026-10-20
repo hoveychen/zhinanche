@@ -11,7 +11,7 @@
 
 /**
  * UI controls a step may show. Anything not listed is hidden while the step is active.
- * @typedef {"drive" | "draw" | "mechanism" | "assist" | "faults" | "slip" | "xray" | "explode" | "reset" | "speed"} ControlId
+ * @typedef {"drive" | "draw" | "mechanism" | "assist" | "faults" | "slip" | "xray" | "explode" | "reset" | "speed" | "gearsView"} ControlId
  */
 
 /**

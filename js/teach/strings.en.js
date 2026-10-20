@@ -72,6 +72,8 @@ export const STR_EN = {
     howDraw: "Press “Draw a road” and sketch one on the ground — the chariot will follow it. Tap a gear to find out what it's called.",
     breakHead: "Try to break it",
     breakNote: "Give the chariot a flaw, drive a lap, and see if the man still points at the South Gate.",
+    gearsOn: "See the gears",
+    gearsOff: "Back out",
   },
 
   course: {

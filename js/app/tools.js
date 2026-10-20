@@ -1,5 +1,6 @@
 // The controls a step can show (ControlId in js/teach/types.js), except the
-// drive pad and the draw button, which live on the 3D view (js/app/drive.js).
+// drive pad, the draw button and the gears-view button, which live on the 3D
+// view (js/app/drive.js, js/main.js).
 // Each control changes the scene through the same directive the lessons use.
 
 import { h } from "./dom.js";
@@ -120,7 +121,7 @@ export class Tools {
     const resetBtn = bind(h("button", { type: "button", class: "plain", onclick: () => host.resetChariot() }), w("reset"));
 
     this.parts = { mech, assistBtn, assistNote, faults, slip, xrayBtn, explode, speed };
-    /** @type {Record<Exclude<ControlId, "drive" | "draw">, HTMLElement>} */
+    /** @type {Record<Exclude<ControlId, "drive" | "draw" | "gearsView">, HTMLElement>} */
     this.blocks = {
       mechanism: block("mechanism", "mechanism", mech.el),
       assist: block("assistBlock", "assist", h("div", {}, [assistBtn, assistNote])),

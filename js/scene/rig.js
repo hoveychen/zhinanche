@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { ClutchDisplay } from "./clutchPhase.js";
 import { LEFT_NODES, PART_NODES, RIGHT_NODES, ownerOf } from "./parts.js";
 import { OUTLINES, SpinArc, TRAIN, WIRE_OPACITY, makeHull, makeWire } from "./gearviz.js";
+import { TRAIN_SHADES } from "./materials.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { PartId } from "../teach/types.js" */
@@ -51,10 +52,12 @@ const nameOf = (o) => /** @type {string} */ (o.userData.name ?? o.name);
 const FADE = new THREE.Color(0xb8b0a4);
 const FADE_K = 0.62;
 /** How bright a turning gear glows in its train's colour (x-ray / taken apart). */
-const SPIN_GLOW = 0.55;
+const SPIN_GLOW = 0.2;
 /** Angular speed (rad/s) at which a gear counts as fully "turning". */
 const SPIN_FULL = 0.35;
 const TMP = new THREE.Color();
+/** A turning part glows in its own shade of its train's colour (materials.js). */
+const GLOW_OF = new Map(Object.entries(TRAIN_SHADES).map(([k, v]) => [k, new THREE.Color(v)]));
 /** Groups whose parts fade back (highlights) or light up (turning). */
 const MOVING_GROUPS = new Set(["gear", "wheel", "figure"]);
 
@@ -76,7 +79,7 @@ const ARCS = {
   "song.bigFlat": { pad: 0.25, lift: 0.35, toward: "body.pole" },
 };
 /** The differential's carrier sits between the side gears: its arc goes on the shaft, above them. */
-const SHAFT_ARC = { radius: 0.75, lift: 2.4 };
+const SHAFT_ARC = { radius: 1.25, lift: 2.4 };
 
 /**
  * @typedef {object} Spinner a turning part, watched for how fast it turns
@@ -314,14 +317,15 @@ export class Rig {
 
   /**
    * A box round the parts that stay in the picture (not the body flying off,
-   * nor the long pole), in world space.
-   * @param {THREE.Box3} out
+   * nor the long pole), in world space; with `gearsOnly` just the gears
+   * (close on the gears, the wheels may fly out of the picture).
+   * @param {THREE.Box3} out @param {boolean} [gearsOnly]
    */
-  bounds(out) {
+  bounds(out, gearsOnly = false) {
     this.root.updateMatrixWorld(true);
     const box = out.makeEmpty(), b = new THREE.Box3();
     for (const l of this.looks) {
-      if (l.group === "shell" || l.owner === "body.pole" || !l.mesh.visible) continue;
+      if (l.group === "shell" || l.owner === "body.pole" || !l.mesh.visible || (gearsOnly && l.group !== "gear")) continue;
       const g = l.mesh.geometry;
       if (!g.boundingBox) g.computeBoundingBox();
       box.union(b.copy(/** @type {THREE.Box3} */ (g.boundingBox)).applyMatrix4(l.mesh.matrixWorld));
@@ -410,7 +414,10 @@ export class Rig {
         const step = sp.angle - sp.prev;
         const omega = Math.abs(step) > 0.8 ? 0 : step / dt;
         sp.prev = sp.angle;
-        const want = inside ? Math.min(1, Math.abs(omega) / SPIN_FULL) : 0;
+        // with parts highlighted only they light up and get an arc: the step
+        // is about them, and every gear glowing at once reads as a blur
+        const shown = inside && (!this.dimming || this.lit.has(sp.m.name));
+        const want = shown ? Math.min(1, Math.abs(omega) / SPIN_FULL) : 0;
         sp.act += (want - sp.act) * (want > sp.act ? rise : fall);
         if (sp.arc) {
           const g = sp.arc.group;
@@ -423,7 +430,7 @@ export class Rig {
     // driving stands out in its own colour.
     let moving = 0;
     for (const sp of this.spinners) moving = Math.max(moving, sp.act);
-    const k = 0.18 + 0.14 * Math.sin(t * 4);
+    const k = 0.07 + 0.05 * Math.sin(t * 4);
     for (const l of this.looks) {
       if (!MOVING_GROUPS.has(l.group)) continue;
       const sp = this.spinOf.get(l.owner);
@@ -432,7 +439,8 @@ export class Rig {
       l.mat.color.copy(l.color).lerp(FADE, f);
       if (this.lit.has(l.owner)) l.mat.emissive.copy(l.color).multiplyScalar(k);
       else l.mat.emissive.setRGB(0, 0, 0);
-      if (act > 0.001 && sp && l.owner !== "figure") l.mat.emissive.add(TMP.copy(sp.color).multiplyScalar(act * SPIN_GLOW));
+      // in the part's own shade, so a turning wheel and its gear stay apart
+      if (act > 0.001 && sp && l.owner !== "figure") l.mat.emissive.add(TMP.copy(GLOW_OF.get(l.owner) ?? sp.color).multiplyScalar(act * SPIN_GLOW));
     }
   }
 

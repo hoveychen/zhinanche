@@ -84,6 +84,9 @@ export const STR = {
     howDraw: "按「画路线」，在地上画一条路，车会沿着它走。点一点齿轮，看看它叫什么。",
     breakHead: "让它出错试试",
     breakNote: "给车调一个毛病，再开一圈，看木人还指不指南门。",
+    /** the button on the 3D view that goes close on the gears, and back */
+    gearsOn: "看齿轮",
+    gearsOff: "回到车后",
   },
 
   /** the lesson player */

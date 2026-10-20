@@ -10,7 +10,7 @@ import { MANOEUVRES } from "../sim/scenarios.js";
 /** @import { Slip } from "../sim/drive.js" */
 
 /** @type {ControlId[]} */
-export const ALL_CONTROLS = ["drive", "draw", "mechanism", "assist", "faults", "slip", "xray", "explode", "reset", "speed"];
+export const ALL_CONTROLS = ["drive", "draw", "mechanism", "assist", "faults", "slip", "xray", "explode", "reset", "speed", "gearsView"];
 
 /**
  * @typedef {object} SceneState
