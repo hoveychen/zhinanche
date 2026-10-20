@@ -352,6 +352,7 @@ export class World {
     this.renderer.domElement.style.height = "100%";
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.cam.short = h < 600;
     // OrbitControls turns 2π × rotateSpeed per view height dragged: about a
     // quarter turn for 300 px, slow enough for a child to stop where they mean to
     this.controls.rotateSpeed = THREE.MathUtils.clamp(h / 1200, 0.25, 1);

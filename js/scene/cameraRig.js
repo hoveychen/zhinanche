@@ -75,6 +75,8 @@ export class CameraRig {
     this.partsInset = [{ left: 0, right: 0, top: 0, bottom: 0 }];
     /** which of them was used last (kept unless another is clearly better: no flip-flopping) */
     this.partsPick = 0;
+    /** the view is under 600 CSS px tall (set by the world) */
+    this.short = false;
     /** the HUD's margins over the view (set by the world) */
     /** @type {() => Insets} */
     this.insets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
@@ -175,7 +177,9 @@ export class CameraRig {
         const target = new THREE.Vector3(f.x + 1, 7.5, f.z + 3.5);
         // Phones held upright (polish-mobile): fit() goes by the narrow width
         // there and leaves the chariot small, so come in closer.
-        const r = this.camera.aspect < 0.8 ? 15.5 : 19;
+        // A short stage (a tablet held upright, the lesson panel below it)
+        // leaves it small too.
+        const r = this.camera.aspect < 0.8 ? 15.5 : this.short ? 16 : 19;
         return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(r)) };
       }
       case "gears": {
