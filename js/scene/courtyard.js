@@ -585,68 +585,98 @@ function materials() {
   };
 }
 
-export class Courtyard {
-  /** @param {{lite?: boolean}} [opts] lite: fewer trees beyond the walls */
-  constructor(opts = {}) {
-    const lite = !!opts.lite;
-    const b = new Bucket();
-    const C = COURT;
-    // south: the gate tower in the wall, the wall on either side of it
-    gateTower(b, C.south + 4);
-    for (const s of [-1, 1]) wall(b, [s * 43, C.south], [s * C.half, C.south]);
-    // corridors down both sides, walls closing the north corners
-    for (const s of [-1, 1]) {
-      corridor(b, s, -150, C.south - 2, true);
-      wall(b, [s * C.half, -150], [s * C.half, C.north]);
+/**
+ * Lay the court out into a bucket, a part at a time: it yields between
+ * parts so a caller can spread the work over idle slices.
+ * @param {Bucket} b @param {boolean} lite fewer trees beyond the walls
+ * @returns {Generator<void, void, void>}
+ */
+function* layout(b, lite) {
+  const C = COURT;
+  // south: the gate tower in the wall, the wall on either side of it
+  gateTower(b, C.south + 4);
+  for (const s of [-1, 1]) wall(b, [s * 43, C.south], [s * C.half, C.south]);
+  yield;
+  // corridors down both sides, walls closing the north corners
+  for (const s of [-1, 1]) {
+    corridor(b, s, -150, C.south - 2, true);
+    wall(b, [s * C.half, -150], [s * C.half, C.north]);
+  }
+  wall(b, [-C.half, C.north], [C.half, C.north]);
+  yield;
+  // north: the main hall, facing the gate, two cauldrons before its steps
+  hall(b, { cx: 0, cz: -168, w: 100, d: 28, base: 7, h: 18, roof: "roofYellow", double: true });
+  cauldron(b, -30, -127);
+  cauldron(b, 30, -127);
+  yield;
+  // bronze lions either side of the gate, water vats in the south corners
+  lion(b, -13.5, 92, 11, 1);
+  lion(b, 13.5, 92, 12, -1);
+  for (const s of [-1, 1]) {
+    vat(b, s * 36, 196);
+    vat(b, s * 52, -120);
+  }
+  yield;
+  // pines in the corners of the court
+  const r = rand(5);
+  for (const [x, z, h] of [[-50, 196, 36], [52, 190, 40], [-52, -112, 34], [50, -108, 32]]) tree(b, x, z, h, Math.floor(r() * 1e6), true);
+  // beyond the walls: tree crowns, far roofs
+  const outer = lite ? 18 : 40;
+  for (let k = 0; k < outer; k++) {
+    const t = k / outer;
+    if (t < 0.45) {
+      // south, behind the gate wall
+      const x = (r() < 0.5 ? -1 : 1) * (48 + r() * 170), z = C.south + 25 + r() * 120;
+      tree(b, x, z, 34 + r() * 20, Math.floor(r() * 1e6));
+    } else {
+      const side = k % 2 ? 1 : -1;
+      tree(b, side * (95 + r() * 110), -230 + r() * 420, 36 + r() * 24, Math.floor(r() * 1e6));
     }
-    wall(b, [-C.half, C.north], [C.half, C.north]);
-    // north: the main hall, facing the gate, two cauldrons before its steps
-    hall(b, { cx: 0, cz: -168, w: 100, d: 28, base: 7, h: 18, roof: "roofYellow", double: true });
-    cauldron(b, -30, -127);
-    cauldron(b, 30, -127);
-    // bronze lions either side of the gate, water vats in the south corners
-    lion(b, -13.5, 92, 11, 1);
-    lion(b, 13.5, 92, 12, -1);
-    for (const s of [-1, 1]) {
-      vat(b, s * 36, 196);
-      vat(b, s * 52, -120);
-    }
-    // pines in the corners of the court
-    const r = rand(5);
-    for (const [x, z, h] of [[-50, 196, 36], [52, 190, 40], [-52, -112, 34], [50, -108, 32]]) tree(b, x, z, h, Math.floor(r() * 1e6), true);
-    // beyond the walls: tree crowns, far roofs
-    const outer = lite ? 18 : 40;
-    for (let k = 0; k < outer; k++) {
-      const t = k / outer;
-      if (t < 0.45) {
-        // south, behind the gate wall
-        const x = (r() < 0.5 ? -1 : 1) * (48 + r() * 170), z = C.south + 25 + r() * 120;
-        tree(b, x, z, 34 + r() * 20, Math.floor(r() * 1e6));
-      } else {
-        const side = k % 2 ? 1 : -1;
-        tree(b, side * (95 + r() * 110), -230 + r() * 420, 36 + r() * 24, Math.floor(r() * 1e6));
-      }
-    }
-    farHall(b, -150, 360, 80, 34, 22);
-    farHall(b, 165, 420, 90, 36, 24);
-    farHall(b, 30, 560, 120, 40, 30);
-    farHall(b, -200, -320, 90, 34, 22);
-    farHall(b, 190, -300, 70, 30, 20);
-    hills(b);
+    if (k % 8 === 7) yield;
+  }
+  farHall(b, -150, 360, 80, 34, 22);
+  farHall(b, 165, 420, 90, 36, 24);
+  farHall(b, 30, 560, 120, 40, 30);
+  farHall(b, -200, -320, 90, 34, 22);
+  farHall(b, 190, -300, 70, 30, 20);
+  hills(b);
+}
 
+export class Courtyard {
+  /**
+   * Build the court a part at a time, awaiting `pause` between parts.
+   * @param {{lite?: boolean}} [opts] lite: fewer trees beyond the walls
+   * @param {() => Promise<void>} [pause]
+   */
+  static async build(opts = {}, pause = async () => {}) {
+    const b = new Bucket();
+    for (const _ of layout(b, !!opts.lite)) await pause();
+    const yard = new Courtyard();
+    // merging is a good share of the work too: one material's meshes per slice
+    for (const [key, list] of b.parts) {
+      await pause();
+      yard.#merge(key, list);
+    }
+    return yard;
+  }
+
+  /** Empty: use Courtyard.build. */
+  constructor() {
     this.materials = materials();
     this.group = new THREE.Group();
     this.group.name = "courtyard";
-    for (const [key, list] of b.parts) {
-      const indexed = list.every((g) => g.index);
-      const geo = mergeGeometries(indexed ? list : list.map((g) => (g.index ? g.toNonIndexed() : g)), false);
-      if (!geo) continue;
-      const mesh = new THREE.Mesh(geo, this.materials[key]);
-      mesh.name = `courtyard.${key}`;
-      mesh.matrixAutoUpdate = false;
-      if (key === "hills") mesh.userData.noShadow = true;
-      this.group.add(mesh);
-    }
+  }
+
+  /** Merge one material's geometries into a mesh. @param {string} key @param {THREE.BufferGeometry[]} list */
+  #merge(key, list) {
+    const indexed = list.every((g) => g.index);
+    const geo = mergeGeometries(indexed ? list : list.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+    if (!geo) return;
+    const mesh = new THREE.Mesh(geo, this.materials[key]);
+    mesh.name = `courtyard.${key}`;
+    mesh.matrixAutoUpdate = false;
+    if (key === "hills") mesh.userData.noShadow = true;
+    this.group.add(mesh);
   }
 
   /** Add texture detail once the procedural textures exist. @param {Textures} tex */

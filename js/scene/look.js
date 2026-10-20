@@ -47,8 +47,8 @@ export class Look {
     scene.add(this.ground);
     /** where the chariot is: the courtyard, gate and ground ride along */
     this.rider = new THREE.Vector2();
-    // The courtyard is built after the chariot's first frames (see render):
-    // ~45 ms of main thread (175 ms on a slow phone) that loading needn't wait for.
+    // The courtyard is built after the chariot's first frames (see render), in
+    // idle slices: ~50 ms of main thread (~170 ms at 4x CPU throttle) in all.
     /** @type {Courtyard | null} */
     this.yard = null;
     this.frames = 0;
@@ -103,19 +103,35 @@ export class Look {
     this.setShadow.move(x, z);
   }
 
-  /** Build the courtyard, put it round the chariot and bake its shadows. */
-  #buildYard() {
-    const { scene, renderer } = this.host;
-    const yard = new Courtyard({ lite: this.quality === "lite" });
-    this.yard = yard;
+  /**
+   * Build the courtyard in idle slices, compile its shaders off the frame,
+   * then put it round the chariot and bake its shadows.
+   */
+  async #buildYard() {
+    const { scene, renderer, camera } = this.host;
+    const idle = () =>
+      new Promise((done) => {
+        if (typeof requestIdleCallback === "function") requestIdleCallback(() => done(undefined), { timeout: 120 });
+        else setTimeout(done, 16);
+      });
+    const yard = await Courtyard.build({ lite: this.quality === "lite" }, idle);
     if (this.sceneTex) yard.dress(this.sceneTex);
-    yard.group.position.set(this.rider.x, 0, this.rider.y);
-    scene.add(yard.group);
     const gate = scene.getObjectByName("landmark");
     for (const m of Object.values(yard.materials)) this.setShadow.patch(m);
     gate?.traverse((o) => {
       if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) this.setShadow.patch(o.material);
     });
+    yard.group.position.set(this.rider.x, 0, this.rider.y);
+    // Compile the new programs (and the patched ground's and gate's) a mesh at
+    // a time, instead of stalling the first frame that draws them: three
+    // creates every program of a compile call at once (~300 ms at 4x throttle).
+    for (const o of [...yard.group.children, this.ground, ...(gate ? [gate] : [])]) {
+      await renderer.compileAsync(o, camera, scene).catch(() => {});
+      await idle();
+    }
+    this.yard = yard;
+    yard.group.position.set(this.rider.x, 0, this.rider.y);
+    scene.add(yard.group);
     const hills = yard.group.getObjectByName("courtyard.hills");
     if (hills) hills.visible = false;
     this.setShadow.move(this.rider.x, this.rider.y);
@@ -130,11 +146,7 @@ export class Look {
 
   render() {
     const { renderer, scene, camera } = this.host;
-    if (++this.frames === 3) {
-      const build = () => this.#buildYard();
-      if (typeof requestIdleCallback === "function") requestIdleCallback(build, { timeout: 1500 });
-      else setTimeout(build, 50);
-    }
+    if (++this.frames === 3) void this.#buildYard();
     this.governor?.tick(performance.now());
     // Parts faded out for the x-ray view stop casting shadows, so the gears
     // inside aren't left in the shade of a body you can't see.
