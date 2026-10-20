@@ -1,3 +1,41 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><title>指南车</title></head>
-<body><p>指南车仿真正在建设中（场景见第 4 步）。</p></body></html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>指南车：开一开，拆一拆，看木人怎么指南</title>
+    <meta name="description" content="中国古代指南车的 3D 仿真和六节小学课：自己开车、画路线、透视和拆开齿轮，看木人为什么一直指着南方。" />
+    <meta name="theme-color" content="#1f4a5c" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23c8361f'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23fbf8f1' font-family='serif'%3E南%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/build/three.module.js",
+          "three/addons/": "./vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body data-mode="home">
+    <div class="app">
+      <header class="bar">
+        <h1 class="mark"><span class="seal" aria-hidden="true">南</span>指南车</h1>
+        <nav class="tabs" aria-label="页面">
+          <button type="button" class="tab on" data-go="home" aria-current="page">课程</button>
+          <button type="button" class="tab" data-go="free">自己开</button>
+        </nav>
+      </header>
+      <main class="layout">
+        <section id="stage" class="stage" aria-label="指南车">
+          <div id="stage-gl" class="stage-gl"></div>
+          <div id="stage-overlay" class="stage-overlay"></div>
+          <p id="loading" class="loading" role="status">正在把车推出来……</p>
+        </section>
+        <aside id="panel" class="panel" aria-label="课程"></aside>
+      </main>
+    </div>
+    <noscript><p class="noscript">这个页面要打开 JavaScript 才能用。</p></noscript>
+  </body>
+</html>
