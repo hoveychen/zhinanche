@@ -29,7 +29,7 @@ const GLIDE = 0.8;
  * The follow view looks along a fixed bearing in the world: from the north
  * and a little west, south past the chariot at the gate (js/scene/landmark.js).
  */
-const CHASE_DIR = new THREE.Vector3(-0.2, 0.27, -1).normalize();
+const CHASE_DIR = new THREE.Vector3(-0.2, 0.25, -1).normalize();
 
 export class CameraRig {
   /**
@@ -90,8 +90,8 @@ export class CameraRig {
       case "follow": {
         // A chase camera that does not turn with the chariot: the chariot
         // turns on screen while the figure's hand keeps pointing at the gate.
-        const target = new THREE.Vector3(f.x + 2.4, 6.5, f.z + 12);
-        return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(17)) };
+        const target = new THREE.Vector3(f.x + 2.4, 8, f.z + 9);
+        return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(19)) };
       }
       case "gears": {
         // From behind and well above, so the left wheel is on the left of the
