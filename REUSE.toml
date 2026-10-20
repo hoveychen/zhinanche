@@ -20,7 +20,7 @@ SPDX-License-Identifier = "Apache-2.0"
 
 # Content, not code, even though it is JSON or JS.
 [[annotations]]
-path = ["params/**", "js/teach/lessons.js", "js/teach/strings.js"]
+path = ["params/**", "js/teach/lessons.js", "js/teach/lessons.en.js", "js/teach/strings.js", "js/teach/strings.en.js"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 zhinanche contributors"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
