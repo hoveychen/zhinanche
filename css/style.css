@@ -250,7 +250,7 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 
 /* "往下看" takes the step count's place in the nav bar, so it never covers the task */
 .more-cue {
-  display: inline-flex; align-items: center; gap: 4px; min-height: 48px; padding: 0 16px;
+  display: inline-flex; align-items: center; gap: 4px; min-height: 48px; padding: 0 13px;
   border: 2px solid var(--zhu); border-radius: 24px; background: #fff3ea; color: var(--zhu-dark);
   font-weight: 700; font-size: 18px; white-space: nowrap; cursor: pointer; touch-action: manipulation;
   animation: bob 1.6s ease-in-out infinite;
@@ -260,12 +260,18 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 
 .panel-nav {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
   border-top: 2px solid var(--wood-mid); background: #f6efe0;
 }
-.panel-nav .primary { min-width: 132px; }
+.panel-nav .primary { min-width: 120px; padding: 0 20px; white-space: nowrap; }
+.panel-nav .plain { white-space: nowrap; }
 .panel-nav > * { flex: none; }
+/* the cue is the one that gives way in a narrow bar ("Next lesson" in English):
+   its words go before the arrow does, and the bar never runs off the panel */
+.panel-nav > .more-cue { flex: 0 1 auto; min-width: 48px; overflow: hidden; }
+.more-cue span { overflow: hidden; text-overflow: ellipsis; }
+.more-cue svg { flex: none; }
 .step-count { color: var(--ink-soft); font-size: 18px; }
 
 /* ---------- tools ---------- */
@@ -655,9 +661,9 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .option { min-height: 44px; padding: 4px 10px; }
   .primary, .plain, .seg-btn, .toggle, .switch { min-height: 44px; }
   .panel-nav { gap: 6px; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); }
-  .panel-nav .primary { min-width: 0; padding: 0 16px; }
-  .panel-nav .plain { padding: 0 12px; }
-  .more-cue { min-height: 44px; padding: 0 10px; font-size: 15px; }
+  .panel-nav .primary { min-width: 0; padding: 0 14px; }
+  .panel-nav .plain { padding: 0 10px; }
+  .more-cue { min-height: 44px; padding: 0 8px; font-size: 15px; }
   .pic img { max-height: 140px; }
   .home-kicker { font-size: 14px; }
   .home-title { font-size: 34px; }
