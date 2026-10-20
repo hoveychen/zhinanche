@@ -164,7 +164,7 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 
 /* ---------- home ---------- */
 .home-kicker { margin: 2px 0 0; font-size: 18px; font-weight: 700; letter-spacing: 0.12em; color: var(--zhu); }
-.home-title { margin: 0 0 8px; font: 400 54px/1.1 var(--kai); color: var(--shiqing); letter-spacing: 0.12em; }
+.home-title { margin: 0 0 8px; font: 400 54px/1.1 var(--kai); color: var(--shiqing); letter-spacing: 0.12em; text-wrap: balance; }
 .home-hook { margin: 0 0 20px; font: 400 27px/1.5 var(--kai); color: var(--ink); text-wrap: balance; }
 .home-cta { display: flex; flex-wrap: wrap; gap: 12px; }
 .plain.big { min-height: 64px; font-size: 22px; padding: 0 24px; }
@@ -201,7 +201,7 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 .lesson-sum { font-size: 18px; color: var(--ink-soft); line-height: 1.5; }
 
 /* ---------- lesson ---------- */
-.panel-title { margin: 0; font: 400 34px/1.25 var(--kai); color: var(--shiqing); outline: none; }
+.panel-title { margin: 0; font: 400 34px/1.25 var(--kai); color: var(--shiqing); outline: none; text-wrap: balance; }
 .lesson-head { margin-bottom: 14px; }
 .lesson-kicker { margin: 0 0 2px; font-size: 18px; color: var(--zhu); font-weight: 600; }
 .dots { display: flex; gap: 8px; list-style: none; padding: 0; margin: 12px 0 0; }
@@ -481,7 +481,7 @@ body[data-mode="free"] .share-btn { display: inline-flex; }
 body[data-mode="home"] .stage-hook { display: flex; }
 .stage-hook-line {
   margin: 0; padding: 10px 22px; text-align: center;
-  font: 400 32px/1.35 var(--kai); color: var(--shiqing);
+  font: 400 32px/1.35 var(--kai); color: var(--shiqing); text-wrap: balance;
   background: rgba(251, 248, 241, 0.94); border: 2px solid var(--wood-mid); border-radius: 10px;
   box-shadow: 0 3px 10px rgba(60, 40, 20, 0.18);
 }
