@@ -30,6 +30,13 @@ export const toWorld = (p) => ({ x: p.x, z: -p.y });
 export const toSim = (p) => ({ x: p.x, y: -p.z });
 
 export class World {
+  /** @type {Map<MechanismId, Promise<Rig>>} */
+  #pending = new Map();
+  /** what setLook / setFigureBig last said, for a chariot that arrives later */
+  /** @type {{xray: boolean, highlight: PartId[]}} */
+  #lookState = { xray: false, highlight: [] };
+  #figureBig = true;
+
   /** @param {HTMLElement} host */
   constructor(host) {
     this.host = host;
@@ -76,6 +83,10 @@ export class World {
     this.look.attach(this.holder);
     /** @type {Partial<Record<MechanismId, Rig>>} */
     this.rigs = {};
+    this.base = "assets/";
+    /** a model being fetched shows nothing; the page can say so (err: it failed) */
+    /** @type {(on: boolean, err?: unknown) => void} */
+    this.onLoading = () => {};
     /** @type {MechanismId} */
     this.mechanism = "differential";
     /** @type {Partial<Record<MechanismId, Pointer>>} */
@@ -100,33 +111,54 @@ export class World {
     this.resize();
   }
 
-  /** Load both chariots. @param {string} [base] */
+  /**
+   * Load the chariot on show; the other one waits until it is first wanted
+   * (setMechanism), so the first picture costs one model, not two.
+   * @param {string} [base]
+   */
   async load(base = "assets/") {
-    const loader = new GLTFLoader();
-    const [d, s] = await Promise.all([
-      loader.loadAsync(`${base}chariot-differential.glb`),
-      loader.loadAsync(`${base}chariot-song.glb`),
-    ]);
-    for (const gltf of [d, s]) {
-      await this.look.dress(gltf.scene);
-      const rig = new Rig(gltf.scene);
-      this.rigs[rig.mechanism] = rig;
-      const fig = rig.node("figure");
-      if (fig) {
-        const beam = new Pointer(rig.armTip);
-        fig.add(beam.mesh);
-        this.beams[rig.mechanism] = beam;
-      }
-      gltf.scene.visible = false;
-      this.holder.add(gltf.scene);
-    }
+    this.base = base;
+    await this.ensure(this.mechanism);
     this.setMechanism(this.mechanism);
   }
 
+  /** Load a chariot model (once). @param {MechanismId} m @returns {Promise<Rig>} */
+  ensure(m) {
+    const have = this.rigs[m];
+    if (have) return Promise.resolve(have);
+    let p = this.#pending.get(m);
+    if (!p) {
+      p = this.#loadRig(m);
+      this.#pending.set(m, p);
+      p.catch(() => this.#pending.delete(m));
+    }
+    return p;
+  }
+
+  /** @param {MechanismId} m */
+  async #loadRig(m) {
+    const gltf = await new GLTFLoader().loadAsync(`${this.base}chariot-${m}.glb`);
+    await this.look.dress(gltf.scene);
+    const rig = new Rig(gltf.scene);
+    if (rig.mechanism !== m) throw new Error(`chariot-${m}.glb holds the ${rig.mechanism} chariot`);
+    const fig = rig.node("figure");
+    if (fig) {
+      const beam = new Pointer(rig.armTip);
+      fig.add(beam.mesh);
+      this.beams[m] = beam;
+    }
+    gltf.scene.visible = false;
+    this.holder.add(gltf.scene);
+    // catch up with what the other chariot has been told
+    rig.setLook(this.#lookState.xray, this.#lookState.highlight);
+    rig.setFigureBig(this.#figureBig, true);
+    this.rigs[m] = rig;
+    return rig;
+  }
+
+  /** The chariot on show, or undefined while its model is still coming. */
   get rig() {
-    const r = this.rigs[this.mechanism];
-    if (!r) throw new Error("models not loaded");
-    return r;
+    return this.rigs[this.mechanism];
   }
 
   /** @param {MechanismId} m */
@@ -135,7 +167,19 @@ export class World {
     for (const [k, rig] of Object.entries(this.rigs)) {
       /** @type {THREE.Object3D} */ (rig.root.parent).visible = k === m;
     }
-    this.rig.setExplode(this.explode);
+    const rig = this.rig;
+    if (rig) {
+      rig.setExplode(this.explode);
+      return;
+    }
+    // first time this chariot is wanted: show nothing until it has arrived
+    this.onLoading(true);
+    this.ensure(m).then(() => {
+      if (this.mechanism === m) this.setMechanism(m);
+      this.onLoading(false);
+    }, (err) => {
+      this.onLoading(false, err);
+    });
   }
 
   /**
@@ -143,7 +187,14 @@ export class World {
    * @param {PartId[]} highlight
    */
   setLook(xray, highlight) {
+    this.#lookState = { xray, highlight };
     for (const rig of Object.values(this.rigs)) rig.setLook(xray, highlight);
+  }
+
+  /** Big figure for wide views (every chariot). @param {boolean} big @param {boolean} [instant] */
+  setFigureBig(big, instant = false) {
+    this.#figureBig = big;
+    for (const r of Object.values(this.rigs)) r.setFigureBig(big, instant);
   }
 
   /** @param {number} v 0..1 @param {boolean} [instant] */
@@ -153,7 +204,7 @@ export class World {
     this.explodeTarget = v;
     if (instant) {
       this.explode = v;
-      this.rig.setExplode(v);
+      this.rig?.setExplode(v);
     }
   }
 
@@ -192,7 +243,7 @@ export class World {
     this.holder.position.set(w.x, 0, w.z);
     this.holder.rotation.y = pose.heading;
     this.focus = { x: w.x, z: w.z, heading: pose.heading };
-    this.rig.apply(pose, dt);
+    this.rig?.apply(pose, dt);
     this.ring.update(w.x, w.z, pose.figureWorld, pose.errorDeg);
     this.beams[this.mechanism]?.update(pose.errorDeg);
     // Wheel contact points: left is −Z in the chariot frame.
@@ -236,14 +287,15 @@ export class World {
       const gap = this.explodeTarget - this.explode;
       const step = dt * Math.max(0.7, Math.abs(gap) * 5);
       this.explode += Math.sign(gap) * Math.min(Math.abs(gap), step);
-      this.rig.setExplode(this.explode);
+      this.rig?.setExplode(this.explode);
       this.cam.reframe = this.explode > 0.001 ? 0.9 : 0;
     }
-    if (this.cam.reframe > 0) {
-      this.cam.parts = this.rig.bounds(this.partsBox, this.cam.view === "gears");
+    const rig = this.rig;
+    if (this.cam.reframe > 0 && rig) {
+      this.cam.parts = rig.bounds(this.partsBox, this.cam.view === "gears");
       this.cam.partsInset = this.hudInsets();
     }
-    this.rig.pulse(this.time);
+    rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
     this.cam.update(dt, this.camFocus());
@@ -252,7 +304,7 @@ export class World {
   render() {
     updateOutlines(this.renderer, this.time);
     // looking at the works is a diagram: every gear sharp, near or far
-    if (this.look.postfx) this.look.postfx.dofOn = !this.rig.inside;
+    if (this.look.postfx) this.look.postfx.dofOn = !this.rig?.inside;
     this.look.render();
   }
 
@@ -290,7 +342,7 @@ export class World {
    * @returns {{title: string, detail: string, point: THREE.Vector3, side: "l" | "r" | null} | null}
    */
   pick(clientX, clientY) {
-    if (!this.holder.visible) return null;
+    if (!this.holder.visible || !this.rig) return null;
     const hit = this.rig.pick(this.#ray(clientX, clientY));
     if (!hit) return null;
     const cap = partCaption(hit.node.userData);

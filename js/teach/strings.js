@@ -38,6 +38,22 @@ export const STR = {
     moreBelow: "往下看",
     sheetOpen: "更多玩法：让它出错、透视、拆开",
     sheetClose: "收起",
+    /** the other chariot's model could not be fetched */
+    modelFailed: "这辆车没能搬出来，请刷新页面再试一次。",
+  },
+
+  /** the copy-link button on the 3D view in free driving (js/app/sharelink.js) */
+  share: {
+    copy: "复制链接",
+    copied: "已复制",
+    hint: "把车的造法、开关和你画的路线存进链接，别人打开就能看到同一辆车走同一条路",
+    manual: "复制不了，请自己复制这个链接：",
+  },
+
+  /** the page footer (js/app/about.js) */
+  about: {
+    source: "源代码",
+    license: "Apache-2.0 开源",
   },
 
   free: {

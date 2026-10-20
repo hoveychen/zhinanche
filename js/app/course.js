@@ -7,6 +7,7 @@ import { LESSONS } from "../teach/lessons.js";
 import { STR } from "../teach/strings.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
+import { siteFoot } from "./about.js";
 
 /** @import { App } from "./app.js" */
 /** @import { Tools } from "./tools.js" */
@@ -98,6 +99,7 @@ export class Course {
       asks,
       h("h3", { class: "list-head", text: t.lessonsHead }),
       list,
+      siteFoot(),
     ]);
     this.#show(body, null);
     this.app.idleLoop = true;
@@ -110,7 +112,8 @@ export class Course {
 
   // ---------- free driving ----------
 
-  free() {
+  /** @param {Partial<import("./directive.js").SceneState>} [over] a shared setup */
+  free(over) {
     this.mode = "free";
     this.doTask = null;
     this.setSheet(false);
@@ -120,7 +123,7 @@ export class Course {
       h("p", { text: STR.free.howDraw }),
     ]);
     this.#show(body, null, this.sheetBtn);
-    this.app.free();
+    this.app.free(over);
     this.cb.onMode("free");
   }
 
