@@ -6,11 +6,12 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Rig } from "./rig.js";
-import { ArmBeam, COLORS, CompassRing, makeGround } from "./ground.js";
+import { ArmBeam, COLORS, CompassRing } from "./ground.js";
 import { Ribbon, RouteLine } from "./trails.js";
 import { CompassDemo, HoldHands } from "./demos.js";
 import { CameraRig } from "./cameraRig.js";
 import { partCaption } from "./parts.js";
+import { Look } from "./look.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { MechanismId } from "../sim/params.js" */
@@ -30,18 +31,11 @@ export class World {
   constructor(host) {
     this.host = host;
     const r = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFShadowMap;
-    r.toneMapping = THREE.NeutralToneMapping;
-    r.toneMappingExposure = 1.05;
     host.appendChild(r.domElement);
     r.domElement.setAttribute("aria-label", "指南车三维场景");
     this.renderer = r;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(COLORS.sky);
-    scene.fog = new THREE.Fog(COLORS.sky, 90, 260);
     this.scene = scene;
 
     this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 600);
@@ -54,21 +48,10 @@ export class World {
     this.controls.screenSpacePanning = false;
     this.cam = new CameraRig(this.camera, this.controls);
 
-    scene.add(new THREE.HemisphereLight(0xf2f6f2, 0xa48c6a, 1.7));
-    const sun = new THREE.DirectionalLight(0xfff1dc, 2.3);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    const sc = sun.shadow.camera;
-    sc.left = sc.bottom = -17;
-    sc.right = sc.top = 17;
-    sc.near = 1;
-    sc.far = 80;
-    sun.shadow.bias = -0.0008;
-    sun.shadow.normalBias = 0.03;
-    scene.add(sun, sun.target);
-    this.sun = sun;
+    // sky, sun, courtyard, materials, post-processing, quality tiers
+    this.look = new Look(this);
+    this.sun = this.look.sun;
 
-    scene.add(makeGround());
     this.ring = new CompassRing();
     scene.add(this.ring.group);
     this.trackL = new Ribbon(COLORS.left, 0.32);
@@ -86,6 +69,7 @@ export class World {
     this.holder = new THREE.Group();
     this.holder.name = "chariotHolder";
     scene.add(this.holder);
+    this.look.attach(this.holder);
     /** @type {Partial<Record<MechanismId, Rig>>} */
     this.rigs = {};
     /** @type {MechanismId} */
@@ -118,6 +102,7 @@ export class World {
       loader.loadAsync(`${base}chariot-song.glb`),
     ]);
     for (const gltf of [d, s]) {
+      await this.look.dress(gltf.scene);
       const rig = new Rig(gltf.scene);
       this.rigs[rig.mechanism] = rig;
       const fig = rig.node("figure");
@@ -207,8 +192,7 @@ export class World {
     const dx = c, dz = -s;
     this.trackL.add(w.x - s * HALF_TRACK, w.z - c * HALF_TRACK, dx, dz);
     this.trackR.add(w.x + s * HALF_TRACK, w.z + c * HALF_TRACK, dx, dz);
-    this.sun.position.set(w.x + 14, 32, w.z + 9);
-    this.sun.target.position.set(w.x, 0, w.z);
+    this.look.follow(w.x, w.z);
   }
 
   /** The focus the camera presets need. */
@@ -237,6 +221,7 @@ export class World {
    */
   animate(dt) {
     this.time += dt;
+    this.look.update(dt);
     if (this.explode !== this.explodeTarget) {
       const step = dt / 0.6;
       const gap = this.explodeTarget - this.explode;
@@ -250,7 +235,7 @@ export class World {
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    this.look.render();
   }
 
   resize() {
@@ -261,6 +246,7 @@ export class World {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.route.resize(w, h);
+    this.look?.resize(w, h);
   }
 
   /** @param {number} clientX @param {number} clientY */
