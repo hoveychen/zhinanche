@@ -38,6 +38,8 @@ export const STR = {
     moreBelow: "往下看",
     sheetOpen: "更多玩法：让它出错、透视、拆开",
     sheetClose: "收起",
+    /** the other chariot's model could not be fetched */
+    modelFailed: "这辆车没能搬出来，请刷新页面再试一次。",
   },
 
   free: {

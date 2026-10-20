@@ -19,6 +19,14 @@ const overlay = byId("stage-overlay");
 const loading = byId("loading");
 
 const world = new World(glHost);
+// the other chariot's model is fetched the first time it is picked
+world.onLoading = (on, err) => {
+  loading.hidden = !on && !err;
+  if (err) {
+    loading.textContent = STR.ui.modelFailed;
+    loading.classList.add("error");
+  }
+};
 const input = new DriveInput({
   onDraw: (on) => {
     world.controls.enabled = !on;

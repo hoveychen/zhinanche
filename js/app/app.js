@@ -120,7 +120,7 @@ export class App {
     if (!st.controls.includes("draw") && this.input.drawOn) this.input.setDraw(false);
     if (res.viewChanged || st.view !== prev.view || (st.demo !== prev.demo && st.demo === "holdHands")) w.setView(st.view);
     // the big figure would fill the close view of the gears
-    for (const r of Object.values(w.rigs)) r.setFigureBig(st.view !== "gears", res.reset && res.viewChanged);
+    w.setFigureBig(st.view !== "gears", res.reset && res.viewChanged);
     this.tracker.sawBroken(this.broken);
     for (const fn of this.stateListeners) fn(st);
     // after the listeners: framing the route needs this step's HUD
