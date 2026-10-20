@@ -15,6 +15,7 @@ import { partCaption } from "./parts.js";
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { MechanismId } from "../sim/params.js" */
 /** @import { PartId, ViewId, DemoId } from "../teach/types.js" */
+/** @import { Insets } from "./cameraRig.js" */
 
 /** Half the distance between the model's wheels (chi). */
 const HALF_TRACK = 3;
@@ -98,6 +99,9 @@ export class World {
     this.trailsOn = true;
     this.time = 0;
     this.focus = { x: 0, z: 0, heading: Math.PI / 2 };
+    /** the HUD's margins over the view, for framing routes (set by the page) */
+    /** @type {() => Insets} */
+    this.hudInsets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -224,7 +228,7 @@ export class World {
    * @param {{x: number, y: number}[]} pts
    */
   frameRoute(pts) {
-    this.cam.frameTop(pts.map(toWorld), this.camFocus());
+    this.cam.frameTop(pts.map(toWorld), this.camFocus(), this.hudInsets());
   }
 
   /**

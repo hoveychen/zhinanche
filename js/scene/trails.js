@@ -34,7 +34,11 @@ export class Ribbon {
     this.geo.setAttribute("position", this.attr);
     this.geo.setIndex(idx);
     this.geo.setDrawRange(0, 0);
-    this.mesh = new THREE.Mesh(this.geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
+    this.mesh = new THREE.Mesh(this.geo, new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide,
+      // just above the ground: pull it forward so a high top view does not break it into dashes
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
+    }));
     this.mesh.frustumCulled = false;
     this.mesh.position.y = 0.015;
     this.mesh.renderOrder = 1;

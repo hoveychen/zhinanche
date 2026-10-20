@@ -15,6 +15,14 @@ import * as THREE from "three";
  * @property {number} figureX figure shaft's local x (chi)
  */
 
+/**
+ * @typedef {object} Insets parts of the view covered by the HUD, as fractions of its size
+ * @property {number} left
+ * @property {number} right
+ * @property {number} top
+ * @property {number} bottom
+ */
+
 const GLIDE = 0.8;
 
 export class CameraRig {
@@ -127,22 +135,27 @@ export class CameraRig {
   }
 
   /**
-   * Frame a region of the ground from above (route playback in the top view).
+   * Frame a region of the ground from above (route playback in the top view),
+   * in the part of the view the HUD leaves free.
    * @param {{x: number, z: number}[]} pts world points
    * @param {Focus} f
+   * @param {Insets} [inset] HUD margins as fractions of the view
    */
-  frameTop(pts, f) {
+  frameTop(pts, f, inset = { left: 0, right: 0, top: 0, bottom: 0 }) {
     let x0 = f.x, x1 = f.x, z0 = f.z, z1 = f.z;
     for (const p of pts) {
       x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
       z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z);
     }
-    const pad = 13; // room for the HUD (dial, odometer, drive pad) round the edges
-    const ex = (x1 - x0) / 2 + pad, ez = (z1 - z0) / 2 + pad;
+    const pad = 9; // the compass ring (radius 8.2) round the chariot at every path point
+    x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
+    const ux = Math.max(0.3, 1 - inset.left - inset.right), uz = Math.max(0.3, 1 - inset.top - inset.bottom);
     const v = THREE.MathUtils.degToRad(this.camera.fov);
     const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
-    const h = Math.max(ez / tv, ex / th, this.fit(14));
-    this.box = { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, h };
+    const h = Math.max((z1 - z0) / (2 * uz * tv), (x1 - x0) / (2 * ux * th), this.fit(14));
+    // shift so the region sits in the middle of the free part
+    const ex = h * th, ez = h * tv;
+    this.box = { cx: (x0 + x1) / 2 - (inset.left - inset.right) * ex, cz: (z0 + z1) / 2 - (inset.top - inset.bottom) * ez, h };
     this.setView("top", f);
   }
 

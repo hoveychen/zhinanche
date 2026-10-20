@@ -98,9 +98,10 @@ export class App {
     this.input.enabled = st.controls.includes("drive");
     if (!st.controls.includes("draw") && this.input.drawOn) this.input.setDraw(false);
     if (res.viewChanged || st.view !== prev.view || (st.demo !== prev.demo && st.demo === "holdHands")) w.setView(st.view);
-    if (res.play) this.play(res.play);
     this.tracker.sawBroken(this.broken);
     for (const fn of this.stateListeners) fn(st);
+    // after the listeners: framing the route needs this step's HUD
+    if (res.play) this.play(res.play);
     w.showPose(this.chariot.pose(), 0);
   }
 
