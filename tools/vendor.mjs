@@ -19,6 +19,23 @@ export const FILES = [
   ["three/examples/jsm/lines/LineGeometry.js", "three/examples/jsm/lines/LineGeometry.js"],
   ["three/examples/jsm/lines/LineSegmentsGeometry.js", "three/examples/jsm/lines/LineSegmentsGeometry.js"],
   ["three/examples/jsm/lines/LineMaterial.js", "three/examples/jsm/lines/LineMaterial.js"],
+  // post-processing for the "high" quality tier (js/scene/postfx.js, loaded lazily)
+  ["three/examples/jsm/postprocessing/EffectComposer.js", "three/examples/jsm/postprocessing/EffectComposer.js"],
+  ["three/examples/jsm/postprocessing/RenderPass.js", "three/examples/jsm/postprocessing/RenderPass.js"],
+  ["three/examples/jsm/postprocessing/OutputPass.js", "three/examples/jsm/postprocessing/OutputPass.js"],
+  ["three/examples/jsm/postprocessing/ShaderPass.js", "three/examples/jsm/postprocessing/ShaderPass.js"],
+  ["three/examples/jsm/postprocessing/Pass.js", "three/examples/jsm/postprocessing/Pass.js"],
+  ["three/examples/jsm/postprocessing/MaskPass.js", "three/examples/jsm/postprocessing/MaskPass.js"],
+  ["three/examples/jsm/postprocessing/UnrealBloomPass.js", "three/examples/jsm/postprocessing/UnrealBloomPass.js"],
+  ["three/examples/jsm/postprocessing/GTAOPass.js", "three/examples/jsm/postprocessing/GTAOPass.js"],
+  ["three/examples/jsm/postprocessing/BokehPass.js", "three/examples/jsm/postprocessing/BokehPass.js"],
+  ["three/examples/jsm/shaders/CopyShader.js", "three/examples/jsm/shaders/CopyShader.js"],
+  ["three/examples/jsm/shaders/OutputShader.js", "three/examples/jsm/shaders/OutputShader.js"],
+  ["three/examples/jsm/shaders/LuminosityHighPassShader.js", "three/examples/jsm/shaders/LuminosityHighPassShader.js"],
+  ["three/examples/jsm/shaders/GTAOShader.js", "three/examples/jsm/shaders/GTAOShader.js"],
+  ["three/examples/jsm/shaders/PoissonDenoiseShader.js", "three/examples/jsm/shaders/PoissonDenoiseShader.js"],
+  ["three/examples/jsm/shaders/BokehShader.js", "three/examples/jsm/shaders/BokehShader.js"],
+  ["three/examples/jsm/math/SimplexNoise.js", "three/examples/jsm/math/SimplexNoise.js"],
 ];
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

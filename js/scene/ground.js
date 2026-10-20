@@ -16,41 +16,52 @@ export const COLORS = {
 /** Degrees off south that still count as "pointing south". */
 export const OK_DEG = 1;
 
-/** Square bricks, 2 chi each, laid in a grid, slightly uneven in tone. */
-function brickTexture() {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
-  const g = /** @type {CanvasRenderingContext2D} */ (c.getContext("2d"));
-  g.fillStyle = "#b9b2a2";
-  g.fillRect(0, 0, 256, 256);
-  const tones = ["#d8d1c1", "#d2cab9", "#dcd6c8", "#cfc8b6"];
-  for (let i = 0; i < 2; i++) {
-    for (let j = 0; j < 2; j++) {
-      g.fillStyle = tones[i * 2 + j];
-      g.fillRect(i * 128 + 3, j * 128 + 3, 122, 122);
-      g.fillStyle = "rgba(120,105,80,0.05)";
-      for (let k = 0; k < 40; k++) g.fillRect(i * 128 + 6 + ((k * 37) % 116), j * 128 + 6 + ((k * 53) % 116), 3, 2);
-    }
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
-  return t;
-}
-
-/** The courtyard: a big brick plane. Size in chi. */
-export function makeGround(size = 600) {
-  const tex = brickTexture();
-  tex.repeat.set(size / 4, size / 4);
+/**
+ * The courtyard floor: a big plane of stone slabs (procedural texture, 12 chi
+ * per tile, see texgen.js), plain until the textures arrive (dressGround).
+ * Size in chi; the far edge is lost in the fog.
+ */
+export function makeGround(size = 3000) {
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(size, size),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ color: 0xa29d93, roughness: 0.9, metalness: 0 }),
   );
   mesh.rotation.x = -Math.PI / 2;
   mesh.receiveShadow = true;
   mesh.name = "ground";
+  mesh.userData.size = size;
   return mesh;
+}
+
+/**
+ * Lay the stone texture on the ground, with a slow tone variation so the
+ * 12-chi tile doesn't read as a repeat.
+ * @param {THREE.Mesh} mesh from makeGround
+ * @param {Record<string, THREE.Texture>} tex
+ */
+export function dressGround(mesh, tex) {
+  const mat = /** @type {THREE.MeshStandardMaterial} */ (mesh.material);
+  const reps = mesh.userData.size / 12;
+  for (const k of ["stone", "stoneRough", "stoneNormal"]) tex[k].repeat.set(reps, reps);
+  mat.color.setRGB(1, 1, 1);
+  mat.map = tex.stone;
+  mat.roughnessMap = tex.stoneRough;
+  mat.normalMap = tex.stoneNormal;
+  mat.normalScale.setScalar(1);
+  const macro = tex.clouds;
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.macroMap = { value: macro };
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform sampler2D macroMap;")
+      .replace(
+        "#include <map_fragment>",
+        `#include <map_fragment>
+        float macroA = texture2D(macroMap, vMapUv * 0.043).g;
+        float macroB = texture2D(macroMap, vMapUv * 0.011 + 0.37).g;
+        diffuseColor.rgb *= mix(0.9, 1.07, macroA) * mix(0.94, 1.05, macroB);`,
+      );
+  };
+  mat.needsUpdate = true;
 }
 
 const RING_R = 8.2;
