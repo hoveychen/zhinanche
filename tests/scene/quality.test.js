@@ -26,8 +26,11 @@ test("only the high tier pays for post-processing; lite is cheapest", () => {
   assert.ok(SETTINGS.lite.shadowSize < SETTINGS.high.shadowSize);
 });
 
-/** Feed `n` frames `dt` ms apart from `t`, returns the new time. */
-function run(/** @type {FrameGovernor} */ g, t, dt, n) {
+/**
+ * Feed `n` frames `dt` ms apart from `t`, returns the new time.
+ * @param {FrameGovernor} g @param {number} t @param {number} dt @param {number} n
+ */
+function run(g, t, dt, n) {
   for (let i = 0; i < n; i++) g.tick((t += dt));
   return t;
 }
