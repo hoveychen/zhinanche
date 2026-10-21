@@ -34,14 +34,14 @@ function rand(seed) {
  *   normal     a gentle undulation, the rim raised, cracks as grooves
  */
 function iceTextures() {
-  const w = 192, h = 768, r = rand(7);
+  const w = 256, h = 1024, r = rand(7);
   // the outline: each long side wanders smoothly (a few sines), the ends round off
   const waves = (/** @type {number} */ n) => Array.from({ length: n }, (_, i) => ({ f: (i + 1) * (0.8 + r() * 0.6), p: r() * 6.283, a: (0.55 + r() * 0.45) / (i + 1) }));
   const left = waves(5), right = waves(5), ends = waves(4);
   const wobble = (/** @type {{f: number, p: number, a: number}[]} */ ws, /** @type {number} */ t) => ws.reduce((s, q) => s + Math.sin(t * q.f * 6.283 + q.p) * q.a, 0);
   /** @type {[number, number][]} */
   const edge = [];
-  const m = 22, N = 220;
+  const m = 30, N = 320;
   for (let i = 0; i < N; i++) {
     const a = (i / N) * Math.PI * 2;
     // a rounded rectangle in polar form, its radius wobbled
@@ -67,8 +67,8 @@ function iceTextures() {
   };
   const A = make(), C = make(), R = make(), H = make();
   // frost patches and bubbles, the same in every map
-  const frost = Array.from({ length: 34 }, () => ({ x: r() * w, y: r() * h, rx: 6 + r() * 26, ry: 10 + r() * 60, a: 0.25 + r() * 0.5 }));
-  const bubbles = Array.from({ length: 160 }, () => ({ x: r() * w, y: r() * h, s: 0.6 + r() * 1.6 }));
+  const frost = Array.from({ length: 34 }, () => ({ x: r() * w, y: r() * h, rx: 8 + r() * 35, ry: 13 + r() * 80, a: 0.25 + r() * 0.5 }));
+  const bubbles = Array.from({ length: 280 }, () => ({ x: r() * w, y: r() * h, s: 0.6 + r() * 1.8 }));
   /** @type {[number, number][][]} */
   const cracks = [];
   for (let i = 0; i < 14; i++) {
@@ -77,7 +77,7 @@ function iceTextures() {
     /** @type {[number, number][]} */
     const line = [[x, y]];
     for (let k = 0; k < 5; k++) {
-      const t = dir + (r() - 0.5) * 0.9, l = 8 + r() * 18;
+      const t = dir + (r() - 0.5) * 0.9, l = 11 + r() * 24;
       x += Math.cos(t) * l;
       y += Math.sin(t) * l;
       line.push([x, y]);
@@ -141,24 +141,29 @@ function iceTextures() {
   fillFrost(A.g, "255,255,255", 1.2);
   strokeCracks(A.g, "rgba(255,255,255,0.45)", 0.8);
   A.g.restore();
+  // the rim: a thicker, frosted lip, soft-edged (a hard white line read as a cut-out)
   trace(A.g);
-  A.g.strokeStyle = "rgba(255,255,255,0.85)";
-  A.g.lineWidth = 5;
-  A.g.stroke();
+  for (const [lw, a] of [[12, 0.12], [7, 0.22], [3.5, 0.4]]) {
+    A.g.strokeStyle = `rgba(255,255,255,${a})`;
+    A.g.lineWidth = lw;
+    A.g.stroke();
+  }
   // colour
   C.g.fillStyle = "#30343a";
   C.g.fillRect(0, 0, w, h);
   trace(C.g);
-  C.g.fillStyle = "#6f8c9e";
+  // clear ice: dark and glassy over the stone, as wet stone is (a pale blue
+  // veil over it read as a sticker); what shows bright is the sky in it
+  C.g.fillStyle = "#33454f";
   C.g.fill();
   C.g.save();
   trace(C.g);
   C.g.clip();
   // the ice's depth: a little bluer where it is thick (towards the middle)
   const deep = C.g.createLinearGradient(0, 0, w, 0);
-  deep.addColorStop(0, "rgba(160,190,205,0.5)");
-  deep.addColorStop(0.5, "rgba(80,120,145,0.35)");
-  deep.addColorStop(1, "rgba(160,190,205,0.5)");
+  deep.addColorStop(0, "rgba(150,178,192,0.45)");
+  deep.addColorStop(0.5, "rgba(40,70,90,0.3)");
+  deep.addColorStop(1, "rgba(150,178,192,0.45)");
   C.g.fillStyle = deep;
   C.g.fillRect(0, 0, w, h);
   fillFrost(C.g, "236,244,248", 1);
@@ -169,9 +174,11 @@ function iceTextures() {
   }
   C.g.restore();
   trace(C.g);
-  C.g.strokeStyle = "rgba(230,240,246,0.9)";
-  C.g.lineWidth = 4;
-  C.g.stroke();
+  for (const [lw, a] of [[12, 0.3], [6, 0.5]]) {
+    C.g.strokeStyle = `rgba(222,234,240,${a})`;
+    C.g.lineWidth = lw;
+    C.g.stroke();
+  }
   // roughness (green)
   R.g.fillStyle = "rgb(0,90,0)";
   R.g.fillRect(0, 0, w, h);
@@ -184,8 +191,8 @@ function iceTextures() {
   fillFrost(R.g, "0,170,0", 1);
   R.g.restore();
   trace(R.g);
-  R.g.strokeStyle = "rgb(0,150,0)";
-  R.g.lineWidth = 4;
+  R.g.strokeStyle = "rgb(0,120,0)";
+  R.g.lineWidth = 8;
   R.g.stroke();
   // height → normal: soft swells, a raised rim, grooved cracks
   H.g.fillStyle = "rgb(110,110,110)";
@@ -232,7 +239,7 @@ export class Ice {
     const { alpha, map, rough, normal } = iceTextures();
     this.mat = new THREE.MeshPhysicalMaterial({
       color: 0xffffff, map, alphaMap: alpha, transparent: true, opacity: 0,
-      roughness: 1, roughnessMap: rough, normalMap: normal, normalScale: new THREE.Vector2(1, 1),
+      roughness: 1, roughnessMap: rough, normalMap: normal, normalScale: new THREE.Vector2(1.6, 1.6),
       metalness: 0, clearcoat: 0.8, clearcoatRoughness: 0.04, specularIntensity: 1, envMapIntensity: 1.5,
       depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2,
       // premultiplied: the diffuse part covers the ground by alpha, the
@@ -247,7 +254,18 @@ export class Ice {
         #else
           vec3 iceSpec = totalSpecular;
         #endif
-        gl_FragColor = vec4( ( outgoingLight - iceSpec ) * diffuseColor.a + iceSpec * opacity * min( 1.0, diffuseColor.a * 3.0 ), diffuseColor.a );`);
+        // the reflection a little stronger than a flat sheet's would be: real ice
+        // is never flat, and at the views here (looking down at 30-50°) the sky
+        // in a flat sheet is a few per cent and the ice read as a tint
+        // The sky in the ice, but what lies low round the courtyard (walls,
+        // halls, under 20° or so) reflected dark red-brown, not as more sky: in
+        // the environment map the walls are a thin band at the horizon (about 2°),
+        // and a sheet that mirrors pale sky nearly to the horizon reads as a pale
+        // veil. The ice's swells wobble the line.
+        vec3 iceR = transformDirectionByInverseViewMatrix( reflect( - geometryViewDir, normal ), viewMatrix );
+        iceSpec *= mix( vec3( 0.42, 0.17, 0.12 ), vec3( 1.0 ), smoothstep( 0.18, 0.42, iceR.y ) );
+        gl_FragColor = vec4( ( outgoingLight - iceSpec ) * diffuseColor.a + iceSpec * ICE_SHEEN * opacity * min( 1.0, diffuseColor.a * 3.0 ), diffuseColor.a );`);
+      shader.fragmentShader = "#define ICE_SHEEN 1.8\n" + shader.fragmentShader;
     };
     this.mat.customProgramCacheKey = () => "ice";
     const geo = new THREE.PlaneGeometry(WIDTH, LEN);
