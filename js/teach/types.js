@@ -95,6 +95,7 @@
  * @property {SceneDirective} [scene]
  * @property {Task} [task]
  * @property {Picture} [picture]
+ * @property {boolean} [tallyAtEnd] the odometer's line comparing the wheels waits till the step's route is done (the text tells how it ends)
  */
 
 /**

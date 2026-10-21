@@ -396,8 +396,9 @@ function frame(/** @type {number} */ now) {
     dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
     if (!odo.el.hidden) {
       odo.update(pose.distL, pose.distR);
-      // a guess-first question about the wheels: the line that compares them waits too
-      odo.diff.hidden = course.held !== null;
+      // a guess-first question about the wheels, or a route whose end the words
+      // tell ("one more turn"): the line that compares them waits
+      odo.diff.hidden = course.tallyHeld;
     }
     syncHint();
     if (!demoCount.hidden) demoCount.textContent = S().stage.demoCount(world.holdHands.steps.in, world.holdHands.steps.out);

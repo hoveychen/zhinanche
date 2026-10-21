@@ -215,6 +215,12 @@ export class Course {
     return lessons()[this.lesson];
   }
 
+  /** The odometer's line comparing the wheels waits: for a guess, or for the end of a route the words already tell. */
+  get tallyHeld() {
+    if (this.held !== null) return true;
+    return this.mode === "lesson" && this.current.steps[this.step]?.tallyAtEnd === true && this.app.playing;
+  }
+
   /**
    * @param {number} k step index
    * @param {boolean} jump fold the directives from the start instead of applying one on top
