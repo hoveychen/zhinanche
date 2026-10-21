@@ -487,13 +487,12 @@ body[data-mode="free"] .share-btn { display: inline-flex; }
 .pad-btn.held { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
 .pad-up { grid-area: up; } .pad-down { grid-area: down; } .pad-left { grid-area: left; } .pad-right { grid-area: right; }
 
-/* The pause note and the drawing hint, stacked at the top middle of the view,
-   clear of the dial on the left and the corner buttons on the right. */
+/* The pause note and the drawing hint, stacked under the corner buttons (the
+   pause note under "carry on"), clear of the dial on the left. */
 .stage-notes {
-  position: absolute; top: var(--hud-gap); left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  /* left: 50% leaves only half the stage for shrink-to-fit; size to the text instead */
-  width: max-content; max-width: calc(100% - 2 * 290px);
+  position: absolute; top: calc(var(--hud-gap) + 66px); right: var(--hud-gap);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  width: max-content; max-width: min(420px, calc(100% - 240px));
 }
 .stage-overlay > .stage-notes, .stage-notes > * { pointer-events: none; }
 .paused-note {
@@ -587,7 +586,6 @@ body[data-mode="home"] .stage-hook { display: flex; }
 @media (max-width: 1100px), (max-height: 800px) {
   :root { --pad-key: 52px; --hud-gap: 10px; }
   .hud-dial svg { width: 116px; height: 116px; }
-  .stage-notes { max-width: calc(100% - 2 * 250px); }
   .dial-text { font-size: 15px; }
   .stage-hook-line { font-size: 21px; padding: 8px 18px; }
   .hud-odo { width: 212px; }
@@ -714,8 +712,10 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .demo-count { top: auto; bottom: 8px; font-size: 15px; padding: 6px 12px; border-radius: var(--r-m); }
   .scene-label { font-size: 15px; padding: 3px 9px; max-width: 280px; }
 
-  .stage-bar { padding: 4px; gap: 4px; border-radius: var(--r-m); }
-  .stage-bar > .bar-btns + .pad { padding-left: 4px; }
+  /* the drive bar stands up: the two buttons over the keys, clear of the wheel distances */
+  .stage-bar { flex-direction: column; align-items: flex-end; padding: 4px; gap: 4px; border-radius: var(--r-m); }
+  .bar-btns { flex-direction: row; }
+  .stage-bar > .bar-btns + .pad { padding: 4px 0 0; border-left: 0; border-top: 1px solid var(--line); }
   .pad { gap: 3px; }
   .pad-btn { background: color-mix(in srgb, var(--paper-2) 80%, transparent); }
   .pad-btn .icon { width: 24px; height: 24px; }
@@ -794,7 +794,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .stage-corner { padding: 3px; border-radius: var(--r-m); }
   .stage-corner .bar-btn { min-height: 44px; min-width: 44px; padding: 0; }
   .stage-corner .bar-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .stage-notes { top: 8px; gap: 6px; max-width: calc(100% - 2 * 140px); }
+  .stage-notes { top: 64px; gap: 6px; max-width: calc(100% - 120px); }
   .paused-note { padding: 4px 12px; border-radius: var(--r-m); }
   .paused-note b { font-size: 17px; }
   .paused-note span { font-size: 13px; }
