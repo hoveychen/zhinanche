@@ -57,10 +57,10 @@ const TOP_TIP = 30;
 const TOP_SPARE = 1.1;
 
 /** Views close in on the works on purpose: they may look from inside the body. */
-const CLOSE = new Set(["gears", "works", "wheels", "figure", "hero", "intro"]);
+const CLOSE = new Set(["gears", "works", "pair", "wheels", "figure", "hero", "intro"]);
 
 /** Views that swing round with the chariot. */
-const TURNING = new Set(["gears", "works", "wheels", "figure"]);
+const TURNING = new Set(["gears", "works", "pair", "wheels", "figure"]);
 
 export class CameraRig {
   /**
@@ -243,6 +243,14 @@ export class CameraRig {
         // further back than the gears view, from the same side.
         const target = local(f.figureX * 0.5 + 0.1, 6.2, -0.3);
         return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.15, 0.8), this.fit(6.6)) };
+      }
+      case "pair": {
+        // Low behind the differential, a little to the right: its two flat
+        // gears lie one above the other on the shaft (big left one under,
+        // small right one over), and from this low they and their turning
+        // arrows stand apart; the left wheel is on the left of the screen.
+        const target = local(0, 1.6, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.6, 0.25), this.fit(3.6)) };
       }
       case "above": {
         // Close over the chariot, north up, tipped so the figure reads as a

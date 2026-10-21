@@ -123,7 +123,7 @@ export class App {
     this.input.enabled = st.controls.includes("drive");
     if (!st.controls.includes("draw") && this.input.drawOn) this.input.setDraw(false);
     // the big figure would fill the close view of the gears
-    w.setFigureBig(st.view !== "gears" && st.view !== "works", res.reset && res.viewChanged);
+    w.setFigureBig(st.view !== "gears" && st.view !== "works" && st.view !== "pair", res.reset && res.viewChanged);
     this.tracker.sawBroken(this.broken);
     for (const fn of this.stateListeners) fn(st);
     // after the listeners: the views keep clear of this step's HUD (a view

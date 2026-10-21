@@ -178,7 +178,7 @@ export const LESSONS = [
       },
       {
         text: "<span class=\"l\">左轮</span>带着一个齿轮转，<span class=\"r\">右轮</span>带着另一个齿轮转。\n\n车轮转一圈，它带的齿轮也转一圈。只是这两个齿轮转的方向正好相反。",
-        scene: { highlight: ["sideA", "sideB"], play: "straight" },
+        scene: { view: "pair", highlight: ["wheelL", "wheelR", "sideA", "sideB"], play: "straight" },
       },
       {
         text: "两个齿轮中间，夹着几个小齿轮。小齿轮装在一个架子上，木人就站在这个架子上。\n\n车直着走，两个车轮转得一样多。两边一抵消，架子不动，木人也不动。",
