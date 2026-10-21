@@ -125,9 +125,9 @@ test("the address follows the course: lesson and step, free driving, or the less
 });
 
 test("a link to the gears view sees through the body unless it says x=0", () => {
-  assert.equal(decodeShare("#s=1&v=gears").xray, true);
-  assert.equal(decodeShare("#s=1&v=gears&x=0").xray, false);
-  assert.equal(decodeShare("#s=1&v=top").xray, false);
+  assert.equal(decodeShare("#s=1&v=gears")?.xray, true);
+  assert.equal(decodeShare("#s=1&v=gears&x=0")?.xray, false);
+  assert.equal(decodeShare("#s=1&v=top")?.xray, false);
   const closed = { ...defaultSetup(), view: /** @type {const} */ ("gears"), xray: false };
-  assert.equal(decodeShare(`#${encodeShare(closed)}`).xray, false);
+  assert.equal(decodeShare(`#${encodeShare(closed)}`)?.xray, false);
 });
