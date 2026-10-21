@@ -37,7 +37,7 @@ export const LESSONS = [
       },
       {
         text: "看，车拐来拐去。\n\n木人的手指向哪里？仔细看一看。",
-        scene: { reset: true, view: "follow", trails: true, play: "sCurve", controls: ["reset"] },
+        scene: { reset: true, view: "intro", trails: true, play: "sCurve", controls: ["reset"] },
         task: {
           kind: "choose",
           prompt: "车拐弯以后，木人指着哪里？",
