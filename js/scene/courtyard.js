@@ -21,6 +21,7 @@ import { meanOf, placeholder } from "./photo.js";
 import { age } from "./aging.js";
 import { Trees } from "./trees.js";
 import { Eaves, TILE_REPEAT, UV_PER_CHI } from "./eaves.js";
+import { gateDoors, latticeDoors } from "./doors.js";
 
 /** @import { Textures } from "./materials.js" */
 /** @import { PhotoSet } from "./photo.js" */
@@ -45,7 +46,7 @@ function rand(seed) {
 }
 
 /** Collects geometries per material key, then merges them. */
-class Bucket {
+export class Bucket {
   constructor() {
     /** @type {Map<string, THREE.BufferGeometry[]>} */
     this.parts = new Map();
@@ -124,11 +125,12 @@ function worldUV(g, s, cx, cy, cz) {
  * distance along the eave, so the hips cut the rows short), and v is the
  * distance up the slope.
  * @param {Bucket} b @param {string} key
- * @param {{cx: number, cz: number, hx: number, hz: number, y0: number, y1: number, lift: number, tMax?: number, eaves?: EaveOpts | false}} o
+ * @param {{cx: number, cz: number, hx: number, hz: number, y0: number, y1: number, lift: number, tMax?: number, eaves?: EaveOpts | false, ridge?: number}} o
  *   hx, hz: half size at the eave line; y0 eave height, y1 ridge height;
- *   eaves: tile ends along the eave (eaves.js), with these extras (false: none)
+ *   eaves: tile ends along the eave (eaves.js), with these extras (false: none);
+ *   ridge: the ridge beam's and its end ornaments' size (1: a hall's)
  */
-function hipRoof(b, key, o) {
+export function hipRoof(b, key, o) {
   const n = 7, m = 10;
   const tMax = o.tMax ?? 1;
   // Built along x; a roof that is longer along z is built swapped.
@@ -191,13 +193,13 @@ function hipRoof(b, key, o) {
   }
   if (tMax >= 1) {
     // ridge beam with upturned ends (dark glazed)
-    const y = o.y1, L = ridgeHalf + 0.6;
+    const y = o.y1, r = o.ridge ?? 1, L = ridgeHalf + 0.6 * r;
     /** @param {number} a0 @param {number} y0 @param {number} c0 @param {number} a1 @param {number} y1 @param {number} c1 */
     const box = (a0, y0, c0, a1, y1, c1) => (swap
       ? b.box(key, [o.cx + c0, y0, o.cz + a0], [o.cx + c1, y1, o.cz + a1])
       : b.box(key, [o.cx + a0, y0, o.cz + c0], [o.cx + a1, y1, o.cz + c1]));
-    box(-L, y - 0.6, -0.9, L, y + 1.6, 0.9);
-    if (o.lift > 0) for (const sx of [-1, 1]) box(sx * (ridgeHalf + 0.2) - 1, y, -0.8, sx * (ridgeHalf + 0.2) + 1, y + 4.2, 0.8);
+    box(-L, y - 0.6 * r, -0.9 * r, L, y + 1.6 * r, 0.9 * r);
+    if (o.lift > 0) for (const sx of [-1, 1]) box(sx * (ridgeHalf + 0.2 * r) - r, y, -0.8 * r, sx * (ridgeHalf + 0.2 * r) + r, y + 4.2 * r, 0.8 * r);
   }
 }
 
@@ -267,8 +269,18 @@ function hall(b, o) {
   }
   // body: walls set back, lattice doors along the front, columns in front
   box("wallRed", -W + 2, y0, -D + 2, W - 2, y1, D - 2);
-  box("panel", -W + 4, y0 + 0.4, D - 2.2, W - 4, y1 - 3.2, D - 1.6);
   const bays = Math.max(3, Math.round(o.w / 12));
+  // a board of four lattice leaves (doors.js) in every bay, between the columns
+  const turn = face === "s" ? 0 : face === "n" ? Math.PI : face === "e" ? Math.PI / 2 : -Math.PI / 2;
+  for (let k = 0; k < bays; k++) {
+    const xa = -W + 0.5 + ((o.w - 1) * k) / bays + 1.1, xb = -W + 0.5 + ((o.w - 1) * (k + 1)) / bays - 1.1;
+    const dh = y1 - 3.2 - (y0 + 0.2);
+    const leaf = new THREE.PlaneGeometry(xb - xa, dh);
+    leaf.rotateY(turn);
+    const [a, c] = sw((xa + xb) / 2, D - 1.9);
+    leaf.translate(o.cx + a, y0 + 0.2 + dh / 2, o.cz + c);
+    b.add("hallDoor", leaf);
+  }
   for (let k = 0; k <= bays; k++) {
     const x = -W + 0.5 + ((o.w - 1) * k) / bays;
     for (const z of [D, -D]) {
@@ -341,10 +353,13 @@ function archway(b, x, z, w, h) {
   frame.rotateY(Math.PI);
   frame.translate(x, 0, z - 0.06);
   b.add("marble", frame);
+  // the closed gate leaves (doors.js): u across the arch, v from the sill up
   const hole = new THREE.ShapeGeometry(shape(w / 2, h), 12);
+  const p = hole.getAttribute("position"), uv = hole.getAttribute("uv");
+  for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + w / 2) / w, p.getY(i) / (h + w / 2));
   hole.rotateY(Math.PI);
   hole.translate(x, 0, z - 0.12);
-  b.add("doorDark", hole);
+  b.add("gateDoor", hole);
 }
 
 /**
@@ -623,8 +638,11 @@ function hills(b) {
   b.add("hills", g);
 }
 
-/** @returns {Record<string, THREE.MeshStandardMaterial>} */
-function materials() {
+/** The arches' spring as a share of their height (archway: 11 of 15.5, 8.5 of 12). */
+const SPRING = 0.71;
+
+/** @param {boolean} lite smaller door textures @returns {Record<string, THREE.MeshStandardMaterial>} */
+function materials(lite) {
   /** @param {number} color @param {number} roughness @param {object} [extra] */
   const M = (color, roughness, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, ...extra });
   return {
@@ -645,7 +663,8 @@ function materials() {
     bronze: M(0x6b5634, 0.38, { metalness: 0.85 }),
     gold: M(0xd2a443, 0.3, { metalness: 1 }),
     lantern: M(0xc42a18, 0.55, { emissive: 0xff5a2a, emissiveIntensity: 0.35 }),
-    doorDark: M(0x1a1310, 0.95),
+    hallDoor: M(0xffffff, 0.62, { map: latticeDoors(lite) }),
+    gateDoor: M(0xffffff, 0.5, gateDoors(lite, SPRING)),
     hills: M(0x6f8790, 1, { flatShading: true }),
   };
 }
@@ -682,11 +701,18 @@ function* layout(b, lite) {
     vat(b, s * 52, -120);
   }
   yield;
-  // pines in the corners of the court
+  // a clump of three in each corner of the court: the photographed trees are
+  // tall and bare low down, and one alone read thin close up; the two
+  // smaller ones stand further into the corner, crowns overlapping
   const r = rand(5);
   /** @type {[number, number, number, import("./trees.js").TreeKind][]} */
   const court = [[-50, 196, 40, "fir"], [52, 190, 44, "fir"], [-52, -112, 38, "pine"], [50, -108, 36, "fir"]];
-  for (const [x, z, h, kind] of court) tree(b, x, z, h, Math.floor(r() * 1e6), kind);
+  for (const [x, z, h, kind] of court) {
+    const sx = Math.sign(x), sz = Math.sign(z);
+    tree(b, x, z, h, Math.floor(r() * 1e6), kind);
+    tree(b, x + sx * 7, z + sz * 5, h * 0.82, Math.floor(r() * 1e6), kind === "pine" ? "firb" : "pine");
+    tree(b, x - sx * 2, z + sz * 10, h * 0.7, Math.floor(r() * 1e6), "firb");
+  }
   // beyond the walls: groves of one to three trees (the photographed trees
   // are slimmer than the old crowns were, and a card costs next to nothing)
   const outer = lite ? 18 : 40;
@@ -728,7 +754,7 @@ export class Courtyard {
   static async build(opts = {}, pause = async () => {}) {
     const b = new Bucket();
     for (const _ of layout(b, !!opts.lite)) await pause();
-    const yard = new Courtyard();
+    const yard = new Courtyard(!!opts.lite);
     yard.trees = new Trees(b.trees);
     yard.group.add(yard.trees.group);
     // merging is a good share of the work too: one material's meshes per slice
@@ -739,9 +765,9 @@ export class Courtyard {
     return yard;
   }
 
-  /** Empty: use Courtyard.build. */
-  constructor() {
-    this.materials = materials();
+  /** Empty: use Courtyard.build. @param {boolean} [lite] smaller door textures */
+  constructor(lite = false) {
+    this.materials = materials(lite);
     /** @type {Textures | null} the procedural textures it was dressed with */
     this.tex = null;
     this.group = new THREE.Group();
@@ -795,7 +821,7 @@ export class Courtyard {
   age(noise) {
     const m = this.materials;
     age(m.wallRed, "plaster", noise);
-    for (const k of /** @type {const} */ (["column", "panel"])) age(m[k], "lacquer", noise);
+    for (const k of /** @type {const} */ (["column", "panel", "hallDoor", "gateDoor"])) age(m[k], "lacquer", noise);
     for (const k of /** @type {const} */ (["roofYellow", "roofGray", "roofGreen"])) age(m[k], "roof", noise);
     age(m.marble, "stone", noise);
     age(m.bronze, "bronze", noise);

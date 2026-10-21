@@ -38,6 +38,9 @@ import { SUN_DIR } from "./environment.js";
 
 export const KINDS = /** @type {const} */ (["pine", "fir", "firb"]);
 
+/** Brightness over the baked frames' (see set). */
+const LIFT = 1.3;
+
 const VERT_PARS = /* glsl */ `
 uniform vec4 treeCard; // card width, height, centre height, crown radius: × the tree's height
 uniform vec2 treeFrames; // frames, columns
@@ -90,7 +93,7 @@ const VERT_MAIN = /* glsl */ `
 
 const FRAG_PARS = /* glsl */ `
 uniform float treeGain;
-uniform sampler2D setShadowMap;
+uniform sampler2DShadow setShadowMap;
 uniform mat4 setShadowMatrix;
 uniform float setShadowTexel;
 uniform float setShadowOn;
@@ -106,7 +109,7 @@ float treeShade() {
   float z = p.z - 0.002;
   float lit = 0.0;
   for (int i = -1; i <= 1; i += 2) for (int j = -1; j <= 1; j += 2) {
-    lit += step(z, texture2D(setShadowMap, p.xy + vec2(float(i), float(j)) * 1.5 * setShadowTexel).r);
+    lit += texture(setShadowMap, vec3(p.xy + vec2(float(i), float(j)) * 1.5 * setShadowTexel, z));
   }
   // the frames hold sun and sky together: in a wall's shadow, roughly the sky's share
   return mix(0.45, 1.0, lit / 4.0);
@@ -120,6 +123,10 @@ const FRAG_MAP = /* glsl */ `
     vec4 b = texture2D(map, vTreeB);
     float wa = a.a * (1.0 - vTreeW), wb = b.a * vTreeW;
     diffuseColor.rgb = (a.rgb * wa + b.rgb * wb) / max(wa + wb, 1e-4) * treeGain;
+    // the thin edges carry colour bled in from the foliage's mean (lighter
+    // than the needles at the rim): darkened by how little they cover, they
+    // stop drawing a pale outline round the crown
+    diffuseColor.rgb *= mix(0.75, 1.0, smoothstep(0.15, 0.75, wa + wb));
     #ifndef TREE_BAKE
     diffuseColor.rgb *= treeShade();
     #endif
@@ -130,6 +137,9 @@ const FRAG_MAP = /* glsl */ `
     vec2 texels = fwidth(vTreeA) * vec2(textureSize(map, 0));
     float lod = max(0.0, log2(max(texels.x, texels.y)));
     diffuseColor.a = min(1.0, diffuseColor.a * (1.0 + 0.45 * lod));
+    // alpha to coverage over the cut-outs' wide soft rims dithered a broken
+    // pale line round every clump: the edge sharpened to one pixel at the cut
+    diffuseColor.a = clamp((diffuseColor.a - 0.5) / max(fwidth(diffuseColor.a), 1e-4) + 0.5, 0.0, 1.0);
     #endif
   }`;
 
@@ -241,7 +251,9 @@ export class Trees {
       const u = k.uniforms;
       u.treeCard.value.set(t.card[0] / t.tree, t.card[1] / t.tree, t.card[2] / t.tree, t.reach / t.tree);
       u.treeFrames.value.set(t.frames, t.cols);
-      u.treeGain.value = t.gain;
+      // the scanned needles are darker than a palace's old pines photograph:
+      // lifted a third, so a tree is not the darkest thing in a sunny view
+      u.treeGain.value = t.gain * LIFT;
       u.map.value = tex;
       for (const mat of [/** @type {THREE.MeshBasicMaterial} */ (k.mesh.material), k.mesh.userData.bakeMaterial]) mat.map = tex;
       k.mesh.count = k.n;

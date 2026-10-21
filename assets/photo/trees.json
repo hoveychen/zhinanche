@@ -9,7 +9,7 @@
   ],
   "tree": 20.317,
   "reach": 4.661,
-  "gain": 0.15929,
+  "gain": 0.18403,
   "files": {
    "768": "tree-pine-768.webp",
    "512": "tree-pine-512.webp",
@@ -26,7 +26,7 @@
   ],
   "tree": 18.874,
   "reach": 3.563,
-  "gain": 0.12923,
+  "gain": 0.15073,
   "files": {
    "768": "tree-fir-768.webp",
    "512": "tree-fir-512.webp",
@@ -43,7 +43,7 @@
   ],
   "tree": 13.991,
   "reach": 3.249,
-  "gain": 0.11784,
+  "gain": 0.13375,
   "files": {
    "768": "tree-firb-768.webp",
    "512": "tree-firb-512.webp",

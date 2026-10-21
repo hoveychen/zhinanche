@@ -27,10 +27,20 @@ import { BakedAO } from "./bakedao.js";
  * @property {() => void} resize
  */
 
+/** @returns {import("./quality.js").Device} */
 function device() {
-  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-  const nav = /** @type {Navigator & {connection?: {saveData?: boolean}}} */ (navigator);
-  return { coarse, shortSide: Math.min(screen.width, screen.height), saveData: !!nav.connection?.saveData };
+  const mq = (/** @type {string} */ q) => typeof matchMedia === "function" && matchMedia(q).matches;
+  // touch-first: the main pointer is a finger, or a finger is the only way in
+  // and nothing hovers (an iPad with a trackpad still says coarse somewhere)
+  const coarse = mq("(pointer: coarse)") || (mq("(any-pointer: coarse)") && !mq("(hover: hover)"));
+  const nav = /** @type {Navigator & {connection?: {saveData?: boolean}, deviceMemory?: number}} */ (navigator);
+  return {
+    coarse,
+    shortSide: Math.min(screen.width, screen.height),
+    saveData: !!nav.connection?.saveData,
+    cores: nav.hardwareConcurrency || undefined,
+    memory: nav.deviceMemory,
+  };
 }
 
 /**
@@ -72,6 +82,7 @@ export class Look {
     this.env = new Environment(renderer, scene, { shadowSize: s.shadowSize, clouds: true });
     // Sun shadows of the courtyard, baked once it exists (see render).
     this.setShadow = new SetShadow(this.quality === "lite" ? 1024 : 2048, 240);
+    this.setShadow.init(renderer);
     // Sky occlusion of the courtyard, baked with the shadows (?debug=nobao: not baked)
     this.bakedAO = new BakedAO(this.quality === "lite" ? 512 : 1024, 240);
     this.ground = makeGround();
@@ -106,6 +117,11 @@ export class Look {
     this.ironPhoto = null;
     /** @type {Map<string, Promise<THREE.Texture | null>>} each chariot's baked occlusion atlas, by mechanism */
     this.atlases = new Map();
+    /** @type {THREE.Object3D | null} what carries the chariot (attach) */
+    this.holder = null;
+    /** frames the chariot has stood still for (render) */
+    this.stillFrames = 0;
+    this.holderWas = new Float32Array(16);
     /** @type {PostFX | null} */
     this.postfx = null;
     /** @type {THREE.Vector3 | null} the sun's place while it is moved for a still picture */
@@ -263,9 +279,15 @@ export class Look {
    * @param {string} mechanism @param {THREE.Mesh[]} meshes
    */
   async #atlas(mechanism, meshes) {
+    // A 1024² atlas and its mipmaps going up took a 24–28 ms frame, and it
+    // came while driving (the other chariot is fetched then too): upload and
+    // swap wait till the chariot has stood still a moment (or, if it never
+    // does, as on the home page's drive, 8 s).
+    const since = performance.now();
+    const calm = () => this.stillFrames > 20 || performance.now() - since > 8000;
     let p = this.atlases.get(mechanism);
     if (!p) {
-      p = this.photos.atlas(mechanism).catch((err) => {
+      p = this.photos.atlas(mechanism, calm).catch((err) => {
         console.warn("baked occlusion unavailable", err);
         return null;
       });
@@ -273,7 +295,7 @@ export class Look {
     }
     const atlas = await p;
     if (!atlas) return;
-    await this.photos.later(() => chariotAO(meshes, atlas, mechanism));
+    await this.photos.later(() => chariotAO(meshes, atlas, mechanism), calm);
     const now = (document.body.dataset.photo ?? "").split(" ").filter(Boolean);
     if (!now.includes("ao")) document.body.dataset.photo = [...now, "ao"].join(" ");
   }
@@ -281,6 +303,7 @@ export class Look {
   /** Contact shadow under the chariot. @param {THREE.Object3D} holder */
   attach(holder) {
     holder.add(contactShadow());
+    this.holder = holder;
   }
 
   /** @param {number} x @param {number} z chariot position (world) */
@@ -373,6 +396,14 @@ export class Look {
     // the heaviest (each program's and texture's first draws), and a 5–8 ms
     // upload on top of one made the longest frame of the drive.
     this.shownAt ??= now;
+    if (this.holder) {
+      // has the chariot moved or turned since the last frame?
+      const e = this.holder.matrixWorld.elements;
+      let same = true;
+      for (let i = 0; i < 16; i++) if (Math.abs(e[i] - this.holderWas[i]) > 1e-5) same = false;
+      this.holderWas.set(e);
+      this.stillFrames = same ? this.stillFrames + 1 : 0;
+    }
     if (now - this.shownAt > 1000) this.photos.tick();
     // Parts faded out for the x-ray view stop casting shadows, so the gears
     // inside aren't left in the shade of a body you can't see.
