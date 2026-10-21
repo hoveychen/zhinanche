@@ -6,9 +6,13 @@
 import * as THREE from "three";
 import { Environment, SetShadow, contactShadow } from "./environment.js";
 import { Courtyard } from "./courtyard.js";
-import { dressGround, makeGround } from "./ground.js";
-import { dressChariot, loadTextures } from "./materials.js";
+import { dressGround, makeGround, photoGround } from "./ground.js";
+import { dressChariot, loadTextures, photoWood } from "./materials.js";
+import { meanOf } from "./photo.js";
+import { AGE_ORIGIN, age } from "./aging.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
+import { Photos } from "./photo.js";
+import { BakedAO } from "./bakedao.js";
 
 /** @import { Quality } from "./quality.js" */
 /** @import { Textures } from "./materials.js" */
@@ -29,6 +33,31 @@ function device() {
   return { coarse, shortSide: Math.min(screen.width, screen.height), saveData: !!nav.connection?.saveData };
 }
 
+/**
+ * three.js's opaque order (painterSortStable), except that the chariot's
+ * parts go first, as one block, those with the same colour texture next to
+ * each other. The rig gives every part its own material, in model order, so
+ * parts with the photographed wood and parts with the painted grain came in
+ * turns, and each turn re-sent two texture matrices and rebound textures
+ * (~40 more GL calls a frame). Everything else keeps three's order: grouping
+ * the courtyard's by texture too put coplanar faces in another order, and
+ * the gate's doorways striped.
+ * @param {any} a @param {any} b render items
+ */
+function chariotFirst(a, b) {
+  if (a.groupOrder !== b.groupOrder) return a.groupOrder - b.groupOrder;
+  if (a.renderOrder !== b.renderOrder) return a.renderOrder - b.renderOrder;
+  const ca = a.material.userData.chariot === true, cb = b.material.userData.chariot === true;
+  if (ca !== cb) return ca ? -1 : 1;
+  if (ca) {
+    const ta = a.material.map?.id ?? -1, tb = b.material.map?.id ?? -1;
+    if (ta !== tb) return ta - tb;
+  }
+  if (a.material.id !== b.material.id) return a.material.id - b.material.id;
+  if (a.z !== b.z) return a.z - b.z;
+  return a.id - b.id;
+}
+
 export class Look {
   /** @param {LookHost} host */
   constructor(host) {
@@ -39,11 +68,15 @@ export class Look {
     this.quality = pick.quality;
     const s = SETTINGS[this.quality];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, s.maxPixelRatio));
+    renderer.setOpaqueSort(chariotFirst);
     this.env = new Environment(renderer, scene, { shadowSize: s.shadowSize, clouds: true });
     // Sun shadows of the courtyard, baked once it exists (see render).
     this.setShadow = new SetShadow(this.quality === "lite" ? 1024 : 2048, 240);
+    // Sky occlusion of the courtyard, baked with the shadows (?debug=nobao: not baked)
+    this.bakedAO = new BakedAO(this.quality === "lite" ? 512 : 1024, 240);
     this.ground = makeGround();
     this.setShadow.patch(/** @type {THREE.Material} */ (this.ground.material));
+    this.bakedAO.patch(/** @type {THREE.Material} */ (this.ground.material));
     scene.add(this.ground);
     /** where the chariot is: the courtyard, gate and ground ride along */
     this.rider = new THREE.Vector2();
@@ -54,15 +87,25 @@ export class Look {
     this.yard = null;
     /** @type {Promise<void> | undefined} */
     this.yardBuilt = undefined;
+    /** @type {() => void} */
+    this.yardIsReady = () => {};
+    /** resolves once the courtyard is up (not started by waiting on it) */
+    this.yardReady = new Promise((r) => (this.yardIsReady = () => r(undefined)));
     this.frames = 0;
+    /** @type {number | undefined} when the first frame was drawn (performance.now) */
+    this.shownAt = undefined;
     /** @type {Textures | null} */
     this.sceneTex = null;
     camera.far = 2600;
     camera.updateProjectionMatrix();
     /** @type {THREE.Mesh[]} */
     this.chariotMeshes = [];
+    /** @type {import("./photo.js").PhotoSet | null} the photographed wood, once it is up */
+    this.woodPhoto = null;
     /** @type {PostFX | null} */
     this.postfx = null;
+    /** @type {THREE.Vector3 | null} the sun's place while it is moved for a still picture */
+    this.sunHome = null;
     /** stepping down off post-processing, once its programs are compiled */
     /** @type {Promise<void> | null} */
     this.dropping = null;
@@ -73,6 +116,8 @@ export class Look {
     this.governor = pick.forced ? null : new FrameGovernor(this.quality, (q) => this.setQuality(q));
     document.body.dataset.quality = this.quality;
     const tex = loadTextures(renderer, s.textures);
+    /** the photographed sky and surfaces, coming in after the first picture */
+    this.photos = new Photos(renderer, s.textures);
     /** @type {Promise<Textures>} */
     this.chariotTex = tex.chariot;
     /** @type {Promise<Textures>} */
@@ -84,6 +129,62 @@ export class Look {
       this.env.bake(tex);
       return tex;
     });
+    void this.#loadPhotos();
+  }
+
+  /** Swap each photographed set in as it is uploaded (sky first: it is the smallest). */
+  async #loadPhotos() {
+    const done = (/** @type {string} */ part) => {
+      const now = (document.body.dataset.photo ?? "").split(" ").filter(Boolean);
+      now.push(part);
+      document.body.dataset.photo = now.join(" ");
+    };
+    /** @template T @param {string} name @param {Promise<T>} p */
+    const safe = (name, p) => p.catch((err) => {
+      console.warn(`photographed ${name} unavailable`, err);
+      return null;
+    });
+    const sky = safe("sky", this.photos.sky());
+    // sizes [albedo, normal, arm] for the full and lite tiers (tools/assets/build_photo.py makes these)
+    const sets = {
+      ground: safe("ground", this.photos.surface("ground", { full: [1024, 1024, 1024], lite: [1024, 1024, 512] })),
+      plaster: safe("plaster", this.photos.surface("plaster", { full: [1024, 1024, 512], lite: [512, 512, 256] })),
+      roof: safe("roof", this.photos.surface("roof", { full: [1024, 512, 512], lite: [512, 512, 256] })),
+      wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
+    };
+    // A sky decoded before the textures are made (the usual case) goes up at
+    // once and is in the environment map's first bake; one that comes later
+    // costs a second bake (~12 ms on a 4×-throttled CPU), on a frame of its own.
+    const early = sky.then((s) => {
+      if (s && !this.sceneTex) {
+        this.env.setPhoto(s, true);
+        done("sky");
+        return true;
+      }
+      return false;
+    });
+    const tex = await this.texReady;
+    /** @param {string} name @param {Promise<any>} p @param {(s: any) => unknown} on */
+    const put = async (name, p, on) => {
+      const got = await p;
+      if (!got) return;
+      // the swap on a frame of its own, after the uploads
+      await (await this.photos.later(() => on(got)));
+      done(name);
+    };
+    await Promise.all([
+      early.then((was) => (was ? undefined : put("sky", sky, (s) => this.env.setPhoto(s)))),
+      put("ground", sets.ground, (s) => photoGround(this.ground, s, meanOf(tex.stone))),
+      put("wood", sets.wood, async (s) => {
+        this.woodPhoto = s;
+        photoWood(this.chariotMeshes, s, await this.chariotTex);
+      }),
+      this.yardReady.then(() => Promise.all([
+        put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
+        put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
+      ])),
+    ]);
+    this.photos.close();
   }
 
   /** The sun light (its shadow follows the chariot). */
@@ -94,9 +195,16 @@ export class Look {
   /** Swap a loaded chariot's flat colours for real materials. @param {THREE.Object3D} root */
   async dress(root) {
     dressChariot(root, await this.chariotTex);
+    /** @type {THREE.Mesh[]} */
+    const meshes = [];
     root.traverse((o) => {
-      if (o instanceof THREE.Mesh) this.chariotMeshes.push(o);
+      if (!(o instanceof THREE.Mesh)) return;
+      meshes.push(o);
+      // drawn as a block (chariotFirst); the rig's clones keep the mark
+      for (const m of [o.material].flat()) m.userData.chariot = true;
     });
+    this.chariotMeshes.push(...meshes);
+    if (this.woodPhoto) photoWood(meshes, this.woodPhoto, await this.chariotTex);
   }
 
   /** Contact shadow under the chariot. @param {THREE.Object3D} holder */
@@ -111,6 +219,7 @@ export class Look {
     this.ground.position.set(x, 0, z);
     this.yard?.group.position.set(x, 0, z);
     this.setShadow.move(x, z);
+    AGE_ORIGIN.value.set(x, 0, z);
   }
 
   /**
@@ -131,11 +240,20 @@ export class Look {
     };
     const yard = await Courtyard.build({ lite: this.quality === "lite" }, slice);
     // dressed before it is compiled: the textures change its programs
-    yard.dress(this.sceneTex ?? (await this.texReady));
+    const tex = this.sceneTex ?? (await this.texReady);
+    yard.dress(tex);
+    yard.age(tex.clouds);
     const gate = scene.getObjectByName("landmark");
-    for (const m of Object.values(yard.materials)) this.setShadow.patch(m);
+    for (const m of Object.values(yard.materials)) {
+      this.setShadow.patch(m);
+      if (m !== yard.materials.hills) this.bakedAO.patch(m);
+    }
     gate?.traverse((o) => {
-      if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) this.setShadow.patch(o.material);
+      if (!(o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial)) return;
+      const kind = o.material.userData.ageKind;
+      if (kind) age(o.material, kind, tex.clouds);
+      this.setShadow.patch(o.material);
+      this.bakedAO.patch(o.material);
     });
     yard.group.position.set(this.rider.x, 0, this.rider.y);
     await Promise.all([yard.group, this.ground, ...(gate ? [gate] : [])].map((o) => this.compile(o)));
@@ -146,8 +264,12 @@ export class Look {
     if (hills) hills.visible = false;
     this.setShadow.move(this.rider.x, this.rider.y);
     this.setShadow.bake(renderer, gate ? [yard.group, gate] : [yard.group]);
+    if (new URLSearchParams(location.search).get("debug") !== "nobao") {
+      this.bakedAO.bake(renderer, gate ? [yard.group, gate] : [yard.group], new THREE.Vector3(this.rider.x, 0, this.rider.y));
+    }
     if (hills) hills.visible = true;
     document.body.dataset.scene = "ready";
+    this.yardIsReady();
   }
 
   /** @param {number} dt */
@@ -168,7 +290,13 @@ export class Look {
   render() {
     const { renderer, scene, camera } = this.host;
     if (++this.frames === 3) void this.buildYard();
-    this.governor?.tick(performance.now());
+    const now = performance.now();
+    this.governor?.tick(now);
+    // The photos' uploads sit out the first second on show: those frames are
+    // the heaviest (each program's and texture's first draws), and a 5–8 ms
+    // upload on top of one made the longest frame of the drive.
+    this.shownAt ??= now;
+    if (now - this.shownAt > 1000) this.photos.tick();
     // Parts faded out for the x-ray view stop casting shadows, so the gears
     // inside aren't left in the shade of a body you can't see.
     for (const o of this.chariotMeshes) {
@@ -227,6 +355,54 @@ export class Look {
     return done;
   }
 
+  /**
+   * A number that changes whenever anything in view does: the camera, and
+   * every visible thing's place, opacity, colour and texture (so a still
+   * picture can be averaged over frames, postfx.js).
+   */
+  #signature() {
+    const { scene, camera } = this.host;
+    let h = 0, i = 1;
+    /** @param {number} v */
+    const add = (v) => {
+      h += v * (1 + (i++ % 97) * 0.0137);
+    };
+    for (const e of camera.matrixWorld.elements) add(e);
+    for (const e of camera.projectionMatrix.elements) add(e);
+    scene.traverseVisible((o) => {
+      const e = o.matrixWorld.elements;
+      add(e[0] + e[1] + e[2] + e[4] + e[5] + e[6] + e[8] + e[9] + e[10] + e[12] + e[13] + e[14]);
+      const m = /** @type {any} */ (o).material;
+      if (!m || Array.isArray(m)) return;
+      add(m.opacity + (m.visible ? 1 : 0));
+      if (m.color) add(m.color.r + 2 * m.color.g + 3 * m.color.b);
+      if (m.map) add(m.map.id + m.map.version);
+    });
+    add(this.env.skyUniforms.photoOn.value + this.env.skyUniforms.cloudAmount.value * this.env.skyUniforms.time.value);
+    return h;
+  }
+
+  /**
+   * Move the sun a fraction of a degree for frame k of a still picture's
+   * average (a soft penumbra, as the real sun's disc gives); 0 puts it back.
+   * @param {number} k
+   */
+  #jitterSun(k) {
+    const sun = this.env.sun;
+    if (k === 0) {
+      if (this.sunHome) sun.position.copy(this.sunHome);
+      this.sunHome = null;
+      return;
+    }
+    this.sunHome ??= sun.position.clone();
+    const to = this.sunHome.clone().sub(sun.target.position);
+    const r = to.length() * 0.012 * Math.sqrt(((k * 0.618034) % 1));
+    const a = k * 2.399963;
+    const u = new THREE.Vector3(0, 1, 0).cross(to).normalize();
+    const v = to.clone().cross(u).normalize();
+    sun.position.copy(this.sunHome).addScaledVector(u, Math.cos(a) * r).addScaledVector(v, Math.sin(a) * r);
+  }
+
   /** @param {number} w CSS px @param {number} h */
   resize(w, h) {
     this.postfx?.setSize(w, h);
@@ -239,7 +415,10 @@ export class Look {
         const { PostFX } = await import("./postfx.js");
         if (!SETTINGS[this.quality].postfx) return;
         const { renderer, scene, camera, controls } = this.host;
-        this.postfx = new PostFX(renderer, scene, camera, () => controls.target);
+        this.postfx = new PostFX(renderer, scene, camera, () => controls.target, {
+          signature: () => this.#signature(),
+          jitter: (k) => this.#jitterSun(k),
+        });
       } catch (err) {
         console.warn("post-processing unavailable", err);
         this.quality = "medium";

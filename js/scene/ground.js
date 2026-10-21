@@ -58,20 +58,29 @@ export function dressGround(mesh, tex) {
   mat.roughnessMap = tex.stoneRough;
   mat.normalMap = tex.stoneNormal;
   mat.normalScale.setScalar(1);
+  // a slot for the photographed paving's occlusion (photo.js): the stand-in's
+  // red channel is white, so nothing is occluded until the photo comes
+  mat.aoMap = tex.stoneRough;
   const macro = tex.clouds;
+  const slab = { value: 12 };
+  mat.userData.slabSize = slab;
   const prev = mat.onBeforeCompile.bind(mat);
   mat.onBeforeCompile = (shader, r) => {
     shader.uniforms.macroMap = { value: macro };
+    shader.uniforms.slabSize = slab;
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec2 vGroundXZ;\nvarying vec2 vGroundRel;")
+      .replace("#include <common>", "#include <common>\nuniform float slabSize;\nvarying vec2 vGroundXZ;\nvarying vec2 vGroundRel;")
       .replace(
         "#include <project_vertex>",
         `#include <project_vertex>
         vec4 groundW = modelMatrix * vec4(transformed, 1.0);
         vGroundXZ = groundW.xz;
         vGroundRel = groundW.xz - modelMatrix[3].xz;
-        vec2 slabUv = vec2(groundW.x, -groundW.z) / 12.0;
+        vec2 slabUv = vec2(groundW.x, -groundW.z) / slabSize;
         vMapUv = slabUv;
+        #ifdef USE_AOMAP
+        vAoMapUv = slabUv;
+        #endif
         #ifdef USE_NORMALMAP
         vNormalMapUv = slabUv;
         #endif
@@ -100,6 +109,28 @@ export function dressGround(mesh, tex) {
   const prevKey = mat.customProgramCacheKey.bind(mat);
   mat.customProgramCacheKey = () => `${prevKey()}|ground`;
   mat.needsUpdate = true;
+}
+
+/**
+ * Put the photographed paving down (photo.js), keeping the old average colour.
+ * Only textures and uniforms change, so nothing recompiles.
+ * @param {THREE.Mesh} mesh dressed by dressGround
+ * @param {import("./photo.js").PhotoSet} set
+ * @param {THREE.Color} was the procedural paving's average (linear)
+ */
+export function photoGround(mesh, set, was) {
+  const mat = /** @type {THREE.MeshStandardMaterial} */ (mesh.material);
+  // a touch cooler than the old paving: the scan is warm grey
+  const target = mat.color.clone().multiply(was).multiply(new THREE.Color(0.98, 1, 1.04));
+  mat.color.copy(target).multiply(new THREE.Color(1 / set.mean.r, 1 / set.mean.g, 1 / set.mean.b));
+  mat.map = set.albedo;
+  mat.normalMap = set.normal;
+  mat.roughnessMap = set.arm;
+  mat.aoMap = set.arm;
+  // the scan's roughness is absolute, the procedural one a multiplier
+  mat.roughness = 1;
+  // the scan is 3 m (9.7 chi) square
+  mat.userData.slabSize.value = 9.7;
 }
 
 const RING_R = 8.2;

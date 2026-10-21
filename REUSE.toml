@@ -81,6 +81,18 @@ precedence = "override"
 SPDX-FileCopyrightText = "2014 SSR2000 (Wikimedia Commons)"
 SPDX-License-Identifier = "CC-BY-SA-3.0"
 
+# Photographed sky and surface scans from Poly Haven (CC0), downloaded, cut down
+# and recompressed by tools/assets/build_photo.py (sources: tools/assets/sources.json).
+#   kloofendal_48d_partly_cloudy_puresky - Greg Zaal, Jarod Guest
+#   large_grey_tiles - Rob Tuytel
+#   red_plaster_weathered, clay_roof_tiles_02 - Amal Kumar
+#   dark_wood - Dimitrios Savva, Dario Barresi, Rico Cilliers
+[[annotations]]
+path = ["assets/photo/*.webp"]
+precedence = "override"
+SPDX-FileCopyrightText = "Poly Haven (polyhaven.com): Greg Zaal, Jarod Guest, Rob Tuytel, Amal Kumar, Dimitrios Savva, Dario Barresi, Rico Cilliers"
+SPDX-License-Identifier = "CC0-1.0"
+
 # Icons: Tabler Icons (outline set), copied by tools/vendor.mjs (pnpm vendor)
 # from the npm package @tabler/icons; keeps its LICENSE.
 [[annotations]]

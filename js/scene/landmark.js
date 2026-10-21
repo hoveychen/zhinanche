@@ -83,6 +83,11 @@ function roofGeometry(w, d, hgt) {
 export class Landmark {
   constructor() {
     const red = mat(0xb8321e), tile = mat(0x2c4f55), beamM = mat(0x2d6a6a), stone = mat(0xb9b2a2), gold = mat(0xd8a640);
+    // how each weathers (aging.js, applied by look.js)
+    red.userData.ageKind = "lacquer";
+    tile.userData.ageKind = "roof";
+    stone.userData.ageKind = "stone";
+    gold.userData.ageKind = "gold";
     const g = new THREE.Group();
     g.name = "landmark";
     /** @param {THREE.BufferGeometry} geo @param {THREE.Material} m @param {number} x @param {number} y @param {number} z */

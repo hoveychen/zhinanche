@@ -12,7 +12,7 @@ const TYPES = {
   ".mjs": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".glb": "model/gltf-binary", ".png": "image/png",
   ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json",
-  ".woff2": "font/woff2",
+  ".woff2": "font/woff2", ".webp": "image/webp",
 };
 
 createServer(async (req, res) => {

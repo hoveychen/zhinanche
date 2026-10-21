@@ -8,8 +8,11 @@
 // courtyard (SetShadow), which never moves relative to the sun.
 
 import * as THREE from "three";
+import { GRADED } from "./grade.js";
+import { placeholder } from "./photo.js";
 
 /** @import { Textures } from "./materials.js" */
+/** @import { PhotoSky } from "./photo.js" */
 
 /**
  * Direction to the sun: west, a little north (south = +z, west = −x), 28° up.
@@ -79,6 +82,12 @@ uniform sampler2D clouds;
 uniform float time;
 uniform float cloudAmount;
 uniform float brightness;
+uniform sampler2D photo;
+uniform float photoOn;
+uniform vec2 photoElev;
+uniform float photoGain;
+uniform vec3 photoZenith;
+uniform vec3 photoLow;
 varying vec3 vDir;
 float cloud(vec2 uv) {
   return texture2D(clouds, uv).r * 0.65 + texture2D(clouds, uv * 2.3 + 0.31).r * 0.35;
@@ -95,8 +104,7 @@ void main() {
   col = mix(col, low, exp(-up * 14.0) * 0.9);
   float s = max(dot(d, sunDir), 0.0);
   col += glow * (pow(s, 5.0) * 0.22 + pow(s, 40.0) * 0.5);
-  col += vec3(1.0, 0.92, 0.8) * smoothstep(0.9994, 0.9997, s) * 16.0;
-  if (cloudAmount > 0.0 && h > 0.0) {
+  if (cloudAmount > 0.0 && h > 0.0 && photoOn < 1.0) {
     // A flat cloud deck: uv from where the ray meets it.
     vec2 uv = d.xz / (h + 0.08) * 0.075 + vec2(time * 0.0012, time * 0.0005);
     float c = cloud(uv);
@@ -114,10 +122,28 @@ void main() {
     col = mix(col, cc, cover * 0.92);
   }
   if (h < 0.0) col = mix(low, groundCol, smoothstep(0.0, 0.2, -h));
+  if (photoOn > 0.0) {
+    // The photographed sky (equirect strip, column 0 north, clockwise; rows
+    // from photoElev.y down to photoElev.x), stored as radiance / photoGain.
+    float el = asin(clamp(h, -1.0, 1.0));
+    float v = (el - photoElev.x) / (photoElev.y - photoElev.x);
+    vec2 puv = vec2(fract(atan(d.x, -d.z) / 6.28318531), clamp(v, 0.002, 0.998));
+    vec3 p = texture2D(photo, puv).rgb * photoGain;
+    p = mix(p, photoZenith, smoothstep(0.9, 1.0, v));
+    p = mix(p, photoLow, smoothstep(0.03, -0.01, v));
+    if (h < 0.0) p = mix(p, groundCol, smoothstep(0.03, 0.2, -h));
+    // a soft glow round our sun (the photo's own sun is painted out)
+    p += glow * (pow(s, 8.0) * 0.1 + pow(s, 60.0) * 0.5);
+    col = mix(col, p, photoOn);
+  }
+  col += vec3(1.0, 0.92, 0.8) * smoothstep(0.9994, 0.9997, s) * 16.0;
   gl_FragColor = vec4(col * brightness, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
+
+/** Stands in for the sky photo until it comes (a sampler must always have a texture). */
+const NO_PHOTO = placeholder([0, 0, 0]);
 
 /** @param {THREE.Texture | null} clouds */
 function skyMaterial(clouds) {
@@ -135,6 +161,12 @@ function skyMaterial(clouds) {
       time: { value: 0 },
       cloudAmount: { value: clouds ? 1 : 0 },
       brightness: { value: 1 },
+      photo: { value: NO_PHOTO },
+      photoOn: { value: 0 },
+      photoElev: { value: new THREE.Vector2(0, 1) },
+      photoGain: { value: 1 },
+      photoZenith: { value: SKY.zenith.clone() },
+      photoLow: { value: FOG.clone() },
     },
     vertexShader: SKY_VERT,
     fragmentShader: SKY_FRAG,
@@ -142,6 +174,18 @@ function skyMaterial(clouds) {
     depthWrite: false,
     fog: false,
   });
+}
+
+/**
+ * Point a sky material at a photo strip.
+ * @param {Record<string, THREE.IUniform>} u @param {PhotoSky} photo @param {THREE.Texture} tex @param {number[]} elev degrees
+ */
+function photoUniforms(u, photo, tex, elev) {
+  u.photo.value = tex;
+  u.photoElev.value.set(THREE.MathUtils.degToRad(elev[0]), THREE.MathUtils.degToRad(elev[1]));
+  u.photoGain.value = photo.headroom;
+  u.photoZenith.value.fromArray(photo.zenith);
+  u.photoLow.value.fromArray(photo.fog);
 }
 
 /** A soft dark pad, for contact shadows. @param {number} soft 0..1 edge width */
@@ -347,7 +391,9 @@ export class Environment {
   constructor(renderer, scene, opts) {
     this.renderer = renderer;
     this.scene = scene;
-    renderer.toneMapping = THREE.NeutralToneMapping;
+    // Neutral plus a photographic grade (grade.js; ?debug=nograde: Neutral alone)
+    const graded = GRADED && new URLSearchParams(location.search).get("debug") !== "nograde";
+    renderer.toneMapping = graded ? THREE.CustomToneMapping : THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -382,12 +428,43 @@ export class Environment {
     scene.add(sun, sun.target);
     this.sun = sun;
     this.cloudsWanted = opts.clouds;
+    /** @type {Textures | null} */
+    this.tex = null;
+    /** @type {PhotoSky | null} */
+    this.photo = null;
+    /** @type {THREE.PMREMGenerator | null} */
+    this.pmrem = null;
+    /** the photo's fade-in, 0..1 */
+    this.photoFade = 0;
+    this.fogFrom = FOG.clone();
+  }
+
+  /** @returns {Record<string, THREE.IUniform>} */
+  get skyUniforms() {
+    return /** @type {THREE.ShaderMaterial} */ (this.sky.material).uniforms;
+  }
+
+  /**
+   * Put the photographed sky up (it fades in) and bake it into the
+   * environment map. Same program as before: only uniforms change.
+   * @param {PhotoSky} photo
+   * @param {boolean} [now] no fade (before the first picture)
+   */
+  setPhoto(photo, now = false) {
+    this.photo = photo;
+    const u = this.skyUniforms;
+    photoUniforms(u, photo, photo.bgTex, photo.bg.elev);
+    u.photoOn.value = 0;
+    this.photoFade = 0;
+    if (now) this.update(0.8);
+    if (this.tex) this.bake(this.tex);
   }
 
   /** Bake the sky into the environment map, once textures exist. @param {Textures | null} tex */
   bake(tex) {
+    this.tex = tex;
     const mat = /** @type {THREE.ShaderMaterial} */ (this.sky.material);
-    if (tex && this.cloudsWanted) {
+    if (tex && this.cloudsWanted && this.photoFade < 1) {
       mat.uniforms.clouds.value = tex.clouds;
       mat.uniforms.cloudAmount.value = 1;
     }
@@ -395,6 +472,10 @@ export class Environment {
     const envSky = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), skyMaterial(tex?.clouds ?? null));
     const envMat = /** @type {THREE.ShaderMaterial} */ (envSky.material);
     envMat.uniforms.cloudAmount.value = tex ? 0.7 : 0;
+    if (this.photo) {
+      photoUniforms(envMat.uniforms, this.photo, this.photo.envTex, this.photo.env.elev);
+      envMat.uniforms.photoOn.value = 1;
+    }
     envScene.add(envSky);
     // The courtyard as the chariot sees it: paving below, a red wall band
     // and dark-gold roofs round the horizon (walls are ~70–180 chi off).
@@ -420,9 +501,16 @@ export class Environment {
     sunDisc.position.copy(SUN_DIR).multiplyScalar(30);
     sunDisc.lookAt(0, 0, 0);
     envScene.add(sunDisc);
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    const rt = pmrem.fromScene(envScene, 0.02, 0.1, 100);
-    pmrem.dispose();
+    // Kept until the photographed sky is in: disposing it frees its blur
+    // programs, and a second bake then compiled them again (~30 ms).
+    this.pmrem ??= new THREE.PMREMGenerator(this.renderer);
+    const rt = this.pmrem.fromScene(envScene, 0.02, 0.1, 100);
+    if (this.photo) {
+      this.pmrem.dispose();
+      this.pmrem = null;
+    }
+    envMat.dispose();
+    envSky.geometry.dispose();
     this.scene.environment?.dispose();
     this.scene.environment = rt.texture;
     this.scene.environmentIntensity = 0.9;
@@ -439,7 +527,19 @@ export class Environment {
 
   /** @param {number} dt */
   update(dt) {
-    /** @type {THREE.ShaderMaterial} */ (this.sky.material).uniforms.time.value += dt;
+    const u = this.skyUniforms;
+    u.time.value += dt;
+    if (this.photo && this.photoFade < 1) {
+      this.photoFade = Math.min(1, this.photoFade + dt / 0.8);
+      const k = this.photoFade * this.photoFade * (3 - 2 * this.photoFade);
+      u.photoOn.value = k;
+      // clouds drawn by the shader only while the photo is still coming in
+      if (k >= 1) u.cloudAmount.value = 0;
+      const fog = new THREE.Color().fromArray(this.photo.fog);
+      const c = this.fogFrom.clone().lerp(fog, k);
+      if (this.scene.fog) this.scene.fog.color.copy(c);
+      if (this.scene.background instanceof THREE.Color) this.scene.background.copy(c);
+    }
   }
 
   /** @param {number} size */
