@@ -53,6 +53,9 @@ export class Course {
     this.doTask = null;
     /** @type {HTMLButtonElement | null} */
     this.replayBtn = null;
+    /** "walk them round" (the hold-hands demo), held back by a guess-first question */
+    /** @type {HTMLButtonElement | null} */
+    this.walkBtn = null;
     /** what the child has to press in this step: kept in view (short panels) */
     /** @type {HTMLElement | null} */
     this.target = null;
@@ -281,8 +284,12 @@ export class Course {
       this.replayBtn = h("button", { type: "button", class: "plain replay", hidden: this.held !== null, onclick: () => this.app.replay() }, [h("span", { text: t.replay })]);
       parts.push(this.replayBtn);
     }
+    this.walkBtn = null;
     if (stateAt(lesson.steps, this.step).demo === "holdHands") {
-      parts.push(h("button", { type: "button", class: "primary walk", "data-demo": "walk", onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: t.walk })]));
+      // a guess first: walking them now would give the answer away
+      const held = this.held !== null;
+      this.walkBtn = h("button", { type: "button", class: "primary walk", "data-demo": "walk", disabled: held, onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: held ? t.walkAfterGuess : t.walk })]);
+      parts.push(this.walkBtn);
     }
     this.doTask = null;
     this.target = null;
@@ -342,6 +349,10 @@ export class Course {
     // not if "walk them round" already did
     if (held.walk && !hh.walking && hh.steps.in === 0) hh.walk();
     if (this.replayBtn) this.replayBtn.hidden = false;
+    if (this.walkBtn) {
+      this.walkBtn.disabled = false;
+      /** @type {HTMLElement} */ (this.walkBtn.firstElementChild).textContent = S().course.walk;
+    }
   }
 
   /** @param {DoTask} t */

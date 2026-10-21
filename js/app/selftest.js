@@ -152,9 +152,16 @@ export async function selftest({ app, course, world, input }) {
         if (guess) {
           if (app.playing) problems.push("plays before the guess");
           if (world.holdHands.walking) problems.push("walks before the guess");
+          // nothing on the page plays it before the guess either ("walk them round")
+          const walk = document.querySelector("[data-demo=walk]");
+          if (walk instanceof HTMLButtonElement && visible(walk)) {
+            walk.click();
+            if (!walk.disabled || world.holdHands.walking) problems.push("walk button gives the guess away");
+          }
           const opts = [...document.querySelectorAll(".task.choose .option")];
           /** @type {HTMLElement} */ (opts[t.answer]).click();
           if (!document.querySelector(".task.choose.passed")) problems.push("right answer not accepted");
+          if (walk instanceof HTMLButtonElement && walk.disabled) problems.push("walk button still off after the guess");
         }
         if (step.scene?.play) {
           if (!app.player) problems.push("play did not start");

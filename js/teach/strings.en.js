@@ -97,6 +97,7 @@ export const STR_EN = {
     replay: "Watch again",
     guessNote: "Make a guess. Then you'll see it happen.",
     walk: "Walk them round",
+    walkAfterGuess: "Pick an answer first",
     navLabel: "Steps",
     back: "Back",
     next: "Next",
