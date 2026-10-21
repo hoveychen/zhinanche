@@ -710,7 +710,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   /* HUD: small and see-through enough to keep the chariot in view */
   .hud-dial { padding: 5px 7px 6px; border-radius: var(--r-m); }
   .hud-dial svg { width: 80px; height: 80px; }
-  .dial-text { margin-top: 3px; gap: 5px; font-size: 13px; }
+  .dial-text { margin-top: 3px; gap: 5px; font-size: var(--fs-xs); }
   .dial-text::before { width: 8px; height: 8px; }
   /* the corner buttons: just their icons (the words are their names and titles) */
   .stage-corner { padding: 3px; border-radius: var(--r-m); }
@@ -759,12 +759,12 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .odo-name { grid-area: name; font-size: var(--fs-xs); }
   .odo-read { grid-area: read; text-align: right; }
   .odo-read .num { font-size: 17px; }
-  .odo-read .unit { font-size: 12px; }
+  .odo-read .unit { font-size: var(--fs-xs); }
   .odo-read .m { display: none; }
   .odo-bar { grid-area: bar; width: auto; height: 7px; margin: 1px 0 0; border-radius: var(--r-full); }
   .odo-bar .fill { top: 0; bottom: 0; right: auto; height: auto; left: calc(var(--from, 0) * 100%); width: calc(var(--len, 0) * 100%); }
   .odo-bar .zero { top: -2px; bottom: -2px; left: 50%; right: auto; width: 2px; height: auto; }
-  .odo-diff { margin-top: 3px; font-size: 13px; }
+  .odo-diff { margin-top: 3px; font-size: var(--fs-xs); text-wrap: balance; }
   .hud-odo.folded { min-height: 44px; padding: 6px 28px 6px 10px; }
   .odo-fold { top: 5px; right: 5px; width: 16px; height: 16px; }
   .hud-odo.folded .odo-fold { top: calc(50% - 8px); }
@@ -802,7 +802,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .panel-nav .plain { padding: 0 10px; }
   .more-cue { min-height: 44px; padding: 0 8px; font-size: 14px; }
   .pic img { max-height: 140px; }
-  .home-kicker { font-size: 13px; }
+  .home-kicker { font-size: var(--fs-xs); }
   .home-title { font-size: 34px; }
   .home-hook { font-size: 17px; margin-bottom: 10px; }
   .primary.big, .plain.big { min-height: 48px; font-size: 17px; padding: 0 18px; }
@@ -813,7 +813,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
 
   .hud-dial { padding: 5px 7px 6px; border-radius: var(--r-m); }
   .hud-dial svg { width: 74px; height: 74px; }
-  .dial-text { margin-top: 2px; gap: 5px; font-size: 12px; }
+  .dial-text { margin-top: 2px; gap: 5px; font-size: var(--fs-xs); }
   .dial-text::before { width: 8px; height: 8px; }
   .stage-corner { padding: 3px; border-radius: var(--r-m); }
   .stage-corner .bar-btn { min-height: 44px; min-width: 44px; padding: 0; }
@@ -821,7 +821,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .stage-notes { top: 64px; gap: 6px; max-width: calc(100% - 120px); }
   .paused-note { padding: 4px 12px; border-radius: var(--r-m); }
   .paused-note b { font-size: 17px; }
-  .paused-note span { font-size: 13px; }
+  .paused-note span { font-size: var(--fs-xs); }
   .stage-hint { padding: 4px 10px; font-size: 14px; border-radius: var(--r-m); }
   .stage-bar { padding: 4px; gap: 4px; border-radius: var(--r-m); }
   .pad { gap: 2px; }

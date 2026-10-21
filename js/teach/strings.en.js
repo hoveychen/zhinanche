@@ -129,8 +129,8 @@ export const STR_EN = {
     odoLabel: "How far each wheel has rolled (tap to fold or unfold)",
     same: "Both wheels rolled the same",
     opposite: "The wheels roll opposite ways",
-    rightMore: (chi) => `Right wheel: ${m(chi)} m more`,
-    leftMore: (chi) => `Left wheel: ${m(chi)} m more`,
+    rightMore: (chi) => `Right wheel: ${m(chi)}\u00a0m more`,
+    leftMore: (chi) => `Left wheel: ${m(chi)}\u00a0m more`,
   },
 
   tools: {

@@ -157,9 +157,9 @@ export const STR = {
     same: "两个轮子走得一样多",
     opposite: "两个轮子朝相反方向走",
     /** @param {number} chi */
-    rightMore: (chi) => `右轮比左轮多走 ${fmt(chi)} 尺`,
+    rightMore: (chi) => `右轮比左轮多走 ${fmt(chi)}\u00a0尺`,
     /** @param {number} chi */
-    leftMore: (chi) => `左轮比右轮多走 ${fmt(chi)} 尺`,
+    leftMore: (chi) => `左轮比右轮多走 ${fmt(chi)}\u00a0尺`,
   },
 
   /** the controls a lesson step can show (js/app/tools.js) */
