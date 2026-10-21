@@ -145,7 +145,7 @@ export const LESSONS = [
       },
       {
         text: "现在车向左绕一个圈。\n\n<span class=\"l\">左轮</span>在里圈，<span class=\"r\">右轮</span>在外圈。看看两个轮子各走了多远。",
-        scene: { reset: true, view: "top", play: "circle" },
+        scene: { reset: true, view: "above", play: "circle" },
         task: {
           kind: "choose",
           prompt: "哪个轮子走的路更多？",
