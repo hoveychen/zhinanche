@@ -9,6 +9,7 @@ import { Courtyard } from "./courtyard.js";
 import { dressGround, makeGround, photoGround } from "./ground.js";
 import { dressChariot, loadTextures, photoWood } from "./materials.js";
 import { meanOf } from "./photo.js";
+import { AGE_ORIGIN, age } from "./aging.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
 import { Photos } from "./photo.js";
 
@@ -180,6 +181,7 @@ export class Look {
     this.ground.position.set(x, 0, z);
     this.yard?.group.position.set(x, 0, z);
     this.setShadow.move(x, z);
+    AGE_ORIGIN.value.set(x, 0, z);
   }
 
   /**
@@ -200,11 +202,16 @@ export class Look {
     };
     const yard = await Courtyard.build({ lite: this.quality === "lite" }, slice);
     // dressed before it is compiled: the textures change its programs
-    yard.dress(this.sceneTex ?? (await this.texReady));
+    const tex = this.sceneTex ?? (await this.texReady);
+    yard.dress(tex);
+    yard.age(tex.clouds);
     const gate = scene.getObjectByName("landmark");
     for (const m of Object.values(yard.materials)) this.setShadow.patch(m);
     gate?.traverse((o) => {
-      if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) this.setShadow.patch(o.material);
+      if (!(o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial)) return;
+      const kind = o.material.userData.ageKind;
+      if (kind) age(o.material, kind, tex.clouds);
+      this.setShadow.patch(o.material);
     });
     yard.group.position.set(this.rider.x, 0, this.rider.y);
     await Promise.all([yard.group, this.ground, ...(gate ? [gate] : [])].map((o) => this.compile(o)));

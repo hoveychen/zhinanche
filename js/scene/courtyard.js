@@ -18,6 +18,7 @@
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { meanOf, placeholder } from "./photo.js";
+import { age } from "./aging.js";
 
 /** @import { Textures } from "./materials.js" */
 /** @import { PhotoSet } from "./photo.js" */
@@ -708,6 +709,20 @@ export class Courtyard {
     m.marble.map = tex.stone;
     m.marble.roughnessMap = tex.stoneRough;
     for (const mat of Object.values(m)) mat.needsUpdate = true;
+  }
+
+  /**
+   * Weather the walls, lacquer, roofs, stone and bronze (aging.js). Before
+   * the courtyard is compiled. @param {THREE.Texture} noise texgen.js clouds
+   */
+  age(noise) {
+    const m = this.materials;
+    age(m.wallRed, "plaster", noise);
+    for (const k of /** @type {const} */ (["column", "panel"])) age(m[k], "lacquer", noise);
+    for (const k of /** @type {const} */ (["roofYellow", "roofGray"])) age(m[k], "roof", noise);
+    age(m.marble, "stone", noise);
+    age(m.bronze, "bronze", noise);
+    age(m.gold, "gold", noise);
   }
 
   /**
