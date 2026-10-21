@@ -28,6 +28,7 @@ uvx reuse lint      # 或者 pip install reuse && reuse lint
 | `assets/photo/tree-*.webp`、`trees.json` | Poly Haven：Rico Cilliers（建模）、Rob Tuytel（摄影），pine_tree_01、fir_tree_01 | CC0 1.0 | `tools/assets/fetch_models.py` 下载模型，`blender/scripts/render_impostors.py` 在 Blender 里渲 16 方位贴片，`pnpm trees`（`tools/assets/build_trees.py`）拼图集 |
 | `assets/photo/roof-*.webp`、`dougong-*.webp` | 本项目（筒瓦垄、斗拱的高度场）；Poly Haven Amal Kumar（clay_roof_tiles_02、red_plaster_weathered，只取颗粒） | CC BY-SA 4.0 | `pnpm assets --only roof,dougong`（`tools/assets/build_photo.py` tile_rows、dougong_band） |
 | `assets/photo/chariot-*-ao-*.webp` | 本项目（由 `assets/*.glb` 烘焙的遮蔽图集） | CC BY-SA 4.0 | `pnpm build:model`（`blender/scripts/build_chariot.py` bake），和模型一样算内容 |
+| `assets/photo/chariot-murals-*.webp`、`tools/assets/murals/*.jpg` | 本项目（箱上的青龙、白虎、花鸟，2026-10-22 用图像模型生成：OpenAI，经 Fleet 的图像工具；没有用第三方画作） | CC BY-SA 4.0 | `uv run --with pillow tools/assets/build_murals.py` 拼成图集；图样没有宋代依据，见[决策 0008](../design/decisions/0008-chariot-readability.md) |
 | `research/sources/songshi-149-zhinanche.txt`、`early-records.txt` | 《宋史》《宋书》《南齐书》 | 公有领域 | 维基文库 |
 
 三张图片的作者和许可已于 2026-10-20 用 Commons API（`action=query&prop=imageinfo&iiprop=extmetadata`）核实。课件在每张图下面显示署名（`Picture.credit`）。
