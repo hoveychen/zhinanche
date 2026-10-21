@@ -159,7 +159,8 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
    phones keep the buttons at the bottom: their panel is short anyway.) */
 @media (orientation: landscape) and (min-width: 761px) and (min-height: 501px) {
   .panel-body { flex: 0 1 auto; min-height: 0; }
-  .panel-body + .panel-nav { border-bottom: 1px solid var(--line); }
+  /* on the panel's own paper, a hairline over it: it reads as the end of the step, not a bar */
+  .panel-body + .panel-nav { background: var(--paper); }
 }
 
 /* Portrait tablets and phones: 3D on top, lessons below. */
