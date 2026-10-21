@@ -121,7 +121,7 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   gold: { color: 0xe6c98c, map: "metal", roughness: 0.2, metalness: 1, normal: 0.2, scale: 0.8 },
   marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1, ao: false },
   // Hub bands, caps, linchpins, straps, the shaft's point: forged iron; the photographed rust goes over it (photoIron)
-  iron: { color: 0x55565a, map: "metal", roughness: 0.62, metalness: 0.9, normal: 0.5, scale: 1.2 },
+  iron: { color: 0x6b6762, map: "metal", roughness: 0.62, metalness: 0.65, normal: 0.5, scale: 1.2 },
   // Bamboo cord (竹索) and lashings: matt, the grain read as twisted fibres.
   rope: { color: 0x9c7f50, map: "wood", roughness: 0.95, normal: 1, scale: 6, sheen: 0.5 },
   robe: { color: 0xb3241c, map: "woodSoft", roughness: 0.6, sheen: 0.7, normal: 0.2, scale: 2 },
@@ -328,7 +328,9 @@ export function photoIron(meshes, set) {
       m.roughnessMap = set.arm;
       m.metalnessMap = set.arm;
       m.roughness = 1;
-      m.metalness = 1;
+      // forged iron dark with scale, not bright metal: at full metalness it
+      // only mirrored the shade under the box and the hubs' bands went black
+      m.metalness = 0.65;
     }
   }
 }

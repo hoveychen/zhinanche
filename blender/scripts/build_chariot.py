@@ -201,7 +201,7 @@ def wheel(L, side, parent):
     r_out = [(d_in / 2, a0), (d_max / 2 * 0.98, (a0 + s) / 2), (d_max / 2, s), (d_max / 2 * 0.94, s + 0.36),
              (d_max / 2 * 0.82, s + 0.76), (d_max / 2 * 0.66, s + 1.16), (d_out / 2, a1)]
     bore = [(L.bore_out, a1), (L.bore_in, a0)]
-    hub.revolve(c, ax, r_out + bore, "wood_dark", n=16, ref=(0, 0, 1))
+    hub.revolve(c, ax, r_out + bore, "wheel", n=16, ref=(0, 0, 1))  # lacquered with the wheel (赤質); dark wood read as a black lump in the box's shade
     # iron bands either side of the spokes (圈以鐵) and raised rings (篆) on the outer part
     half_w = W(L, "spokeStockWidth") / 2
     for a, r in ((s - half_w - 0.1, d_max / 2 * 0.985), (s + half_w + 0.1, d_max / 2 * 0.98)):
@@ -209,7 +209,7 @@ def wheel(L, side, parent):
     for i in range(W(L, "hubRidges")):
         a = s + 0.55 + 0.33 * i
         r = d_max / 2 * (0.9 - 0.11 * i)
-        hub.revolve(c, ax, [(r - 0.04, a - 0.035), (r + 0.015, a - 0.035), (r + 0.015, a + 0.035), (r - 0.04, a + 0.035)], "wood_dark", n=16, ref=(0, 0, 1))
+        hub.revolve(c, ax, [(r - 0.04, a - 0.035), (r + 0.015, a - 0.035), (r + 0.015, a + 0.035), (r - 0.04, a + 0.035)], "wheel", n=16, ref=(0, 0, 1))
     # bore sleeves (釭) showing at both ends
     hub.revolve(c, ax, [(L.bore_in - 0.01, a0 - 0.03), (L.bore_in + 0.08, a0 - 0.03), (L.bore_in + 0.08, a0 + 0.04), (L.bore_in - 0.01, a0 + 0.04)], "iron", n=12, ref=(0, 0, 1))
     hub.revolve(c, ax, [(L.bore_out - 0.01, a1 - 0.04), (L.bore_out + 0.07, a1 - 0.04), (L.bore_out + 0.07, a1 + 0.03), (L.bore_out - 0.01, a1 + 0.03)], "iron", n=12, ref=(0, 0, 1))
