@@ -104,6 +104,8 @@ export class Look {
     this.woodPhoto = null;
     /** @type {PostFX | null} */
     this.postfx = null;
+    /** @type {THREE.Vector3 | null} the sun's place while it is moved for a still picture */
+    this.sunHome = null;
     /** stepping down off post-processing, once its programs are compiled */
     /** @type {Promise<void> | null} */
     this.dropping = null;
@@ -353,6 +355,54 @@ export class Look {
     return done;
   }
 
+  /**
+   * A number that changes whenever anything in view does: the camera, and
+   * every visible thing's place, opacity, colour and texture (so a still
+   * picture can be averaged over frames, postfx.js).
+   */
+  #signature() {
+    const { scene, camera } = this.host;
+    let h = 0, i = 1;
+    /** @param {number} v */
+    const add = (v) => {
+      h += v * (1 + (i++ % 97) * 0.0137);
+    };
+    for (const e of camera.matrixWorld.elements) add(e);
+    for (const e of camera.projectionMatrix.elements) add(e);
+    scene.traverseVisible((o) => {
+      const e = o.matrixWorld.elements;
+      add(e[0] + e[1] + e[2] + e[4] + e[5] + e[6] + e[8] + e[9] + e[10] + e[12] + e[13] + e[14]);
+      const m = /** @type {any} */ (o).material;
+      if (!m || Array.isArray(m)) return;
+      add(m.opacity + (m.visible ? 1 : 0));
+      if (m.color) add(m.color.r + 2 * m.color.g + 3 * m.color.b);
+      if (m.map) add(m.map.id + m.map.version);
+    });
+    add(this.env.skyUniforms.photoOn.value + this.env.skyUniforms.cloudAmount.value * this.env.skyUniforms.time.value);
+    return h;
+  }
+
+  /**
+   * Move the sun a fraction of a degree for frame k of a still picture's
+   * average (a soft penumbra, as the real sun's disc gives); 0 puts it back.
+   * @param {number} k
+   */
+  #jitterSun(k) {
+    const sun = this.env.sun;
+    if (k === 0) {
+      if (this.sunHome) sun.position.copy(this.sunHome);
+      this.sunHome = null;
+      return;
+    }
+    this.sunHome ??= sun.position.clone();
+    const to = this.sunHome.clone().sub(sun.target.position);
+    const r = to.length() * 0.012 * Math.sqrt(((k * 0.618034) % 1));
+    const a = k * 2.399963;
+    const u = new THREE.Vector3(0, 1, 0).cross(to).normalize();
+    const v = to.clone().cross(u).normalize();
+    sun.position.copy(this.sunHome).addScaledVector(u, Math.cos(a) * r).addScaledVector(v, Math.sin(a) * r);
+  }
+
   /** @param {number} w CSS px @param {number} h */
   resize(w, h) {
     this.postfx?.setSize(w, h);
@@ -365,7 +415,10 @@ export class Look {
         const { PostFX } = await import("./postfx.js");
         if (!SETTINGS[this.quality].postfx) return;
         const { renderer, scene, camera, controls } = this.host;
-        this.postfx = new PostFX(renderer, scene, camera, () => controls.target);
+        this.postfx = new PostFX(renderer, scene, camera, () => controls.target, {
+          signature: () => this.#signature(),
+          jitter: (k) => this.#jitterSun(k),
+        });
       } catch (err) {
         console.warn("post-processing unavailable", err);
         this.quality = "medium";
