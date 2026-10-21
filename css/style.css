@@ -480,7 +480,10 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 body[data-mode="free"] .share-btn { display: inline-flex; }
 .share-btn .i-done, .share-btn.done .i-link { display: none; }
 .share-btn.done .i-done { display: block; }
-.share-btn.done { color: var(--ok); }
+.share-btn.done { color: var(--ok-ink); }
+.share-words { display: grid; }
+.share-words > * { grid-area: 1 / 1; }
+.share-words > .ghost { visibility: hidden; }
 
 /* The drive bar, bottom right: the gears view and "draw a road" by the arrow keys.
    Two rows: the buttons stack beside the keys, which sit as on a keyboard. */

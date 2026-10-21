@@ -42,14 +42,20 @@ export class ShareButton {
   /** @param {() => ShareSetup} setup what to put in the link, read when pressed */
   constructor(setup) {
     this.text = h("span", { text: S().share.copy });
+    // both words laid in the same cell, unseen, so the button is as wide as the
+    // longer and the bar does not jump when "复制链接" turns into "已复制"
+    const ghostCopy = h("span", { class: "ghost", "aria-hidden": "true", text: S().share.copy });
+    const ghostCopied = h("span", { class: "ghost", "aria-hidden": "true", text: S().share.copied });
     /** @type {ReturnType<typeof setTimeout> | undefined} */
     this.timer = undefined;
     this.el = bind(h("button", { type: "button", class: "bar-btn share-btn", onclick: () => this.press(setup()) }, [
       icon("link", "i-link"), icon("check", "i-done"),
-      this.text,
+      h("span", { class: "share-words" }, [this.text, ghostCopy, ghostCopied]),
     ]), (t) => t.share.hint, "title");
     onLang(() => {
       this.text.textContent = this.el.classList.contains("done") ? S().share.copied : S().share.copy;
+      ghostCopy.textContent = S().share.copy;
+      ghostCopied.textContent = S().share.copied;
     });
     /** announces the copy (put it on the page next to the button) */
     this.status = h("span", { class: "visually-hidden", role: "status" });
