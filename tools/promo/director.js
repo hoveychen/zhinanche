@@ -29,6 +29,10 @@
     world.scene.attach(gate);
     gate.position.set(cfg.gateX ?? 0, 0, cfg.gateZ ?? 105);
     world.route.line.visible = false;
+    // no lens grain or fringe: frozen into a still or dithered into a GIF they read as noise
+    if (cfg.grain === false && look.postfx) {
+      Object.defineProperty(look.postfx.lens.uniforms.grain, 'value', { get: () => 0, set() {} });
+    }
     app.input.command = () => st.cmd;
     world.cam.update = () => {};
     const render = look.render.bind(look);
