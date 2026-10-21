@@ -62,9 +62,18 @@ const BULK = { y: 5, r: 9 };
 
 /** Framing a route: the chariot's reach round its centre and its height (no figure: it is over the centre). */
 const BODY = { r: 5, h: 8 };
-/** ...tipped this far from straight down (degrees), with this much room to spare round it. */
-const TOP_TIP = 30;
+/** ...with this much room to spare round it. */
 const TOP_SPARE = 1.1;
+/**
+ * The top view (drawing a road, and the road framed after) looks down from
+ * the west, a little south, tipped this far from straight down (degrees):
+ * near enough overhead to draw on, far enough round that the near wheel
+ * shows under the box (it overhangs the wheels by 1.75; straight down, the
+ * box hides them). North is to the left and the gate to the right, as in the
+ * view over the chariot (ABOVE_DIR below).
+ */
+const TOP_TIP = 45;
+const TOP_DIR = new THREE.Vector3(-1, 1 / Math.tan(THREE.MathUtils.degToRad(TOP_TIP)), 0.2).normalize();
 
 /**
  * The close view over the chariot frames the ground this far round it (x;
@@ -281,8 +290,9 @@ export class CameraRig {
           const d = this.fit(this.extraRadius), tip = THREE.MathUtils.degToRad(28);
           return { target: new THREE.Vector3(f.x, 0, f.z), pos: new THREE.Vector3(f.x, d * Math.cos(tip), f.z + d * Math.sin(tip)) };
         }
-        const h = this.fit(16);
-        return { target: new THREE.Vector3(f.x, 0, f.z), pos: new THREE.Vector3(f.x, h, f.z + 0.01) };
+        // aimed at the wheels' height, so the chariot sits in the middle
+        const target = new THREE.Vector3(f.x, 2.5, f.z);
+        return { target, pos: target.clone().addScaledVector(TOP_DIR, this.fit(16)) };
       }
       case "follow": {
         // A chase camera that does not turn with the chariot: the chariot
@@ -453,7 +463,7 @@ export class CameraRig {
   /**
    * Frame a route from above (route playback in the top view), in the part of
    * the view the HUD leaves free: the chariot's path and its bulk with about a
-   * fifth to spare, tipped a little (north still up) so it reads as a chariot.
+   * tenth to spare, from the same side as the top view.
    * @param {{x: number, z: number}[]} pts world points
    * @param {Focus} f
    * @param {Insets} [inset] HUD margins as fractions of the view
@@ -467,8 +477,7 @@ export class CameraRig {
     // the chariot round each path point: wheels at ±3.6, the body and pole about as far
     const pad = BODY.r;
     x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
-    const tip = THREE.MathUtils.degToRad(TOP_TIP);
-    const off = new THREE.Vector3(0, Math.cos(tip), Math.sin(tip));
+    const off = TOP_DIR;
     const box = new THREE.Box3(new THREE.Vector3(x0, 0, z0), new THREE.Vector3(x1, BODY.h, z1));
     const want = Math.max(this.#fitBox(box, off, inset, 0.3) * TOP_SPARE, this.fit(8));
     this.box = this.#aimBox(box, off, want, inset);
@@ -530,13 +539,15 @@ export class CameraRig {
     } else if (!(this.view === "top" && this.box)) {
       let dx = f.x - this.last.x, dz = f.z - this.last.z;
       if (this.view === "top") {
-        // Keep the drawing still; only pan when the chariot nears the edge.
-        const h = cam.position.y;
+        // Keep the drawing still; only pan when the chariot nears the edge
+        // (the view's height runs east-west when it looks from the west).
         const v = THREE.MathUtils.degToRad(cam.fov);
-        const ez = h * Math.tan(v / 2), ex = ez * cam.aspect;
+        const ey = cam.position.distanceTo(ctl.target) * Math.tan(v / 2), ex = ey * cam.aspect;
+        const fromWest = Math.abs(cam.position.x - ctl.target.x) > Math.abs(cam.position.z - ctl.target.z);
+        const [wx, wz] = fromWest ? [ey, ex] : [ex, ey];
         const ox = f.x - ctl.target.x, oz = f.z - ctl.target.z;
-        dx = Math.abs(ox) > ex * 0.45 ? ox - Math.sign(ox) * ex * 0.45 : 0;
-        dz = Math.abs(oz) > ez * 0.45 ? oz - Math.sign(oz) * ez * 0.45 : 0;
+        dx = Math.abs(ox) > wx * 0.45 ? ox - Math.sign(ox) * wx * 0.45 : 0;
+        dz = Math.abs(oz) > wz * 0.45 ? oz - Math.sign(oz) * wz * 0.45 : 0;
       }
       cam.position.x += dx; cam.position.z += dz;
       ctl.target.x += dx; ctl.target.z += dz;
