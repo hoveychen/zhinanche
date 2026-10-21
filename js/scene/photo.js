@@ -323,6 +323,27 @@ export class Photos {
   }
 
   /**
+   * The paintings on the chariot's box, the same for both chariots
+   * (tools/assets/build_murals.py): three pictures, fetched after the sky
+   * like the surfaces and uploaded 0.4 s apart (2048 × 682 each: going up one
+   * a frame, the third waited ~50 ms on the GPU every time; spaced, ~1 ms each).
+   * @param {() => boolean} [when] upload only on a frame this says yes to
+   * @returns {Promise<Record<string, THREE.Texture>>} by name: dragon, tiger, flowers
+   */
+  async murals(when) {
+    await this.skyDone;
+    const w = this.level === "lite" ? 1024 : 2048;
+    /** @type {Record<string, THREE.Texture>} */
+    const out = {};
+    let last = 0;
+    for (const n of ["dragon", "tiger", "flowers"]) {
+      out[n] = await this.#load(`chariot-murals-${n}-${w}.webp`, { colour: true, repeat: false, mips: true }, () => (!when || when()) && performance.now() - last > 400);
+      last = performance.now();
+    }
+    return out;
+  }
+
+  /**
    * A baked occlusion atlas for one chariot (blender/scripts/build_chariot.py
    * writes chariot-<mechanism>-ao.webp next to the scans): read on the GLB's
    * own UVs, so no repeat. Fetched after the sky like the surfaces.

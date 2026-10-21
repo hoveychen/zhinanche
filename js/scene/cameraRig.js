@@ -2,6 +2,7 @@
 // the child is still free to orbit. Switching view glides there.
 
 import * as THREE from "three";
+import { SUN_DIR } from "./environment.js";
 
 /** @import { ViewId } from "../teach/types.js" */
 /** @import { OrbitControls } from "three/addons/controls/OrbitControls.js" */
@@ -65,13 +66,13 @@ const ABOVE = { x: 10, z: 8 };
 const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
 
 /** Views close in on the works on purpose: they may look from inside the body. */
-const CLOSE = new Set(["gears", "works", "pair", "wheels", "figure", "hero", "intro"]);
+const CLOSE = new Set(["gears", "works", "pair", "diff", "wheels", "figure", "hero", "intro"]);
 
 /** The gears view looks from behind and above, a little to the right (chariot local). */
 const GEARS_DIR = /** @type {const} */ ([-1, 1.35, 0.75]);
 
 /** Views that swing round with the chariot. */
-const TURNING = new Set(["gears", "works", "pair", "wheels", "figure"]);
+const TURNING = new Set(["gears", "works", "pair", "diff", "wheels", "figure"]);
 
 export class CameraRig {
   /**
@@ -104,6 +105,8 @@ export class CameraRig {
     this.partsInset = [{ left: 0, right: 0, top: 0, bottom: 0 }];
     /** which of them was used last (kept unless another is clearly better: no flip-flopping) */
     this.partsPick = 0;
+    /** which wheel the wheels view looks at: 1 the right (local +Z), -1 the left */
+    this.wheelSide = 1;
     /** the view is under 600 CSS px tall (set by the world) */
     this.short = false;
     /** the HUD's margins over the view (set by the world) */
@@ -307,9 +310,11 @@ export class CameraRig {
         // fill the view (the figure is up its shaft, out of the picture: the
         // dial shows where it points); a little to the right so the big left
         // crown wheel shows its face. The boards go see-through with x-ray.
-        const target = song ? local(1.1, 3.7, 0) : local(0.2, 2.5, -0.5);
-        const r = song ? 4.9 : 4.4;
-        return { target, pos: target.clone().addScaledVector(dirLocal(...GEARS_DIR), this.fit(r)) };
+        // The differential from lower down: from as high as the Song one, its
+        // small top flat gear covers the small gears and carrier under it.
+        const target = song ? local(1.1, 3.7, 0) : local(0.1, 2.2, -0.4);
+        const r = song ? 4.9 : 4.2;
+        return { target, pos: target.clone().addScaledVector(song ? dirLocal(...GEARS_DIR) : dirLocal(-1, 0.72, 0.62), this.fit(r)) };
       }
       case "works": {
         // The gears and, up the shaft, the figure standing on them: the
@@ -323,8 +328,17 @@ export class CameraRig {
         // gears lie one above the other on the shaft (big left one under,
         // small right one over), and from this low they and their turning
         // arrows stand apart; the left wheel is on the left of the screen.
-        const target = local(0, 1.6, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.6, 0.25), this.fit(3.6)) };
+        const target = local(0, 1.55, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.42, 0.25), this.fit(3.1)) };
+      }
+      case "diff": {
+        // In at the height of the gap between the two flat gears (big left one
+        // under, top 1.28; small right one over, from 1.72): the small gears
+        // that roll between them stand on edge on the carrier's arms (local
+        // x ±0.6). From behind and a little right the near one shows its face
+        // and the far one its edge past the carrier's hub.
+        const target = local(-0.15, 1.5, 0.05);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.2, 0.42), this.fit(1.9)) };
       }
       case "above": {
         // Close over the chariot, north up, tipped so the figure reads as a
@@ -345,10 +359,16 @@ export class CameraRig {
       }
       case "wheels": {
         // The box (9.5 wide) hangs over the wheels (at local ±3): from the
-        // chariot's middle only their lower halves show, so look at the right
-        // wheel from outside it, low and a little from behind.
-        const target = local(0, 2, 3.2);
-        return { target, pos: target.clone().addScaledVector(dirLocal(-0.55, 0.18, 1), this.fit(4)) };
+        // chariot's middle only their lower halves show, so look at one wheel
+        // from outside it, low and a little from behind: a little under the
+        // box's floor (3.55), so all of the wheel under it shows (rim, spokes,
+        // hub and its bands, the axle's cap and linchpin) and the hub still
+        // catches the light from above (from lower it is all in the box's
+        // shade). The wheel on the sun's side when the view was chosen (the
+        // other is in the box's shadow): it stays that wheel as the chariot turns.
+        const sz = this.wheelSide;
+        const target = local(0.1, 1.95, 3.4 * sz);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-0.5, 0.1, sz), this.fit(3.7)) };
       }
       case "figure": {
         // the figure is drawn big here (js/scene/rig.js FIGURE_SCALE)
@@ -374,6 +394,8 @@ export class CameraRig {
     // drive starting over) keeps going where it got to
     if (view === "intro" && this.view !== "intro") this.intro = { t: 0, out: false };
     this.view = view;
+    // the wheels view looks at the sunlit wheel: right (local +Z) or left
+    if (view === "wheels") this.wheelSide = fromChariot(f, 0, 0, 1).dot(SUN_DIR) >= 0 ? 1 : -1;
     this.atPreset = true;
     // zooming in stops short of the chariot, except in the views that look inside it
     this.controls.minDistance = CLOSE.has(view) || this.apart ? 2 : 16;

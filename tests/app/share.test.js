@@ -123,3 +123,11 @@ test("the address follows the course: lesson and step, free driving, or the less
   assert.equal(placeHref(shared, { mode: "lesson", lesson: 1, step: 1 }), "https://example.org/?lesson=1&step=1");
   assert.equal(placeHref("https://example.org/?selftest&free", { mode: "home" }), "https://example.org/?selftest");
 });
+
+test("a link to the gears view sees through the body unless it says x=0", () => {
+  assert.equal(decodeShare("#s=1&v=gears")?.xray, true);
+  assert.equal(decodeShare("#s=1&v=gears&x=0")?.xray, false);
+  assert.equal(decodeShare("#s=1&v=top")?.xray, false);
+  const closed = { ...defaultSetup(), view: /** @type {const} */ ("gears"), xray: false };
+  assert.equal(decodeShare(`#${encodeShare(closed)}`)?.xray, false);
+});

@@ -106,7 +106,7 @@ def arms(mb, g, k, r0, r1, w, t, mat, through=False):
         mb.bar(p0, (w, t), p1, (w, t), mat, up=g.axis)
 
 
-def gear_node(g, parent, label, explode, body, extra=None):
+def gear_node(g, parent, label, explode, body, extra=None, teeth_mat="peg"):
     """A gear node at g.center: `body(mb)` builds the wheel, then the teeth; tooth 0 is the red marker child."""
     mb = MB()
     body(mb)
@@ -114,7 +114,7 @@ def gear_node(g, parent, label, explode, body, extra=None):
         extra(mb)
     marker = MB()
     for k in range(g.n):
-        tooth_block(marker if k == 0 else mb, g, k, "marker" if k == 0 else "peg")
+        tooth_block(marker if k == 0 else mb, g, k, "marker" if k == 0 else teeth_mat)
     obj = mb.build(g.name, g.center, parent)
     set_teach(obj, "gear", label, explode, g.n)
     m = marker.build(g.name + ".marker", g.center, obj)
@@ -157,6 +157,24 @@ def disc_wheel(L, g, mat, t, hole):
     return body
 
 
+def sag(p0, p1, depth, n):
+    """n + 1 points on a cord hanging from p0 to p1 (a parabola `depth` deep at the middle)."""
+    out = []
+    for i in range(n + 1):
+        t = i / n
+        p = V(p0) + (V(p1) - V(p0)) * t
+        out.append((p.x, p.y, p.z - depth * 4 * t * (1 - t)))
+    return out
+
+
+def cord(mb, pts, r=0.014, mat="rope"):
+    """A thin cord through pts: round segments with a small knob at every joint."""
+    for a, b in zip(pts, pts[1:]):
+        mb.cyl(a, b, r, mat, n=6)
+    for p in pts[1:-1]:
+        mb.ellipsoid(p, (r * 1.15, r * 1.15, r * 1.15), mat, n=6, m=4)
+
+
 # --------------------------------------------------------------------------- wheels and axle
 
 
@@ -183,7 +201,7 @@ def wheel(L, side, parent):
     r_out = [(d_in / 2, a0), (d_max / 2 * 0.98, (a0 + s) / 2), (d_max / 2, s), (d_max / 2 * 0.94, s + 0.36),
              (d_max / 2 * 0.82, s + 0.76), (d_max / 2 * 0.66, s + 1.16), (d_out / 2, a1)]
     bore = [(L.bore_out, a1), (L.bore_in, a0)]
-    hub.revolve(c, ax, r_out + bore, "wood_dark", n=16, ref=(0, 0, 1))
+    hub.revolve(c, ax, r_out + bore, "wheel", n=16, ref=(0, 0, 1))  # lacquered with the wheel (赤質); dark wood read as a black lump in the box's shade
     # iron bands either side of the spokes (圈以鐵) and raised rings (篆) on the outer part
     half_w = W(L, "spokeStockWidth") / 2
     for a, r in ((s - half_w - 0.1, d_max / 2 * 0.985), (s + half_w + 0.1, d_max / 2 * 0.98)):
@@ -191,7 +209,7 @@ def wheel(L, side, parent):
     for i in range(W(L, "hubRidges")):
         a = s + 0.55 + 0.33 * i
         r = d_max / 2 * (0.9 - 0.11 * i)
-        hub.revolve(c, ax, [(r - 0.04, a - 0.035), (r + 0.015, a - 0.035), (r + 0.015, a + 0.035), (r - 0.04, a + 0.035)], "wood_dark", n=16, ref=(0, 0, 1))
+        hub.revolve(c, ax, [(r - 0.04, a - 0.035), (r + 0.015, a - 0.035), (r + 0.015, a + 0.035), (r - 0.04, a + 0.035)], "wheel", n=16, ref=(0, 0, 1))
     # bore sleeves (釭) showing at both ends
     hub.revolve(c, ax, [(L.bore_in - 0.01, a0 - 0.03), (L.bore_in + 0.08, a0 - 0.03), (L.bore_in + 0.08, a0 + 0.04), (L.bore_in - 0.01, a0 + 0.04)], "iron", n=12, ref=(0, 0, 1))
     hub.revolve(c, ax, [(L.bore_out - 0.01, a1 - 0.04), (L.bore_out + 0.07, a1 - 0.04), (L.bore_out + 0.07, a1 + 0.03), (L.bore_out - 0.01, a1 + 0.03)], "iron", n=12, ref=(0, 0, 1))
@@ -307,23 +325,48 @@ def railing(mb, x0, x1, y0, y1, z0, h, step=0.9, post=0.08, mat="lacquer"):
             mb.beam((ax, ay, zr), (bx, by, zr), s, s, mat)
 
 
-def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="eave"):
+def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="eave", mural=None, heart=None):
     """The painted grid of squares on a red panel (卤簿图): thin strips on the panel's face.
-    axis 'y': panel in an x-z plane (u = x, w = z); 'x': panel in a y-z plane (u = y, w = z)."""
+    axis 'y': panel in an x-z plane (u = x, w = z); 'x': panel in a y-z plane (u = y, w = z).
+    mural: a role for the painting under the strips (a thin sheet on the panel over the grid's
+    area: materials.js lays the painting over it, one picture per square); heart = (i0, i1, j0, j1):
+    heart: the middle cells left open for one bigger picture (the strips stop at its edges)."""
     nu, nw = max(1, round((u1 - u0) / step)), max(1, round((w1 - w0) / step))
+
+    def strip(ua, ub, wa, wb):
+        if axis == "y":
+            mb.box((ua, depth0, wa), (ub, depth1, wb), mat)
+        else:
+            mb.box((depth0, ua, wa), (depth1, ub, wb), mat)
+
+    U = lambda i: u0 + (u1 - u0) * i / nu  # noqa: E731
+    Wz = lambda j: w0 + (w1 - w0) * j / nw  # noqa: E731
+    # the heart: the middle half of the cells along, all but the top and bottom row
+    i0, i1, j0, j1 = (nu // 4, nu - nu // 4, 1, nw - 1) if heart else (0, 0, 0, 0)
     for i in range(nu + 1):
-        u = u0 + (u1 - u0) * i / nu
-        lo, hi = (u - bar / 2, w0), (u + bar / 2, w1)
-        if axis == "y":
-            mb.box((lo[0], depth0, lo[1]), (hi[0], depth1, hi[1]), mat)
+        u = U(i)
+        if i0 < i < i1:   # through the heart: only above and below it
+            strip(u - bar / 2, u + bar / 2, w0, Wz(j0))
+            strip(u - bar / 2, u + bar / 2, Wz(j1), w1)
         else:
-            mb.box((depth0, lo[0], lo[1]), (depth1, hi[0], hi[1]), mat)
+            strip(u - bar / 2, u + bar / 2, w0, w1)
     for j in range(nw + 1):
-        w = w0 + (w1 - w0) * j / nw
-        if axis == "y":
-            mb.box((u0, depth0, w - bar / 2), (u1, depth1, w + bar / 2), mat)
+        w = Wz(j)
+        if j0 < j < j1:
+            strip(u0, U(i0), w - bar / 2, w + bar / 2)
+            strip(U(i1), u1, w - bar / 2, w + bar / 2)
         else:
-            mb.box((depth0, u0, w - bar / 2), (depth1, u1, w + bar / 2), mat)
+            strip(u0, u1, w - bar / 2, w + bar / 2)
+    if mural:
+        # on the panel's face (the depth nearer the middle), under the strips
+        d = min(depth0, depth1, key=abs)
+        e = 0.004 if d > 0 else -0.004
+        da, db = sorted((d, d + e))
+        if axis == "y":
+            mb.box((u0, da, w0), (u1, db, w1), mural)
+        else:
+            mb.box((da, u0, w0), (db, u1, w1), mural)
+        print(f"MURAL {mural} cells {nu} x {nw} heart {heart} size {u1 - u0:.3f} x {w1 - w0:.3f}")
 
 
 def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts, extra_frame=None):
@@ -360,7 +403,7 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
         mb = MB()
         yb0, yb1 = sorted((sy * (gy - BOARD_T), sy * gy))
         for u0, u1, w0, w1 in board_rects(x0, x1, board_z0, bz0, side_holes):
-            mb.box((u0, yb0, w0), (u1, yb1, w1), "wood")
+            mb.box((u0, yb0, w0), (u1, yb1, w1), "lacquer")
         # the box wall, its floor strip over the wheel and the painted grid
         yw0, yw1 = sorted((sy * (by - BOARD_T), sy * by))
         mb.box((bx0, yw0, bz0), (bx1, yw1, bz1), "lacquer")
@@ -368,19 +411,21 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
         wheel_slot = (-L.wheel_r - 0.1, L.wheel_r + 0.1, L.felloe_y - 0.22, L.felloe_y + 0.22)
         holes = [(h[0], h[1], *tuple(sorted((sy * h[2], sy * h[3])))) for h in [*floor_holes, wheel_slot]]
         for u0, u1, w0, w1 in board_rects(bx0, bx1, yf0, yf1, holes):
-            mb.box((u0, w0, bz0), (u1, w1, bz0 + 0.1), "wood")
-        lattice(mb, "y", bx0 + 0.25, bx1 - 0.25, bz0 + 0.25, bz1 - 0.25, *sorted((sy * by, sy * (by + 0.05))))
+            mb.box((u0, w0, bz0), (u1, w1, bz0 + 0.1), "lacquer")
+        # 宋史 輿服志: 赤質，兩箱畫青龍、白虎，四面畫花鳥 (the dragon left, the tiger right: 0008)
+        lattice(mb, "y", bx0 + 0.25, bx1 - 0.25, bz0 + 0.25, bz1 - 0.25, *sorted((sy * by, sy * (by + 0.05))),
+                mural="mural_dragon" if side == "L" else "mural_tiger", heart=True)
         o = mb.build(f"body.side.{side}", (0, 0, 0), root)
-        set_teach(o, "shell", "左侧车厢板" if side == "L" else "右侧车厢板", SHELL_EXPLODE[f"body.side.{side}"])
+        set_teach(o, "shell", "左车箱" if side == "L" else "右车箱", SHELL_EXPLODE[f"body.side.{side}"])
     pole_hole = [(-0.25, 0.25, POLE_Z - 0.22, POLE_Z + 0.22)]
-    for name, xa, xb, bxa, bxb, holes, label in (("body.end.F", x1 - BOARD_T, x1, bx1 - BOARD_T, bx1, pole_hole, "前车厢板"),
-                                                 ("body.end.B", x0, x0 + BOARD_T, bx0, bx0 + BOARD_T, [], "后车厢板")):
+    for name, xa, xb, bxa, bxb, holes, label in (("body.end.F", x1 - BOARD_T, x1, bx1 - BOARD_T, bx1, pole_hole, "前车箱板"),
+                                                 ("body.end.B", x0, x0 + BOARD_T, bx0, bx0 + BOARD_T, [], "后车箱板")):
         mb = MB()
         for u0, u1, w0, w1 in board_rects(-gy, gy, board_z0, bz0, holes):
-            mb.box((xa, u0, w0), (xb, u1, w1), "wood")
+            mb.box((xa, u0, w0), (xb, u1, w1), "lacquer")
         mb.box((bxa, -by, bz0), (bxb, by, bz1), "lacquer")
         face = (bxb, bxb + 0.05) if name == "body.end.F" else (bxa - 0.05, bxa)
-        lattice(mb, "x", -by + 0.25, by - 0.25, bz0 + 0.25, bz1 - 0.25, *face)
+        lattice(mb, "x", -by + 0.25, by - 0.25, bz0 + 0.25, bz1 - 0.25, *face, mural="mural_flowers")
         for py in (-by, by):   # corner posts
             mb.box((min(bxa, bxb) - 0.06, py - 0.1, bz0 - 0.05), (max(bxa, bxb) + 0.06, py + 0.1, bz1), "lacquer")
         o = mb.build(name, (0, 0, 0), root)
@@ -425,7 +470,7 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
     mb.frustum([(tx0 - e2, -ty - e2, band1), (tx1 + e2, -ty - e2, band1), (tx1 + e2, ty + e2, band1), (tx0 - e2, ty + e2, band1)],
                [(tx0 - 0.15, -ty - 0.15, band1 + 0.3), (tx1 + 0.15, -ty - 0.15, band1 + 0.3), (tx1 + 0.15, ty + 0.15, band1 + 0.3), (tx0 - 0.15, ty + 0.15, band1 + 0.3)], "eave")
     o = mb.build("body.tier", (s, 0, tz0), root)
-    set_teach(o, "shell", "重台（上层箱体和镂拱）", SHELL_EXPLODE["body.tier"])
+    set_teach(o, "shell", "重台", SHELL_EXPLODE["body.tier"])
 
     # the top: a platform with its railing round the figure's shaft, pouches hung from the corners
     pz = band1 + 0.3
@@ -443,7 +488,7 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
             mb.ellipsoid((tip[0], tip[1], tip[2] - 0.42), (0.13, 0.13, 0.15), "robe", n=10, m=6)
             mb.cyl((tip[0], tip[1], tip[2] - 0.57), (tip[0], tip[1], tip[2] - 0.85), 0.035, "gold", n=6)
     o = mb.build("body.top", (s, 0, pz), root)
-    set_teach(o, "shell", "顶上的平台和勾阑（仙人站在这里）", SHELL_EXPLODE["body.top"])
+    set_teach(o, "shell", "勾阑", SHELL_EXPLODE["body.top"])
     return bz0
 
 
@@ -488,16 +533,173 @@ def pole(L, root, x_rear, x_box_front, crossbars):
 # --------------------------------------------------------------------------- figure
 
 
+def frames(path, hint):
+    """Tangent, side and up at each point of a path (up as close to `hint` as the path lets it)."""
+    out = []
+    for i, p in enumerate(path):
+        a, b = V(path[max(0, i - 1)]), V(path[min(len(path) - 1, i + 1)])
+        t = (b - a).normalized()
+        sd = t.cross(V(hint))
+        if sd.length < 1e-4:
+            sd = t.cross(V((1, 0, 0)))
+        sd.normalize()
+        out.append((V(p), t, sd, sd.cross(t).normalized()))
+    return out
+
+
+def tube(mb, path, section, mat, hint=(0, 0, 1), cap0=True, cap1=True, at=lambda p: p):
+    """A loft along a path; section(i) gives ring i as (side, up) offsets in the path's frame."""
+    rings = []
+    for i, (p, _t, sd, up) in enumerate(frames(path, hint)):
+        rings.append([at(tuple(p + sd * x + up * y)) for x, y in section(i)])
+    mb.loft(rings, mat, cap0, cap1)
+    return rings
+
+
+def sleeve_section(w, h_up, h_dn, n=18):
+    """A wide sleeve's section: round above the arm, hanging deep below it (大袖)."""
+    out = []
+    for k in range(n):
+        ph = 2 * math.pi * k / n
+        cs, sn = math.cos(ph), math.sin(ph)
+        if sn >= 0:
+            out.append((w * cs, h_up * sn))
+        else:
+            # the cloth hangs into a soft point and narrows towards it
+            out.append((w * cs * (1 - 0.35 * abs(sn) ** 1.5), -h_dn * abs(sn) ** 0.85))
+    return out
+
+
+def immortal(mb, at):
+    """The wooden immortal (木仙人), carved like the Song temple figures and the immortals of
+    Song painting: a long robe crossed at the collar (交领) falling in deep folds to a hem
+    that flares over a lotus seat, a sash with its ends hanging in front, a stole (披帛)
+    over the shoulders and round the back, wide sleeves (大袖) hanging under the arms, a
+    beard, a topknot with a small crown and a hairpin, ribbons from the crown. The right
+    arm points along +X (the pose is the chariot's: 引臂南指); the left hand rests in its
+    sleeve before the belly. Coordinates: x forward, y left, z up from the shaft's top."""
+    def P(x, y, zz):
+        return at((x, y, zz))
+
+    # lotus seat: a gilt disc and a ring of petals turned up round it
+    mb.disc(P(0, 0, 0.06), (0, 0, 1), 0.3, 0.12, "gold", n=24)
+    for k in range(14):
+        a = 2 * math.pi * (k + 0.5) / 14
+        rd, tg = V((math.cos(a), math.sin(a), 0)), V((-math.sin(a), math.cos(a), 0))
+        tilt = math.radians(55)
+        ax_long = (rd * math.cos(tilt) + V((0, 0, 1)) * math.sin(tilt)) * 0.085
+        ax_norm = (rd * -math.sin(tilt) + V((0, 0, 1)) * math.cos(tilt)) * 0.018
+        mb.blob(P(*(rd * 0.3 + V((0, 0, 0.1)))), tg * 0.055, ax_norm, ax_long, "gold", n=8, m=4)
+
+    # the robe: rings from the hem up to the neck, folds deepest at the hem
+    prof = [  # z, half depth (x), half width (y), fold depth
+        (0.12, 0.27, 0.28, 0.026), (0.16, 0.268, 0.278, 0.026), (0.24, 0.25, 0.262, 0.022), (0.34, 0.225, 0.24, 0.016),
+        (0.44, 0.198, 0.218, 0.009), (0.5, 0.182, 0.205, 0.004), (0.56, 0.178, 0.2, 0.004), (0.66, 0.178, 0.202, 0.005),
+        (0.76, 0.17, 0.2, 0.004), (0.83, 0.15, 0.198, 0.002), (0.875, 0.12, 0.175, 0.0), (0.91, 0.085, 0.11, 0.0), (0.93, 0.06, 0.065, 0.0)]
+    n, folds = 48, 11
+
+    def robe_pt(zz, hx, hy, fd, th):
+        f = math.cos(folds * th + 0.35 * math.sin(3 * th))
+        f = math.copysign(abs(f) ** 0.6, f)
+        r = 1 + fd * f / max(hx, hy)
+        dz = 0.012 * f if zz < 0.13 else 0.0      # the hem rises over each fold
+        return (hx * math.cos(th) * r, hy * math.sin(th) * r, zz + dz)
+
+    rings = [[P(*robe_pt(zz, hx, hy, fd, 2 * math.pi * k / n)) for k in range(n)] for zz, hx, hy, fd in prof]
+    mb.loft(rings, "robe")
+
+    def on_robe(th, zz, out=0.006):
+        """A point on the robe's surface (between profile rings), pushed out a little."""
+        for (z0, x0, y0, f0), (z1, x1, y1, f1) in zip(prof, prof[1:]):
+            if z0 <= zz <= z1:
+                t = (zz - z0) / (z1 - z0)
+                hx, hy, fd = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, f0 + (f1 - f0) * t
+                x, y, _ = robe_pt(zz, hx + out, hy + out, fd, th)
+                return (x, y, zz)
+        raise ValueError(zz)
+
+    def strip(path, w, t, mat, hint=(0, 0, 1)):
+        tube(mb, path, lambda i: [(-w / 2, -t / 2), (w / 2, -t / 2), (w / 2, t / 2), (-w / 2, t / 2)], mat, hint, at=at)
+
+    # crossed collar (交领, right over left): a band from each side of the neck
+    deg = math.radians
+    strip([on_robe(deg(70), 0.92, 0.004), on_robe(deg(40), 0.86), on_robe(deg(0), 0.76), on_robe(deg(-28), 0.64), on_robe(deg(-40), 0.56)], 0.05, 0.014, "trim", hint=(1, 0, 0))
+    strip([on_robe(deg(-70), 0.92, 0.004), on_robe(deg(-40), 0.86), on_robe(deg(-12), 0.8)], 0.045, 0.012, "trim", hint=(1, 0, 0))
+    # sash at the waist and its two ends hanging down the front
+    mb.loft([[P(*on_robe(2 * math.pi * k / n, zz, 0.008)) for k in range(n)] for zz in (0.5, 0.56)], "trim", cap0=False, cap1=False)
+    mb.blob(P(*on_robe(0, 0.53, 0.03)), (0, 0.045, 0), (0.02, 0, 0), (0, 0, 0.03), "trim", n=8, m=4)  # the knot
+    for dy in (-0.035, 0.03):
+        th = math.atan2(dy, 0.18)
+        strip([on_robe(th, 0.51, 0.02), on_robe(th * 1.2, 0.4, 0.016), on_robe(th * 1.4, 0.28, 0.014), on_robe(th * 1.5, 0.17, 0.012)], 0.038, 0.01, "gold", hint=(1, 0, 0))
+
+    # the stole (披帛): down from the left hand, over the left shoulder, round the back,
+    # over the right shoulder and down under the pointing arm
+    stole = [(0.2, 0.25, 0.3), (0.12, 0.25, 0.48), (0.04, 0.23, 0.66), (-0.04, 0.2, 0.84), (-0.14, 0.13, 0.875), (-0.19, 0.0, 0.86),
+             (-0.14, -0.13, 0.875), (-0.04, -0.2, 0.85), (0.02, -0.25, 0.7), (0.05, -0.27, 0.5), (0.07, -0.285, 0.3), (0.06, -0.29, 0.18)]
+    path = [V(p) for p in stole]
+    rings = []
+    for i, (p, tn, _sd, _up) in enumerate(frames(path, (0, 0, 1))):
+        nrm = V((p.x, p.y, 0)).normalized()                 # away from the body
+        side = tn.cross(nrm).normalized()
+        w, t = 0.06, 0.012
+        rings.append([P(*(p + side * x + nrm * y)) for x, y in ((-w / 2, -t / 2), (w / 2, -t / 2), (w / 2, t / 2), (-w / 2, t / 2))])
+    mb.loft(rings, "trim")
+
+    # the pointing arm (right, -y), in its wide sleeve, hand out of the cuff
+    arm = [(0.0, -0.15, 0.85), (0.12, -0.13, 0.872), (0.27, -0.1, 0.887), (0.42, -0.072, 0.898), (0.555, -0.052, 0.905)]
+    wv, up_, dn = (0.075, 0.08, 0.086, 0.095, 0.104), (0.072, 0.066, 0.062, 0.062, 0.066), (0.08, 0.1, 0.14, 0.19, 0.23)
+    tube(mb, arm, lambda i: sleeve_section(wv[i], up_[i], dn[i]), "robe", cap1=False, at=at)
+    end, (_, tn, sd, up) = V(arm[-1]), frames(arm, (0, 0, 1))[-1]
+    cuff = [end + tn * 0.0, end + tn * 0.03]
+    tube(mb, [tuple(q) for q in cuff], lambda i: [(x * 1.06, y * 1.06) for x, y in sleeve_section(wv[-1], up_[-1], dn[-1])], "trim", cap0=False, cap1=False, at=at)
+    tube(mb, [tuple(end + tn * 0.02), tuple(end - tn * 0.04)], lambda i: [(x * 0.92, y * 0.92) for x, y in sleeve_section(wv[-1], up_[-1], dn[-1])], "hat", cap1=False, at=at)
+    mb.ellipsoid(P(0.632, -0.046, 0.905), (0.055, 0.037, 0.031), "skin", n=10, m=6)        # hand
+    mb.ellipsoid(P(0.66, -0.047, 0.884), (0.03, 0.03, 0.02), "skin", n=8, m=5)             # curled fingers
+    mb.cyl(P(0.66, -0.042, 0.913), P(0.79, -0.036, 0.921), 0.0125, "skin", n=8)            # forefinger
+    mb.ellipsoid(P(0.792, -0.036, 0.921), (0.013, 0.012, 0.012), "skin", n=8, m=4)
+    mb.cyl(P(0.625, -0.012, 0.912), P(0.67, -0.008, 0.922), 0.012, "skin", n=8)            # thumb
+
+    # the left arm: down the side, the forearm across the belly, the sleeve hanging long
+    arm = [(-0.01, 0.165, 0.85), (0.0, 0.215, 0.72), (0.05, 0.215, 0.6), (0.14, 0.15, 0.55), (0.2, 0.09, 0.545)]
+    wv, up_, dn = (0.074, 0.074, 0.08, 0.085, 0.09), (0.074, 0.074, 0.07, 0.062, 0.06), (0.074, 0.08, 0.12, 0.2, 0.25)
+    tube(mb, arm, lambda i: sleeve_section(wv[i], up_[i], dn[i]), "robe", hint=(1, 0, 0.35), cap1=False, at=at)
+    end, (_, tn, sd, up) = V(arm[-1]), frames(arm, (1, 0, 0.35))[-1]
+    tube(mb, [tuple(end), tuple(end + tn * 0.03)], lambda i: [(x * 1.06, y * 1.06) for x, y in sleeve_section(wv[-1], up_[-1], dn[-1])], "trim", hint=(1, 0, 0.35), cap0=False, cap1=False, at=at)
+    tube(mb, [tuple(end + tn * 0.02), tuple(end - tn * 0.04)], lambda i: [(x * 0.92, y * 0.92) for x, y in sleeve_section(wv[-1], up_[-1], dn[-1])], "hat", hint=(1, 0, 0.35), cap1=False, at=at)
+    mb.ellipsoid(P(0.235, 0.075, 0.55), (0.03, 0.035, 0.028), "skin", n=8, m=5)            # fingertips at the cuff
+
+    # head: neck, a long face, ears, beard and moustache, brows and eyes looking along +X
+    mb.cyl(P(0, 0, 0.92), P(0.005, 0, 1.0), 0.052, "skin", n=12)
+    mb.ellipsoid(P(0.0, 0, 1.105), (0.112, 0.105, 0.135), "skin", n=20, m=10)
+    mb.ellipsoid(P(0.03, 0, 1.03), (0.08, 0.085, 0.06), "skin", n=14, m=7)                # jaw
+    for dy in (-1, 1):
+        mb.blob(P(-0.005, dy * 0.104, 1.1), (0.02, 0, 0), (0, 0.01, 0), (0, 0, 0.04), "skin", n=8, m=4)   # ears, long lobes
+    mb.ellipsoid(P(0.11, 0, 1.1), (0.022, 0.018, 0.028), "skin", n=8, m=5)                 # nose
+    for dy in (-0.045, 0.045):
+        mb.ellipsoid(P(0.1, dy, 1.13), (0.012, 0.02, 0.008), "hat", n=8, m=4)               # eyes, narrow
+        mb.blob(P(0.104, dy * 1.05, 1.158), (0.004, 0, 0.0), (0, 0.03, 0.006 * (1 if dy > 0 else -1)), (0, 0, 0.007), "hat", n=6, m=3)  # brows, lifted at the outside
+    mb.blob(P(0.105, 0, 1.06), (0.01, 0, 0), (0, 0.05, 0), (0, 0, 0.008), "hat", n=8, m=3)  # moustache
+    mb.blob(P(0.095, 0, 0.98), (0.03, 0, -0.008), (0, 0.042, 0), (0.012, 0, 0.085), "hat", n=10, m=6)  # beard, down to the collar
+    # hair, topknot, a small crown and a pin through it, two ribbons behind
+    mb.ellipsoid(P(-0.012, 0, 1.15), (0.112, 0.11, 0.105), "hat", n=20, m=10)
+    mb.ellipsoid(P(-0.02, 0, 1.265), (0.062, 0.058, 0.055), "hat", n=14, m=7)
+    mb.frustum([P(-0.02 + 0.07 * math.cos(2 * math.pi * k / 10), 0.065 * math.sin(2 * math.pi * k / 10), 1.25) for k in range(10)],
+               [P(-0.02 + 0.05 * math.cos(2 * math.pi * k / 10), 0.045 * math.sin(2 * math.pi * k / 10), 1.33) for k in range(10)], "gold")
+    mb.cyl(P(-0.02, -0.11, 1.3), P(-0.02, 0.11, 1.3), 0.008, "gold", n=6)
+    for dy in (-1, 1):
+        strip([(-0.08, dy * 0.03, 1.29), (-0.13, dy * 0.06, 1.2), (-0.16, dy * 0.08, 1.06), (-0.18, dy * 0.07, 0.95)], 0.03, 0.006, "trim", hint=(-1, 0, 0))
+
+
 def figure(L, root, lift):
     """lift: how far (chi) the shaft rises when taken apart; the figure rises
     one chi more, so it comes off the shaft but stays close to the gears."""
     s, z = L.shaft_x, L.shaft_top
     sh = MB()
     sq = G(L, "shaftSquare") / 2
-    sh.cyl((s, 0, L.shaft_bottom + G(L, "shaftPointLength")), (s, 0, z), L.shaft_r, "gold", n=10)
+    sh.cyl((s, 0, L.shaft_bottom + G(L, "shaftPointLength")), (s, 0, z), L.shaft_r, "wood_dark", n=10)
     # squared where the central wheel is keyed on, an iron point below, an iron collar at the top
     zg = L.gear_square_z
-    sh.box((s - sq, -sq, zg - 0.3), (s + sq, sq, zg + 0.3), "gold")
+    sh.box((s - sq, -sq, zg - 0.3), (s + sq, sq, zg + 0.3), "wood_dark")
     sh.frustum([(s + L.shaft_r * 0.7 * math.cos(a), L.shaft_r * 0.7 * math.sin(a), L.shaft_bottom + G(L, "shaftPointLength")) for a in [i * math.pi / 4 for i in range(8)]],
                [(s, 0, L.shaft_bottom)], "iron")
     col = G(L, "shaftCollar")
@@ -506,45 +708,11 @@ def figure(L, root, lift):
     sh.revolve((s, 0, z - 0.32), (0, 0, 1), [(0.05, 0.0), (0.22, 0.0), (0.38, 0.2), (0.3, 0.32), (0.05, 0.32)], "gold", n=12)
     shaft = sh.build("figure.shaft", (s, 0, L.shaft_bottom), root)
     set_rotate(shaft, "figure", (0, 0, 1))
-    set_teach(shaft, "figure", "竖轴（木人站在顶上）", (0, 0, lift))
+    set_teach(shaft, "figure", "竖轴", (0, 0, lift))
 
     mb = MB()
     c = (s, 0, z)
-
-    def at(dx, dy, dz):
-        return (s + dx, dy, z + dz)
-
-    def ring(r, dz, n=16, ry=None):
-        ry = r if ry is None else ry
-        return [at(r * math.cos(math.pi / n + k * 2 * math.pi / n), ry * math.sin(math.pi / n + k * 2 * math.pi / n), dz) for k in range(n)]
-
-    # Carved and lacquered, rounded like a turned wooden doll: a robe that
-    # flares a little at the hem and rounds over the shoulders, an egg of a
-    # head, a long sleeve to a slender hand that points along +X. Built smooth
-    # (faces under 40° apart shade as one surface; hems, cuffs and caps stay crisp).
-    mb.disc(at(0, 0, 0.07), (0, 0, 1), 0.32, 0.14, "gold", n=24)
-    mb.frustum(ring(0.31, 0.14), ring(0.29, 0.22), "robe")             # hem
-    mb.frustum(ring(0.29, 0.22), ring(0.19, 0.8), "robe")
-    mb.frustum(ring(0.19, 0.8), ring(0.15, 0.9), "robe")               # shoulders
-    mb.frustum(ring(0.15, 0.9), ring(0.08, 0.95), "robe")
-    mb.frustum(ring(0.198, 0.5), ring(0.205, 0.58), "gold")             # belt
-    mb.cyl(at(0.02, 0, 0.84), at(0.56, 0, 0.9), 0.07, "robe", n=12)    # pointing arm (+X), sleeve
-    mb.disc(at(0.58, 0, 0.902), (1, 0, 0.11), 0.085, 0.05, "robe", n=12)  # cuff
-    mb.ellipsoid(at(0.64, 0, 0.905), (0.055, 0.045, 0.045), "skin", n=10, m=6)  # hand
-    mb.cyl(at(0.66, 0, 0.912), at(0.79, 0, 0.925), 0.018, "skin", n=8)  # finger
-    mb.cyl(at(-0.02, 0.17, 0.86), at(0.05, 0.235, 0.5), 0.065, "robe", n=12)  # other arm, hanging
-    mb.ellipsoid(at(0.055, 0.24, 0.46), (0.045, 0.04, 0.05), "skin", n=10, m=6)
-    mb.cyl(at(0, 0, 0.93), at(0, 0, 1.01), 0.055, "skin", n=12)        # neck
-    mb.ellipsoid(at(0, 0, 1.115), (0.122, 0.115, 0.135), "skin", n=20, m=10)  # head
-    mb.ellipsoid(at(0.118, 0, 1.105), (0.022, 0.018, 0.026), "skin", n=8, m=5)  # nose
-    for dy in (-0.048, 0.048):                                          # eyes and brows, facing +X
-        mb.ellipsoid(at(0.109, dy, 1.128), (0.02, 0.017, 0.012), "hat", n=8, m=5)
-        mb.beam(at(0.114, dy - 0.028, 1.152), at(0.114, dy + 0.028, 1.152), 0.014, 0.008, "hat")
-    mb.beam(at(0.112, -0.028, 1.062), at(0.112, 0.028, 1.062), 0.012, 0.008, "robe")  # mouth
-    # a rounded black cap with a band, its crown standing up at the back
-    mb.ellipsoid(at(-0.01, 0, 1.23), (0.135, 0.13, 0.085), "hat", n=20, m=10)
-    mb.ellipsoid(at(-0.035, 0, 1.31), (0.085, 0.085, 0.085), "hat", n=16, m=8)
-    mb.frustum(ring(0.126, 1.175, 20, 0.12), ring(0.132, 1.2, 20, 0.126), "hat")
+    immortal(mb, lambda p: (s + p[0], p[1], z + p[2]))
     fig = mb.build("figure", c, root, smooth=40)
     set_rotate(fig, "figure", (0, 0, 1))
     set_teach(fig, "figure", "木人", (0, 0, lift + 1.0))
@@ -593,12 +761,14 @@ def build_song(L, root):
         lift.cyl(lay.add(sm.center, (0, 0, -0.2)), lay.add(sm.center, (0, 0, 0.8)), 0.05, "iron", n=6)
         top = lay.add(sm.center, (0, 0, 0.8))
         drop = (4.55, sy * 1.35, top[2])  # clear of the big flat wheel (2.72 from its axis)
-        lift.cyl(top, drop, 0.03, "rope", n=6)
-        lift.cyl(drop, (4.55, sy * 1.35, 4.15), 0.03, "rope", n=6)
-        lift.box((4.48, sy * 1.35 - 0.07, 3.98), (4.62, sy * 1.35 + 0.07, 4.15), "iron")
+        # a thin bamboo cord (竹索): tied round the axle's head, sagging a little over the
+        # big flat wheel, then hanging straight under its iron weight
+        lift.ellipsoid(lay.add(top, (0, 0, -0.03)), (0.07, 0.07, 0.05), "rope", n=8, m=4)
+        cord(lift, [top, *sag(top, drop, 0.09, 8)[1:], (4.55, sy * 1.35, 4.15)])
+        lift.box((4.5, sy * 1.35 - 0.055, 3.98), (4.6, sy * 1.35 + 0.055, 4.15), "iron")
         lo = lift.build(f"song.smallLift.{side}", sm.center, root)
         set_lift(lo, f"clutch{side}", L.lift)
-        set_teach(lo, "gear", f"{side_cn}小平轮的吊绳（拉起、放下小平轮）", (0, sy * 0.5, 1.0))
+        set_teach(lo, "gear", f"{side_cn}小平轮的吊绳", (0, sy * 0.5, 1.0))
         so = gear_node(sm, lo, f"{side_cn}小平轮", (0, 0, 0), disc_wheel(L, sm, "blue" if side == "L" else "orange", L.disc_small, 0.1),
                        extra=lambda mb, sm=sm: mb.box((sm.center[0] - 0.1, sm.center[1] - 0.1, sm.center[2] - 0.14), (sm.center[0] + 0.1, sm.center[1] + 0.1, sm.center[2] + 0.14), "wood_dark"))
         set_rotate(so, "small" + side, sm.axis)
@@ -610,10 +780,10 @@ def build_song(L, root):
         rl.cyl(rc, (rc[0], rc[1], POLE_Z - 0.07), 0.025, "iron", n=6)
         ro = rl.build(f"song.roller.{side}", rc, root)
         set_lift(ro, f"clutch{side}", 0.2)
-        set_teach(ro, "gear", f"车辕头上的{side_cn}小轮", (0, 0, 0.6))
+        set_teach(ro, "gear", f"{side_cn}辕端小轮", (0, 0, 0.6))
 
     big = g["big"]
-    o = gear_node(big, root, "大平轮", (0, 0, 2.0), flat_wheel(L, big, "gold", G(L, "shaftSquare") + 0.2, 0.4, 6))
+    o = gear_node(big, root, "大平轮", (0, 0, 2.0), flat_wheel(L, big, "wood", G(L, "shaftSquare") + 0.2, 0.4, 6))
     set_rotate(o, "bigFlat", big.axis)
     figure(L, root, 2.6)
 
@@ -635,8 +805,8 @@ def build_differential(L, root):
     body(L, root, x0, x1, bx0, bx1, 1.05, [(-0.3, 0.3, L.axle_z - 0.28, L.axle_z + 0.28)], [], [-2.6, 2.6], frame)
     pole(L, root, L.shaft_r + 0.15, bx1, [])
 
-    for side, colour, sy, gname, label in (("L", "blue", 1, "crown.L", "左轮带的竖齿轮"),
-                                           ("R", "orange", -1, "crown.R", "右轮带的竖齿轮")):
+    for side, colour, sy, gname, label in (("L", "blue", 1, "crown.L", "左立轮"),
+                                           ("R", "orange", -1, "crown.R", "右立轮")):
         wheel(L, side, root)
         cr = g[gname]
 
@@ -657,10 +827,11 @@ def build_differential(L, root):
 
     def side_a_extra(mb):
         mb.revolve(sA.center, sA.axis, [(ringA.r - 0.16, L.disc_t / 2), (ringA.r + 0.16, L.disc_t / 2), (ringA.r + 0.16, L.disc_t / 2 + 0.06), (ringA.r - 0.16, L.disc_t / 2 + 0.06)], "blue", n=16, ref=sA.u)
+        # the inner ring's teeth in the gear's own colour, so they read apart from the pinions'
         for k in range(ringA.n):
-            tooth_block(mb, ringA, k, "peg")
+            tooth_block(mb, ringA, k, "peg_blue")
 
-    o = gear_node(sA, root, "左边的平齿轮（下层）", (0, 0, 0), flat_wheel(L, sA, "blue", G(L, "shaftSquare") + 0.2, 0.3, 6), extra=side_a_extra)
+    o = gear_node(sA, root, "下平轮", (0, 0, 0), flat_wheel(L, sA, "blue", G(L, "shaftSquare") + 0.2, 0.3, 6), extra=side_a_extra)
     o["sideTeeth"] = ringA.n
     set_rotate(o, "sideA", sA.axis)
 
@@ -668,26 +839,33 @@ def build_differential(L, root):
 
     def side_b_extra(mb):
         for k in range(ringB.n):
-            tooth_block(mb, ringB, k, "peg")
+            tooth_block(mb, ringB, k, "peg_orange")
         c = sB.center
         h = G(L, "shaftSquare") / 2 + 0.1
         mb.box((c[0] - h, c[1] - h, c[2] - 0.15), (c[0] + h, c[1] + h, c[2] + 0.2), "wood_dark")
 
-    o = gear_node(sB, root, "右边的平齿轮（上层）", (0, 0, 2.2), disc_wheel(L, sB, "orange", L.disc_t, 0.25), extra=side_b_extra)
+    o = gear_node(sB, root, "上平轮", (0, 0, 2.2), disc_wheel(L, sB, "orange", L.disc_t, 0.25), extra=side_b_extra)
     o["sideTeeth"] = ringB.n
     set_rotate(o, "sideB", sB.axis)
 
+    # the carrier: a block keyed on the shaft and a cross beam out to the pinions, so it reads
+    # as the frame they turn on; iron pins through the pinions, washers outside them
     cm = MB()
     cc = (0.0, 0.0, L.z_pin)
-    cm.cyl((0, 0, L.z_pin - 0.12), (0, 0, L.z_pin + 0.12), 0.21, "gold", n=10)
+    zp = L.z_pin
+    hub_h = 0.17
+    cm.box((-0.22, -0.22, zp - hub_h), (0.22, 0.22, zp + hub_h), "yellow")
+    arm_end = L.r_side - L.small_tooth.thick / 2 - 0.05
     for sx in (1, -1):
-        cm.cyl((sx * 0.15, 0, L.z_pin), (sx * (L.r_side + 0.12), 0, L.z_pin), 0.05, "iron", n=6)
+        cm.bar((sx * 0.2, 0, zp), (0.16, 0.18), (sx * arm_end, 0, zp), (0.13, 0.15), "yellow", up=(0, 0, 1), chamfer=0.025)
+        cm.cyl((sx * 0.15, 0, zp), (sx * (L.r_side + 0.12), 0, zp), 0.05, "iron", n=8)
+        cm.disc((sx * (L.r_side + 0.105), 0, zp), (1, 0, 0), 0.085, 0.03, "iron", n=10)
     carrier = cm.build("diff.carrier", cc, root)
     set_rotate(carrier, "carrier", (0, 0, 1))
-    set_teach(carrier, "gear", "架子（木人就站在它上面）", (0, 0, 1.1))
+    set_teach(carrier, "gear", "架子", (0, 0, 1.1))
     for k in (0, 1):
         p = g[f"pinion.{k}"]
-        o = gear_node(p, carrier, "小齿轮", (0, 0, 0), disc_wheel(L, p, "gold", 0.08, 0.07))
+        o = gear_node(p, carrier, "小齿轮", (0, 0, 0), disc_wheel(L, p, "yellow", 0.08, 0.07), teeth_mat="peg_yellow")
         set_rotate(o, "pinion", p.axis)
     figure(L, root, 1.7)
 
@@ -727,6 +905,26 @@ def meshes():
 def unwrap():
     """One UV atlas over every mesh, deterministic (so the GLB stays reproducible)."""
     objs = meshes()
+    # Discs and rims are revolved as wedges that only touch: each wedge's face would be
+    # an island of its own, baked on its own, and a disc's top read as a sunburst of
+    # wedges in different greys. Weld coincident vertices first (flat-shaded meshes only:
+    # the faces keep their own normals) so a flat face across wedges is one island.
+    import bmesh
+    for o in objs:
+        if any(p.use_smooth for p in o.data.polygons):
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+        # the walls where two wedges touch are now inside the solid (welding keeps one of
+        # each pair): every edge of such a wall is shared by more than two faces. Drop
+        # them (the page's ink outline, a hull pushed out along the normals, poked them
+        # through a disc's top as a ring of radial lines)
+        inner = [f for f in bm.faces if all(len(e.link_faces) > 2 for e in f.edges)]
+        if inner:
+            bmesh.ops.delete(bm, geom=inner, context="FACES_ONLY")
+        bm.to_mesh(o.data)
+        bm.free()
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
         o.select_set(True)

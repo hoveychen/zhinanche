@@ -233,7 +233,7 @@ export class World {
     /** @type {((o: THREE.Object3D) => boolean)[]} */
     const kinds = [
       () => false, // the gears and wheels in x-ray colours
-      (o) => o instanceof THREE.LineSegments,
+      (o) => o.name.endsWith(".ghost"),
       (o) => o instanceof THREE.Mesh && o.material === OUTLINES.ink,
       (o) => o instanceof THREE.Mesh && (o.material === OUTLINES.lit || o.material === OUTLINES.faded),
       (o) => o.name === "spinArc",
@@ -446,7 +446,7 @@ export class World {
     rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
-    this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works" || this.cam.view === "pair"), dt);
+    this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works" || this.cam.view === "pair" || this.cam.view === "diff"), dt);
     this.cam.update(dt, this.camFocus());
     this.#liftOver(dt);
   }

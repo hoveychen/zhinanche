@@ -190,7 +190,7 @@ export const LESSONS = [
       },
       {
         text: "两个齿轮中间，夹着几个小齿轮。小齿轮装在一个架子上，木人就站在这个架子上。\n\n车直着走，两个车轮转得一样多。两边一抵消，架子不动，木人也不动。",
-        scene: { reset: true, view: "works", highlight: ["pinion", "carrier", "figure"], play: "straight" },
+        scene: { reset: true, view: "diff", highlight: ["pinion", "carrier", "figure"], play: "straight" },
       },
       {
         text: "车拐弯时，外边的车轮转得多。\n\n多出来的圈数，会让架子带着木人转起来。往哪边转呢？",

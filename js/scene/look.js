@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Environment, SetShadow, contactShadow } from "./environment.js";
 import { Courtyard } from "./courtyard.js";
 import { dressGround, makeGround, photoGround } from "./ground.js";
-import { chariotAO, dressChariot, loadTextures, photoIron, photoWood } from "./materials.js";
+import { chariotAO, dressChariot, loadTextures, photoIron, photoMurals, photoWood } from "./materials.js";
 import { meanOf } from "./photo.js";
 import { AGE_ORIGIN, age } from "./aging.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
@@ -115,6 +115,8 @@ export class Look {
     this.woodPhoto = null;
     /** @type {import("./photo.js").PhotoSet | null} the photographed rusty iron, once it is up */
     this.ironPhoto = null;
+    /** @type {Record<string, THREE.Texture> | null} the box's paintings, once they are up */
+    this.muralTex = null;
     /** @type {Map<string, Promise<THREE.Texture | null>>} each chariot's baked occlusion atlas, by mechanism */
     this.atlases = new Map();
     /** @type {THREE.Object3D | null} what carries the chariot (attach) */
@@ -182,6 +184,7 @@ export class Look {
       return null;
     });
     const sky = safe("sky", this.photos.sky());
+    const since = performance.now();
     // sizes [albedo, normal, arm] for the full and lite tiers (tools/assets/build_photo.py makes these)
     const sets = {
       ground: safe("ground", this.photos.surface("ground", { full: [1024, 1024, 1024], lite: [1024, 1024, 512] })),
@@ -191,6 +194,10 @@ export class Look {
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
       iron: safe("iron", this.photos.surface("iron", { full: [512, 512, 512], lite: [512, 512, 512] })),
       trees: safe("trees", this.photos.trees()),
+      // the paintings (2048 × 682 each) going up with their mipmaps came a
+      // second in, while driving: like the occlusion atlas (#atlas), they
+      // wait till the chariot has stood still a moment, or 8 s
+      murals: safe("murals", this.photos.murals(() => this.stillFrames > 20 || performance.now() - since > 8000)),
     };
     // A sky decoded before the textures are made (the usual case) goes up at
     // once and is in the environment map's first bake; one that comes later
@@ -235,6 +242,10 @@ export class Look {
         this.ironPhoto = s;
         photoIron(this.chariotMeshes, s);
       }),
+      put("murals", sets.murals, (s) => {
+        this.muralTex = s;
+        photoMurals(this.chariotMeshes, s);
+      }),
       this.yardReady.then(() => Promise.all([
         put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
         put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
@@ -264,6 +275,7 @@ export class Look {
     this.chariotMeshes.push(...meshes);
     if (this.woodPhoto) photoWood(meshes, this.woodPhoto, await this.chariotTex);
     if (this.ironPhoto) photoIron(meshes, this.ironPhoto);
+    if (this.muralTex) photoMurals(meshes, this.muralTex);
     /** @type {string | undefined} */
     let mechanism;
     root.traverse((o) => (mechanism ??= o.userData.mechanism));

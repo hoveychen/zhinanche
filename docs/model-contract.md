@@ -9,6 +9,7 @@ Node names and `extras` in the GLB files are an API. Renaming a node is a breaki
 | `assets/chariot-differential.glb` | Running gear + body + Lanchester-style differential + figure |
 | `assets/chariot-song.glb` | Running gear + body + Yan Su (1027) clutch gear train + figure |
 | `assets/photo/chariot-<mechanism>-ao-{1024,512}.webp` | The chariot's baked occlusion atlas (see *UVs and the baked atlas*) |
+| `assets/photo/chariot-murals-{dragon,tiger,flowers}-{2048,1024}.webp` | The box's paintings, the same for both chariots (see *The box's paintings*); laid out by `tools/assets/build_murals.py` from `tools/assets/murals/*.jpg` |
 
 Both are built by `pnpm build:model` (`blender/scripts/build_chariot.py`, from `params/chariot.json` through `blender/scripts/lib/layout.py`), which writes the two GLBs and bakes their atlases; `-- --mechanism differential|song --out PATH` builds one, `--no-bake` skips the bake. The build is reproducible byte for byte.
 
@@ -76,16 +77,21 @@ Every gear node has a child `<node>.marker` (its marker tooth). `js/scene/rig.js
 { "group": "shell" | "chassis" | "wheel" | "gear" | "figure", "explode": [dx, dy, dz], "label": "中心大平轮", "teeth": 48 }
 ```
 
-- `shell`: everything that hides the gears (the box's side and end boards, the deck, the tier, the top platform). X-ray draws it (and `body.frame`) as a faint wireframe; explode moves it away while it fades out. `chassis`: frame, pole, axle; stays in place.
+- `shell`: everything that hides the gears (the box's side and end boards, the deck, the tier, the top platform). X-ray draws it (and `body.frame`) as a glass ghost (see *Page-side drawing*), not a wireframe; explode moves it away while it fades out. `chassis`: frame, pole, axle; stays in place.
 - `explode`: offset in chi, used at explode = 1, applied to the node's position in its parent's frame. Only direct children of `chariot` carry a non-zero offset; deeper nodes (pinions, small flat wheels, markers) are `[0, 0, 0]` and move with their parent. Gears separate vertically so that the meshing stays readable.
-- `label`: Chinese name shown in callouts (English names: `js/teach/strings.en.js` `parts.names`). `teeth`: tooth count, used by the "count the teeth" tasks and by `tests/model.test.js`, which derives the ratio pointing south needs from these counts, the wheel diameter and the track.
+- `label`: Chinese name shown in callouts: the name the lessons use (the Song History's for the Song parts; 左立轮 / 下平轮 / 上平轮 / 小齿轮 / 架子 for the differential). English names: `js/teach/strings.en.js` `parts.names`. The callout's second line is the part in plain words, `parts.plain[label]` (zh and en), then the teeth. `teeth`: tooth count, used by the "count the teeth" tasks and by `tests/model.test.js`, which derives the ratio pointing south needs from these counts, the wheel diameter and the track.
 - Every gear has one **marker tooth** in a contrasting colour (child mesh `<node>.marker`, static relative to its gear), so children can follow a gear round and count turns. The wheels have a yellow marker spoke (`wheel.L.marker`, `wheel.R.marker`).
 - `diff.sideA` / `diff.sideB` each hold two rings of teeth: `teeth` counts the horizontal gear driven by the crown wheel (42 / 18), `sideTeeth` the 16 upright teeth that mesh with the pinions.
 - Song meshing phase: at all-zero angles every pair is in mesh. A lowered small flat wheel is in mesh only while `(smallR − 2·footR)`, `(smallL + 2·footL)` and `(small + 4·bigFlat)` are multiples of 30°. js/sim restores this whenever it lowers a wheel: the small wheel turns to the nearest foot-gear gap (≤ 15°), then pushes `bigFlat`, and the figure with it, to the nearest gap (≤ 3.75°); that push is the Song clutch's engagement error (`design/decisions/0007-song-clutch-error.md`).
 
 ## Materials
 
-Each mesh's glTF material name is a *role* (`wood`, `wood_dark`, `wheel`, `mark`, `lacquer`, `eave`, `peg`, `marker`, `blue`, `orange`, `gold`, `iron`, `rope`, `robe`, `skin`, `hat`); `js/scene/materials.js` RECIPES swap each role for the page's own material, and the GLB's flat colours are never shown. `blue` / `orange` (left / right train) and `marker` must stay clean colours: they take no photographed grain colour and no occlusion.
+Each mesh's glTF material name is a *role* (`wood`, `wood_dark`, `wheel`, `mark`, `lacquer`, `mural_dragon`, `mural_tiger`, `mural_flowers`, `eave`, `peg`, `peg_blue`, `peg_orange`, `peg_yellow`, `marker`, `blue`, `orange`, `yellow`, `gold`, `iron`, `rope`, `robe`, `trim`, `skin`, `hat`); `js/scene/materials.js` RECIPES swap each role for the page's own material, and the GLB's flat colours are never shown.
+
+- `blue` / `orange` / `yellow` (left train / right train / the differential's carrier and pinions), their teeth `peg_blue` / `peg_orange` / `peg_yellow`, and `marker` must stay clean colours: they take no photographed grain colour and no occlusion. Each part of a train gets its own shade of the train's colour (`TRAIN_SHADES`).
+- Teeth: `check_clearance.py` finds a gear's teeth by role, `peg`, `marker` or any `peg_*`. A tooth given another role is no longer tested as a tooth.
+- `gold` is gilt trim only (the figure's seat, crown and sash ends, the phoenix's beak, the pouches' tassels). Gears and shafts are wood: at full metalness they mirrored the paving.
+- `iron` is forged iron at metalness 0.65 (also applied over the photographed rust's metalness map); at 0.9–1 it mirrored the shade under the box and went black.
 
 ## UVs and the baked atlas
 
@@ -100,4 +106,18 @@ Each mesh's glTF material name is a *role* (`wood`, `wood_dark`, `wheel`, `mark`
 - Differential: pitch radii must make the wheel→side gear ratio exactly D / track (`js/sim/params.js` DIFF.inputRatio, from the tooth counts) and the senses match the table above. Report the final layout in `docs/model-notes.md`.
 - Running gear from params `wheel` (30 two-part spokes, hollow-section felloe in 15 joints, 1.6° dish, 2.4-long waisted hub, tapered axle arms with caps and linchpins, 伏兔 under the sills) and body from params `body` (the red box 9.5 wide over the wheels; the gear room between the hubs' inner ends). The layout asserts that the gear room's boards clear the hubs, that the Song foot gears sit on the hubs between their inner ends and the spokes, and that the differential's left crown wheel clears both.
 - Clearance and meshing: in every pose sampled from `js/sim/scenarios.js`, meshing pairs touch only where designed and no other pair intersects (`pnpm check:model`, `CLEARANCE_OK`). Meshing pairs are tested in every pose; a Song small wheel lowered out of phase is a sim regression and fails (`PHASE … FAIL`). At rest every meshing pair must also pass the `GEAR` lines: pitch circles touching (centre distance = r1 + r2 for parallel axes), each gear's teeth at least half a tooth height into the other's gaps, tooth tips clear of the other's rim (top clearance > 0), and a gap between tooth flanks.
-- Budget (`tests/model.test.js`): under 120 k triangles and 5 MB per GLB (classroom tablets; now about 29 k and 1.9 MB). No textures larger than 1024².
+- Budget (`tests/model.test.js`): under 120 k triangles and 5 MB per GLB (classroom tablets; differential 1.66 MB, Song 1.90 MB). The GLBs carry no textures. The page's photographed surfaces stop at 1024²; the paintings are 2048 × 682 each (1.03 MB for the three; lite takes 1024 × 341), as each spans a panel 10.4 chi wide. They go up 0.4 s apart and only once the chariot stands still (or after 8 s): one a frame, the third stalled ~50 ms on the GPU.
+
+## The box's paintings
+
+- 宋史: 「兩箱畫青龍、白虎，四面畫花鳥」 (`design/decisions/0008-chariot-readability.md`). `build_chariot.py lattice(mural=…, heart=…)` puts a sheet 0.004 chi thick under the grid's strips over the whole grid: `mural_dragon` on the left box (`body.side.L`), `mural_tiger` on the right (`body.side.R`), `mural_flowers` on the front and back boards. On the sides the strips stop round a heart of 6 × 2 of the 12 × 4 squares.
+- One picture per role (`mural_dragon` → `chariot-murals-dragon-*`, and so on), 3 : 1. `materials.js muralUVs()` lays the whole picture over each sheet, u to the right as seen from outside and v up, so both beasts face the front. Until the pictures arrive (`data-photo` gains `murals`, fetched after the sky) the sheets wear a one-texel lacquer red: `rig.js` writes each material's colour back every frame, so a later change has to be a texture, not a colour.
+- The pictures were generated for this project; replacing them needs no model rebuild (`uv run --with pillow tools/assets/build_murals.py`).
+
+## Page-side drawing
+
+Not part of the GLB, but these rely on it:
+
+- **X-ray ghost** (`gearviz.js makeWire`): every `shell` mesh and `body.frame` gets a child `<name>.ghost` sharing its geometry: transparent, no depth write, a Fresnel rim in the lacquer's colour (fill 0.012, rim 0.5), fully clear within 10 chi of the camera and at full strength beyond 22.
+- **Ink outlines** (`makeHull`): back-face hulls pushed out a few pixels in screen space, and 0.01 chi + 0.1 % of the distance back from the eye, so a fan of thin triangles turned round by the push never inks a face at the part's own depth. Flat faces of revolved gears are welded in the build so the hulls see one face.
+- **Views** that rely on node positions: `diff` looks at the carrier and pinions at the height of the gap between `diff.sideA` (top 1.28) and `diff.sideB` (from 1.72); `wheels` looks at whichever wheel faces the sun (`environment.js SUN_DIR`) when the view is chosen.

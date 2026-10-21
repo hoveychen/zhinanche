@@ -111,6 +111,15 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 zhinanche contributors"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
 
+# The paintings on the chariot's box (青龍, 白虎, 花鳥; design/decisions/0008):
+# generated for this project with an image model (OpenAI, through Fleet's image
+# tool, 2026-10-22), no third-party artwork; laid out by tools/assets/build_murals.py.
+[[annotations]]
+path = ["assets/photo/chariot-murals-*.webp", "tools/assets/murals/*.jpg"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 zhinanche contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
 # Icons: Tabler Icons (outline set), copied by tools/vendor.mjs (pnpm vendor)
 # from the npm package @tabler/icons; keeps its LICENSE.
 [[annotations]]

@@ -90,6 +90,7 @@ export function loadTextures(renderer, level) {
  * @property {number} [sheen]
  * @property {number} scale texture tiles per chi
  * @property {"grain" | "roof"} [project]
+ * @property {string} [mural] which of the box's paintings (photo.js murals()) is laid once over the whole sheet (muralUVs)
  * @property {false} [ao] false: never takes the baked occlusion atlas (a colour that must stay clean)
  */
 
@@ -103,6 +104,12 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   peg: { color: 0xe6c690, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
   // The red box, railings, pillars: cinnabar lacquer (赤質).
   lacquer: { color: 0xa82a1d, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
+  // The box's paintings (宋史: 兩箱畫青龍、白虎，四面畫花鳥): plain lacquer red (a
+  // one-texel map, dressChariot) till the painting atlas is in (photoMurals),
+  // under a thinner coat than the box's.
+  mural_dragon: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "dragon" },
+  mural_tiger: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "tiger" },
+  mural_flowers: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "flowers" },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
   // The wheels: red lacquer worn thinner than the box's, the grain showing more.
   wheel: { color: 0x962c1e, map: "woodSoft", roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.4, scale: 0.8 },
@@ -111,13 +118,22 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
   blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
   orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  // Centre train, shaft and the figure's base: cast brass.
+  // The differential's carrier and pinions (the middle train): yellow paint, kept clean like the trains' colours.
+  yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
+  // The differential's inner teeth, painted like the gear they belong to (the roles say "tooth" for the clearance check).
+  peg_blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  peg_orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  peg_yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  // Gilt fittings: the figure's lotus seat, crown and sash ends, the phoenix's beak, the pouches' tassels.
   gold: { color: 0xe6c98c, map: "metal", roughness: 0.2, metalness: 1, normal: 0.2, scale: 0.8 },
   marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1, ao: false },
   // Hub bands, caps, linchpins, straps, the shaft's point: forged iron; the photographed rust goes over it (photoIron)
-  iron: { color: 0x55565a, map: "metal", roughness: 0.62, metalness: 0.9, normal: 0.5, scale: 1.2 },
-  rope: { color: 0xb59a68, map: "wood", roughness: 0.95, normal: 1, scale: 3, sheen: 0.4 },
+  iron: { color: 0x6b6762, map: "metal", roughness: 0.62, metalness: 0.65, normal: 0.5, scale: 1.2 },
+  // Bamboo cord (竹索) and lashings: matt, the grain read as twisted fibres.
+  rope: { color: 0x9c7f50, map: "wood", roughness: 0.95, normal: 1, scale: 6, sheen: 0.5 },
   robe: { color: 0xb3241c, map: "woodSoft", roughness: 0.6, sheen: 0.7, normal: 0.2, scale: 2 },
+  // The figure's collar, cuffs, sash and stole: mineral green (石绿), as on Song painted figures.
+  trim: { color: 0x2f6b55, map: "woodSoft", roughness: 0.55, sheen: 0.5, normal: 0.2, scale: 2 },
   skin: { color: 0xf0cda4, map: "woodSoft", roughness: 0.5, clearcoat: 0.4, clearcoatRoughness: 0.3, normal: 0.15, scale: 1.5 },
   hat: { color: 0x1c1b1e, map: "woodSoft", roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.1, normal: 0.2, scale: 1.5 },
 });
@@ -126,13 +142,18 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
  * Each train's parts in three shades of its colour, so parts that touch or
  * mesh never share one: the wheel a deep lacquer, the upright gear on its
  * axle the train's own colour, the flat gear that gear drives a light tint.
- * Node → sRGB, for the "blue" and "orange" roles.
+ * Node → sRGB, for the "blue", "orange" and "yellow" roles.
  * @type {Record<string, number>}
  */
 export const TRAIN_SHADES = {
   "wheel.L": 0x173a85, "diff.crown.L": 0x2c64c8, "song.foot.L": 0x2c64c8, "diff.sideA": 0x7db8ff, "song.small.L": 0x7db8ff,
   "wheel.R": 0xb95e12, "diff.crown.R": 0xea7d1c, "song.foot.R": 0xea7d1c, "diff.sideB": 0xffa860, "song.small.R": 0xffa860,
+  // the middle: the carrier a deep yellow, the pinions it carries a light one
+  "diff.carrier": 0xd49a14, "diff.pinion.0": 0xffd95a, "diff.pinion.1": 0xffd95a,
 };
+
+/** Roles painted in their part's shade of its train's colour. */
+const SHADED = new Set(["blue", "orange", "yellow", "peg_blue", "peg_orange", "peg_yellow"]);
 
 /** The TRAIN_SHADES node a mesh belongs to, if any. @param {THREE.Object3D} o */
 function shadeOf(o) {
@@ -202,6 +223,18 @@ export function faceUVs(geo, scale, mode, seed) {
     parent[find(b)] = ra;
     parent[find(c)] = ra;
   }
+  // A disc or a rim is built as wedges that only touch (each a solid of its
+  // own): weld vertices at the same place with the same normal, so the top of
+  // a disc is one face and takes one planar grain, not a grain along each
+  // wedge (which reads as a radial brushing).
+  /** @type {Map<string, number>} */
+  const seen = new Map();
+  for (let i = 0; i < n; i++) {
+    const key = `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)},${Math.round(nor.getX(i) * 100)},${Math.round(nor.getY(i) * 100)},${Math.round(nor.getZ(i) * 100)}`;
+    const j = seen.get(key);
+    if (j === undefined) seen.set(key, i);
+    else parent[find(i)] = find(j);
+  }
   /** @type {Map<number, number[]>} */
   const faces = new Map();
   for (let i = 0; i < n; i++) {
@@ -265,6 +298,45 @@ export function faceUVs(geo, scale, mode, seed) {
 }
 
 /**
+ * UVs laying a painting (tools/assets/build_murals.py) over a thin sheet on
+ * the outside of the box: u to the right as seen from outside, v up, the
+ * sheet's extent to the picture's.
+ * @param {THREE.BufferGeometry} geo
+ */
+export function muralUVs(geo) {
+  const pos = geo.getAttribute("position");
+  if (!pos) return;
+  geo.computeBoundingBox();
+  const box = /** @type {THREE.Box3} */ (geo.boundingBox);
+  const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  // the sheet is thinnest across; it faces away from the chariot's middle
+  const N = size.x < size.z ? new THREE.Vector3(Math.sign(mid.x), 0, 0) : new THREE.Vector3(0, 0, Math.sign(mid.z));
+  const U = new THREE.Vector3(0, 1, 0).cross(N);
+  const lo = Math.min(box.min.dot(U), box.max.dot(U)), span = Math.abs(size.dot(U));
+  const uv = new Float32Array(pos.count * 2);
+  const P = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    P.fromBufferAttribute(pos, i);
+    uv[i * 2] = (P.dot(U) - lo) / span;
+    uv[i * 2 + 1] = (P.y - box.min.y) / size.y;
+  }
+  geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+}
+
+/**
+ * Put the box's paintings (photo.js murals()) on its painted sheets: the
+ * painting under the lacquer's coat, its colour as painted.
+ * @param {Iterable<THREE.Mesh>} meshes @param {Record<string, THREE.Texture>} pictures
+ */
+export function photoMurals(meshes, pictures) {
+  for (const o of meshes) {
+    const m = /** @type {THREE.MeshPhysicalMaterial} */ (o.material);
+    const name = RECIPES[m.name]?.mural;
+    if (name && pictures[name]) m.map = pictures[name];
+  }
+}
+
+/**
  * Put the photographed wood (photo.js) on whatever wears the procedural
  * bare wood: the boards, hubs, spokes and pegs. It is a near-white
  * multiplier like the procedural one, so the role colours (and the rig's
@@ -302,13 +374,17 @@ export function photoIron(meshes, set) {
       m.roughnessMap = set.arm;
       m.metalnessMap = set.arm;
       m.roughness = 1;
-      m.metalness = 1;
+      // forged iron dark with scale, not bright metal: at full metalness it
+      // only mirrored the shade under the box and the hubs' bands went black
+      m.metalness = 0.65;
     }
   }
 }
 
 /** @type {THREE.Texture | null} a white aoMap standing in until the atlas is up (so nothing recompiles then) */
 let aoBlank = null;
+/** @type {THREE.Texture | null} the box's lacquer red standing in for its paintings until they are up */
+let muralBlank = null;
 
 /**
  * The baked occlusion atlas (blender/scripts/build_chariot.py bake()) on one
@@ -348,14 +424,23 @@ export function dressChariot(root, tex) {
     // the planar grain goes over uv
     const atlasUV = o.geometry.getAttribute("uv");
     if (atlasUV) o.geometry.setAttribute("uv1", atlasUV);
-    faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
-    const shade = src.name === "blue" || src.name === "orange" ? shadeOf(o) : null;
+    if (r.mural !== undefined) muralUVs(o.geometry);
+    else faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
+    const shade = SHADED.has(src.name) ? shadeOf(o) : null;
     const key = shade === null ? src.name : `${src.name}.${shade}`;
     let m = made.get(key);
     if (!m) {
       const pm = makeMaterial(shade === null ? r : { ...r, color: shade }, tex);
       pm.name = src.name;
       if (r.ao !== false && atlasUV) pm.aoMap = aoBlank;
+      if (r.mural !== undefined) {
+        if (!muralBlank) {
+          muralBlank = new THREE.DataTexture(new Uint8Array([0xa8, 0x2a, 0x1d, 255]), 1, 1);
+          muralBlank.colorSpace = THREE.SRGBColorSpace;
+          muralBlank.needsUpdate = true;
+        }
+        pm.map = muralBlank;
+      }
       m = pm;
       made.set(key, m);
     }

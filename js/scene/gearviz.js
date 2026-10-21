@@ -1,7 +1,7 @@
 // What makes the gear train readable when you look inside (x-ray or taken
 // apart): ink outlines round every gear (a back-face hull pushed out a few
 // screen pixels, so it works on every quality tier without post-processing),
-// a fine wireframe for the hidden body, and a spin arc beside each turning
+// a glass ghost of the hidden body, and a spin arc beside each turning
 // gear: dashes that move with the gear's rim and an arrowhead for the way it
 // turns, fading in only while that gear is turning.
 
@@ -19,7 +19,12 @@ const OUTLINE_VERT = /* glsl */ `
 uniform vec2 res;
 uniform float width;
 void main() {
-  vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  // a little further from the eye than the part: pushing a fan of thin
+  // triangles out in screen space can turn some of them round, and at the
+  // part's own depth they inked a disc's face in sectors
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  mv.xyz += normalize(mv.xyz) * (0.01 + 0.001 * length(mv.xyz));
+  vec4 clip = projectionMatrix * mv;
   vec3 n = normalize(normalMatrix * normal);
   vec2 dir = (projectionMatrix * vec4(n, 0.0)).xy;
   float len = length(dir);
@@ -99,18 +104,70 @@ export function makeHull(mesh) {
   return hull;
 }
 
-export const WIRE_OPACITY = 0.2;
-const SHELL_LINES = new THREE.LineBasicMaterial({ color: 0x2a1d12, transparent: true, opacity: WIRE_OPACITY, depthWrite: false });
+// The body in x-ray: a ghost of glass, not a wireframe (a cage of fine lines
+// read as a debug view, and close on the gears as scratches over them). Faces
+// turned to the camera are almost clear, faces seen edge on glow faintly in
+// the lacquer's colour (a Fresnel rim), so the box keeps its shape; whatever
+// is near the camera fades right out, so a close view of the gears is clean.
+const GHOST_VERT = /* glsl */ `
+varying vec3 vNormal;
+varying vec3 vView;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vView = mv.xyz;
+  vNormal = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * mv;
+}`;
 
-/** The body as a fine wireframe, for x-ray. @param {THREE.Mesh} mesh */
+const GHOST_FRAG = /* glsl */ `
+uniform vec3 rim;
+uniform vec3 fill;
+uniform float opacity;
+uniform vec2 fade;
+varying vec3 vNormal;
+varying vec3 vView;
+void main() {
+  float d = length(vView);
+  float facing = abs(dot(normalize(vNormal), vView / d));
+  float fres = pow(1.0 - facing, 3.0);
+  float a = (0.012 + 0.5 * fres) * opacity * smoothstep(fade.x, fade.y, d);
+  if (a < 0.003) discard;
+  gl_FragColor = vec4(mix(fill, rim, fres), a);
+}`;
+
+/** How strong the ghost is at full (x-ray on, not taken apart). */
+export const WIRE_OPACITY = 1;
+/** The ghost fades out nearer the camera than this (chi): gone at x, full at y (the gears views look from 10-14 chi: the boards in front of them, layer on layer, made a red haze). */
+const GHOST_FADE = new THREE.Vector2(10, 22);
+
+const GHOST = new THREE.ShaderMaterial({
+  uniforms: {
+    rim: { value: new THREE.Color(0xffc9a8) },
+    fill: { value: new THREE.Color(0xa8352a) },
+    opacity: { value: WIRE_OPACITY },
+    fade: { value: GHOST_FADE },
+  },
+  vertexShader: GHOST_VERT,
+  fragmentShader: GHOST_FRAG,
+  transparent: true,
+  depthWrite: false,
+});
+
+/** The body as a see-through ghost, for x-ray. Its own material (its opacity fades with the body). @param {THREE.Mesh} mesh */
 export function makeWire(mesh) {
-  const lines = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 35), SHELL_LINES);
-  lines.name = `${mesh.name}.wire`;
-  lines.castShadow = lines.receiveShadow = false;
-  lines.userData.noAO = true;
-  lines.visible = false;
-  lines.raycast = () => {};
-  return lines;
+  const ghost = new THREE.Mesh(mesh.geometry, GHOST.clone());
+  ghost.name = `${mesh.name}.ghost`;
+  ghost.castShadow = ghost.receiveShadow = false;
+  ghost.userData.noAO = true;
+  ghost.visible = false;
+  ghost.renderOrder = 1;
+  ghost.raycast = () => {};
+  return ghost;
+}
+
+/** @param {THREE.Mesh} ghost @param {number} v 0..1 */
+export function setGhostOpacity(ghost, v) {
+  /** @type {THREE.ShaderMaterial} */ (ghost.material).uniforms.opacity.value = v;
 }
 
 /** How much of the circle the arc covers. */
