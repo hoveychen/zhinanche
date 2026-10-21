@@ -309,6 +309,7 @@ export class World {
 
   /** @param {number} v 0..1 @param {boolean} [instant] */
   setExplode(v, instant = false) {
+    this.cam.setApart(v > 0);
     // closing up: glide back to the view's own framing
     if (v === 0 && this.explodeTarget > 0 && !instant) this.cam.setView(this.cam.view, this.camFocus());
     this.explodeTarget = v;
@@ -405,8 +406,8 @@ export class World {
     }
     const rig = this.rig;
     if (this.cam.reframe > 0 && rig) {
-      this.cam.parts = rig.bounds(this.partsBox, this.cam.view === "gears");
-      this.cam.partsInset = this.hudBands();
+      this.cam.parts = rig.bounds(this.partsBox, this.cam.gearsOnly);
+      this.cam.partsInset = this.#partsBands();
     }
     rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
@@ -414,6 +415,19 @@ export class World {
     this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works" || this.cam.view === "pair"), dt);
     this.cam.update(dt, this.camFocus());
     this.#liftOver(dt);
+  }
+
+  /**
+   * Where the parts may go: the HUD's bands, and with a sheet pulled up over
+   * the view, only what it leaves showing (the picture is moved up to the
+   * middle of that, #liftOver).
+   * @returns {Insets[]}
+   */
+  #partsBands() {
+    const bands = this.hudBands(), c = this.cover();
+    if (c <= 0.05) return bands;
+    const k = Math.min(c, 0.7) / 2;
+    return bands.map((b) => ({ left: b.left, right: b.right, top: b.top + k, bottom: c - k + Math.max(0, b.bottom - c) }));
   }
 
   /**
