@@ -46,8 +46,10 @@ export function partCaption(extras) {
   const t = S().parts;
   const label = extras.label ?? "";
   const title = t.names[label] ?? label;
-  let detail = "";
-  if (extras.teeth) detail = t.teeth(extras.teeth);
-  if (extras.teeth && extras.sideTeeth) detail += t.pegs(extras.sideTeeth);
+  // the name the lessons use, then the part in plain words and its teeth
+  let teeth = "";
+  if (extras.teeth) teeth = t.teeth(extras.teeth);
+  if (extras.teeth && extras.sideTeeth) teeth += t.pegs(extras.sideTeeth);
+  const detail = [t.plain[label], teeth].filter(Boolean).join(t.join);
   return { title, detail };
 }

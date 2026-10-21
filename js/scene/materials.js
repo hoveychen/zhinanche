@@ -111,13 +111,22 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
   blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
   orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  // Centre train, shaft and the figure's base: cast brass.
+  // The differential's carrier and pinions (the middle train): yellow paint, kept clean like the trains' colours.
+  yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
+  // The differential's inner teeth, painted like the gear they belong to (the roles say "tooth" for the clearance check).
+  peg_blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  peg_orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  peg_yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  // Gilt fittings: the figure's lotus seat, crown and sash ends, the phoenix's beak, the pouches' tassels.
   gold: { color: 0xe6c98c, map: "metal", roughness: 0.2, metalness: 1, normal: 0.2, scale: 0.8 },
   marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1, ao: false },
   // Hub bands, caps, linchpins, straps, the shaft's point: forged iron; the photographed rust goes over it (photoIron)
   iron: { color: 0x55565a, map: "metal", roughness: 0.62, metalness: 0.9, normal: 0.5, scale: 1.2 },
-  rope: { color: 0xb59a68, map: "wood", roughness: 0.95, normal: 1, scale: 3, sheen: 0.4 },
+  // Bamboo cord (竹索) and lashings: matt, the grain read as twisted fibres.
+  rope: { color: 0x9c7f50, map: "wood", roughness: 0.95, normal: 1, scale: 6, sheen: 0.5 },
   robe: { color: 0xb3241c, map: "woodSoft", roughness: 0.6, sheen: 0.7, normal: 0.2, scale: 2 },
+  // The figure's collar, cuffs, sash and stole: mineral green (石绿), as on Song painted figures.
+  trim: { color: 0x2f6b55, map: "woodSoft", roughness: 0.55, sheen: 0.5, normal: 0.2, scale: 2 },
   skin: { color: 0xf0cda4, map: "woodSoft", roughness: 0.5, clearcoat: 0.4, clearcoatRoughness: 0.3, normal: 0.15, scale: 1.5 },
   hat: { color: 0x1c1b1e, map: "woodSoft", roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.1, normal: 0.2, scale: 1.5 },
 });
@@ -126,13 +135,18 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
  * Each train's parts in three shades of its colour, so parts that touch or
  * mesh never share one: the wheel a deep lacquer, the upright gear on its
  * axle the train's own colour, the flat gear that gear drives a light tint.
- * Node → sRGB, for the "blue" and "orange" roles.
+ * Node → sRGB, for the "blue", "orange" and "yellow" roles.
  * @type {Record<string, number>}
  */
 export const TRAIN_SHADES = {
   "wheel.L": 0x173a85, "diff.crown.L": 0x2c64c8, "song.foot.L": 0x2c64c8, "diff.sideA": 0x7db8ff, "song.small.L": 0x7db8ff,
   "wheel.R": 0xb95e12, "diff.crown.R": 0xea7d1c, "song.foot.R": 0xea7d1c, "diff.sideB": 0xffa860, "song.small.R": 0xffa860,
+  // the middle: the carrier a deep yellow, the pinions it carries a light one
+  "diff.carrier": 0xd49a14, "diff.pinion.0": 0xffd95a, "diff.pinion.1": 0xffd95a,
 };
+
+/** Roles painted in their part's shade of its train's colour. */
+const SHADED = new Set(["blue", "orange", "yellow", "peg_blue", "peg_orange", "peg_yellow"]);
 
 /** The TRAIN_SHADES node a mesh belongs to, if any. @param {THREE.Object3D} o */
 function shadeOf(o) {
@@ -201,6 +215,18 @@ export function faceUVs(geo, scale, mode, seed) {
     const ra = find(a);
     parent[find(b)] = ra;
     parent[find(c)] = ra;
+  }
+  // A disc or a rim is built as wedges that only touch (each a solid of its
+  // own): weld vertices at the same place with the same normal, so the top of
+  // a disc is one face and takes one planar grain, not a grain along each
+  // wedge (which reads as a radial brushing).
+  /** @type {Map<string, number>} */
+  const seen = new Map();
+  for (let i = 0; i < n; i++) {
+    const key = `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)},${Math.round(nor.getX(i) * 100)},${Math.round(nor.getY(i) * 100)},${Math.round(nor.getZ(i) * 100)}`;
+    const j = seen.get(key);
+    if (j === undefined) seen.set(key, i);
+    else parent[find(i)] = find(j);
   }
   /** @type {Map<number, number[]>} */
   const faces = new Map();
@@ -349,7 +375,7 @@ export function dressChariot(root, tex) {
     const atlasUV = o.geometry.getAttribute("uv");
     if (atlasUV) o.geometry.setAttribute("uv1", atlasUV);
     faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
-    const shade = src.name === "blue" || src.name === "orange" ? shadeOf(o) : null;
+    const shade = SHADED.has(src.name) ? shadeOf(o) : null;
     const key = shade === null ? src.name : `${src.name}.${shade}`;
     let m = made.get(key);
     if (!m) {

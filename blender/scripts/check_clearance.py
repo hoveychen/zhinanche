@@ -129,7 +129,7 @@ def tooth_points(objs, name):
             continue
         me = o.data
         mw = o.matrix_world
-        tooth_slots = {i for i, m in enumerate(me.materials) if m and m.name.split(".")[0] in ("peg", "marker")}
+        tooth_slots = {i for i, m in enumerate(me.materials) if m and (m.name.split(".")[0] in ("peg", "marker") or m.name.startswith("peg_"))}
         seen = set()
         for p in me.polygons:
             if p.material_index in tooth_slots:

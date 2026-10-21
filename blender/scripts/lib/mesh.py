@@ -25,9 +25,15 @@ COLORS = {
     "blue": "#2f6fd6",
     "orange": "#f08a24",
     "gold": "#e5b53b",
+    "yellow": "#f2c230",     # the differential's carrier and pinions: the middle train, painted
+    # the differential's inner teeth in their gear's colour ("peg_*": teeth, for check_clearance)
+    "peg_blue": "#2f6fd6",
+    "peg_orange": "#f08a24",
+    "peg_yellow": "#f2c230",
     "marker": "#ff2340",
     "iron": "#3b3d42",
     "rope": "#c9b07a",
+    "trim": "#2f6b55",       # the figure's collar, cuffs, sash and stole: mineral green (石绿)
     "robe": "#d1362e",
     "skin": "#f3cfa6",
     "hat": "#2a2a2e",
@@ -235,6 +241,60 @@ class MB:
             faces += [[ring(j, i), ring(j + 1, i), ring(j + 1, i + 1), ring(j, i + 1)] for i in range(n)]
         faces += [[last, ring(m - 1, i + 1), ring(m - 1, i)] for i in range(n)]
         self.convex(pts, faces, mat)
+
+    def blob(self, c, ex, ey, ez, mat, n=12, m=6):
+        """An ellipsoid round c with its semi-axes along the vectors ex, ey, ez (any orientation)."""
+        c, ex, ey, ez = V(c), V(ex), V(ey), V(ez)
+        pts = [c + ez]
+        for j in range(1, m):
+            t = math.pi * j / m
+            pts += [c + ex * (math.sin(t) * math.cos(2 * math.pi * i / n)) + ey * (math.sin(t) * math.sin(2 * math.pi * i / n)) + ez * math.cos(t) for i in range(n)]
+        pts.append(c - ez)
+        last = len(pts) - 1
+        ring = lambda j, i: 1 + (j - 1) * n + i % n  # noqa: E731
+        faces = [[0, ring(1, i), ring(1, i + 1)] for i in range(n)]
+        for j in range(1, m - 1):
+            faces += [[ring(j, i), ring(j + 1, i), ring(j + 1, i + 1), ring(j, i + 1)] for i in range(n)]
+        faces += [[last, ring(m - 1, i + 1), ring(m - 1, i)] for i in range(n)]
+        self.convex(pts, faces, mat)
+
+    def loft(self, rings, mat, cap0=True, cap1=True):
+        """One surface through a run of rings (each the same number of points, in the same
+        order round): quads between neighbours, fans over the ends. Not convex: each face
+        is turned away from the middle of the two rings it joins, so a lofted robe with
+        folds or a drooping sleeve shades right."""
+        n = len(rings[0])
+        mi = self._mi(mat)
+        base = len(self.verts)
+        for r in rings:
+            assert len(r) == n
+            self.verts += [V(p) for p in r]
+        cents = [sum((V(p) for p in r), Vector()) / n for r in rings]
+
+        def add(f, inside):
+            n_ = Vector()
+            for i in range(len(f)):
+                p, q = self.verts[f[i]], self.verts[f[(i + 1) % len(f)]]
+                n_ += Vector(((p.y - q.y) * (p.z + q.z), (p.z - q.z) * (p.x + q.x), (p.x - q.x) * (p.y + q.y)))
+            fc = sum((self.verts[i] for i in f), Vector()) / len(f)
+            if n_.dot(fc - inside) < 0:
+                f = list(reversed(f))
+            self.faces.append(f)
+            self.fmat.append(mi)
+
+        for j in range(len(rings) - 1):
+            mid = (cents[j] + cents[j + 1]) / 2
+            for i in range(n):
+                a, b = base + j * n + i, base + j * n + (i + 1) % n
+                add([a, b, b + n, a + n], mid)
+        for cap, j, nxt in ((cap0, 0, 1), (cap1, len(rings) - 1, len(rings) - 2)):
+            if not cap or len(rings) < 2:
+                continue
+            ci = len(self.verts)
+            self.verts.append(cents[j].copy())
+            # the fan faces away from the next ring in
+            for i in range(n):
+                add([ci, base + j * n + i, base + j * n + (i + 1) % n], cents[nxt])
 
     def tris(self):
         return sum(len(f) - 2 for f in self.faces)

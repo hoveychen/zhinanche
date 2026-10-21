@@ -103,3 +103,10 @@ test("switching language moves the address to that language's entry page, query 
   assert.equal(langHref("https://example.org/en.html?lang=en", "zh"), "https://example.org/?lang=zh");
   assert.equal(langHref("https://example.org/en.html", "en"), "https://example.org/en.html");
 });
+
+test("every part but a mark has the same plain words in both languages", () => {
+  const labels = new Set([...glbLabels("chariot-differential.glb"), ...glbLabels("chariot-song.glb")]);
+  const want = [...labels].filter((l) => !/记号|：/.test(l)).sort();
+  assert.deepEqual(Object.keys(STR.parts.plain).sort(), want, "zh plain words");
+  assert.deepEqual(Object.keys(STR_EN.parts.plain).sort(), want, "en plain words");
+});
