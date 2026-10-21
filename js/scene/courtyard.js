@@ -45,7 +45,7 @@ function rand(seed) {
 }
 
 /** Collects geometries per material key, then merges them. */
-class Bucket {
+export class Bucket {
   constructor() {
     /** @type {Map<string, THREE.BufferGeometry[]>} */
     this.parts = new Map();
@@ -124,11 +124,12 @@ function worldUV(g, s, cx, cy, cz) {
  * distance along the eave, so the hips cut the rows short), and v is the
  * distance up the slope.
  * @param {Bucket} b @param {string} key
- * @param {{cx: number, cz: number, hx: number, hz: number, y0: number, y1: number, lift: number, tMax?: number, eaves?: EaveOpts | false}} o
+ * @param {{cx: number, cz: number, hx: number, hz: number, y0: number, y1: number, lift: number, tMax?: number, eaves?: EaveOpts | false, ridge?: number}} o
  *   hx, hz: half size at the eave line; y0 eave height, y1 ridge height;
- *   eaves: tile ends along the eave (eaves.js), with these extras (false: none)
+ *   eaves: tile ends along the eave (eaves.js), with these extras (false: none);
+ *   ridge: the ridge beam's and its end ornaments' size (1: a hall's)
  */
-function hipRoof(b, key, o) {
+export function hipRoof(b, key, o) {
   const n = 7, m = 10;
   const tMax = o.tMax ?? 1;
   // Built along x; a roof that is longer along z is built swapped.
@@ -191,13 +192,13 @@ function hipRoof(b, key, o) {
   }
   if (tMax >= 1) {
     // ridge beam with upturned ends (dark glazed)
-    const y = o.y1, L = ridgeHalf + 0.6;
+    const y = o.y1, r = o.ridge ?? 1, L = ridgeHalf + 0.6 * r;
     /** @param {number} a0 @param {number} y0 @param {number} c0 @param {number} a1 @param {number} y1 @param {number} c1 */
     const box = (a0, y0, c0, a1, y1, c1) => (swap
       ? b.box(key, [o.cx + c0, y0, o.cz + a0], [o.cx + c1, y1, o.cz + a1])
       : b.box(key, [o.cx + a0, y0, o.cz + c0], [o.cx + a1, y1, o.cz + c1]));
-    box(-L, y - 0.6, -0.9, L, y + 1.6, 0.9);
-    if (o.lift > 0) for (const sx of [-1, 1]) box(sx * (ridgeHalf + 0.2) - 1, y, -0.8, sx * (ridgeHalf + 0.2) + 1, y + 4.2, 0.8);
+    box(-L, y - 0.6 * r, -0.9 * r, L, y + 1.6 * r, 0.9 * r);
+    if (o.lift > 0) for (const sx of [-1, 1]) box(sx * (ridgeHalf + 0.2 * r) - r, y, -0.8 * r, sx * (ridgeHalf + 0.2 * r) + r, y + 4.2 * r, 0.8 * r);
   }
 }
 
