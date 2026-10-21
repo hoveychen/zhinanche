@@ -639,6 +639,8 @@ function materials() {
     eave: M(0xffffff, 0.75, { vertexColors: true }),
     roofYellow: M(0xe0a62a, 0.34, { side: THREE.DoubleSide }),
     roofGray: M(0x4b5354, 0.6, { side: THREE.DoubleSide }),
+    // green glaze: the gate's roofs (landmark.js; Courtyard.dressGate)
+    roofGreen: M(0x2c4f55, 0.34),
     trunk: M(0x4a3626, 0.95),
     bronze: M(0x6b5634, 0.38, { metalness: 0.85 }),
     gold: M(0xd2a443, 0.3, { metalness: 1 }),
@@ -769,7 +771,7 @@ export class Courtyard {
   dress(tex) {
     const m = this.materials;
     this.tex = tex;
-    for (const k of /** @type {const} */ (["roofYellow", "roofGray"])) {
+    for (const k of /** @type {const} */ (["roofYellow", "roofGray", "roofGreen"])) {
       m[k].map = tex.tiles;
       m[k].normalMap = tex.tilesNormal;
       m[k].roughnessMap = tex.tilesRough;
@@ -794,7 +796,7 @@ export class Courtyard {
     const m = this.materials;
     age(m.wallRed, "plaster", noise);
     for (const k of /** @type {const} */ (["column", "panel"])) age(m[k], "lacquer", noise);
-    for (const k of /** @type {const} */ (["roofYellow", "roofGray"])) age(m[k], "roof", noise);
+    for (const k of /** @type {const} */ (["roofYellow", "roofGray", "roofGreen"])) age(m[k], "roof", noise);
     age(m.marble, "stone", noise);
     age(m.bronze, "bronze", noise);
     age(m.gold, "gold", noise);
@@ -821,7 +823,7 @@ export class Courtyard {
       mat.roughness = 1;
       return;
     }
-    const keys = name === "plaster" ? /** @type {const} */ (["wallRed"]) : /** @type {const} */ (["roofYellow", "roofGray"]);
+    const keys = name === "plaster" ? /** @type {const} */ (["wallRed"]) : /** @type {const} */ (["roofYellow", "roofGray", "roofGreen"]);
     // what the material's colour was multiplied by before: white, or the procedural tiles
     const was = name === "plaster" ? new THREE.Color(1, 1, 1) : meanOf(/** @type {Textures} */ (this.tex).tiles);
     const k = new THREE.Color(was.r / set.mean.r, was.g / set.mean.g, was.b / set.mean.b);
@@ -841,6 +843,20 @@ export class Courtyard {
       // the set's roughness is absolute, not a multiplier (the baked tiles' glaze is in it)
       mat.roughness = 1;
     }
+  }
+
+  /**
+   * The gate (landmark.js) in the courtyard's roof, bracket and eave
+   * materials, so it weathers and takes the photographed sets with them.
+   * @param {THREE.Object3D} gate
+   */
+  dressGate(gate) {
+    const m = /** @type {Record<string, THREE.MeshStandardMaterial>} */ (this.materials);
+    gate.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const key = o.material.userData.yard;
+      if (key && m[key]) o.material = m[key];
+    });
   }
 
   /** The meshes that cast baked shadows (all but the hills). */

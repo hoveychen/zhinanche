@@ -282,6 +282,7 @@ export class Look {
     const trees = await this.photos.firstTrees().catch((err) => console.warn("trees unavailable", err));
     if (trees) yard.trees?.set(trees.cards, trees.atlases);
     const gate = scene.getObjectByName("landmark");
+    if (gate) yard.dressGate(gate);
     for (const m of Object.values(yard.materials)) {
       this.setShadow.patch(m);
       if (m !== yard.materials.hills) this.bakedAO.patch(m);

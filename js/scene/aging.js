@@ -60,6 +60,18 @@ const KINDS = {
     float up = smoothstep(0.3, 0.9, N.y);
     c = mix(c, ${lin(0x8c8a78)}, up * 0.22 * smoothstep(0.45, 0.75, agN(vec2(P.x, P.z) * 0.08)));
     rough = min(1.0, rough + 0.2 * up);
+    // seen from below (the upturned corners): red roof boards and the green
+    // rafters on them, one rafter every half row of tiles (a texture spans
+    // eight rows), not the tiles' glaze
+    if (!gl_FrontFacing) {
+      #ifdef USE_MAP
+        float raft = smoothstep(0.08, 0.16, abs(fract(vMapUv.x * 16.0) - 0.5));
+      #else
+        float raft = 1.0;
+      #endif
+      c = mix(${lin(0x2f4a3c)}, ${lin(0x6a2a1c)}, raft) * mix(0.7, 1.0, agG(vec2(P.x, P.z) * 0.05));
+      rough = 0.85;
+    }
   `,
   stone: `
     float along = P.x + P.z;
