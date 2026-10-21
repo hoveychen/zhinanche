@@ -74,7 +74,7 @@ export class Course {
     /** @type {{play: string | null, walk: boolean} | null} */
     this.held = null;
     // In the nav bar, in place of the step count, so it never covers the task.
-    this.cue = h("button", { type: "button", class: "more-cue", hidden: true, onclick: () => this.#reveal(true) }, [
+    this.cue = h("button", { type: "button", class: "more-cue", hidden: true, onclick: () => this.#more() }, [
       icon("arrow-down"),
       bind(h("span"), (s) => s.ui.moreBelow),
     ]);
@@ -529,9 +529,30 @@ export class Course {
     return stops.find((d) => d >= need) ?? stops.at(-1) ?? 0;
   }
 
-  /** Show "往下看" while this step's target is still below the fold. */
+  /**
+   * The first thing to press that the panel cuts off: this step's target, or
+   * else any button or task card under the fold (the step's tools, "回到起点").
+   * @returns {HTMLElement | null}
+   */
+  #cutOff() {
+    const sc = this.scroller;
+    if (!sc) return null;
+    if (this.target && this.#below(this.target) > 1) return this.target;
+    for (const el of sc.querySelectorAll(".task, button")) {
+      if (el instanceof HTMLElement && el.getClientRects().length > 0 && this.#below(el) > 1) return el;
+    }
+    return null;
+  }
+
+  /** "往下看" pressed: bring the first cut-off control into view. */
+  #more() {
+    const el = this.#cutOff();
+    if (el) this.#reveal(true, el);
+  }
+
+  /** Show "往下看" while something to press is still below the fold. */
   #updateCue() {
-    const show = this.target !== null && this.#below(this.target) > 1;
+    const show = this.#cutOff() !== null;
     this.cue.hidden = !show;
     this.panel.querySelector(".panel-nav")?.classList.toggle("cue-on", show);
   }

@@ -153,15 +153,9 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-5) var(--sp-5) var(--sp-6); container-type: inline-size; }
 
 @media (min-width: 1280px) { :root { --panel-w: 460px; } }
-/* Side panel (desktops, tablets on their side): a short step's back / next
-   follow its words, the panel's spare room goes under them; a long step's
-   words scroll and the buttons stay at the bottom. (Portrait screens and
-   phones keep the buttons at the bottom: their panel is short anyway.) */
-@media (orientation: landscape) and (min-width: 761px) and (min-height: 501px) {
-  .panel-body { flex: 0 1 auto; min-height: 0; }
-  /* on the panel's own paper, a hairline over it: it reads as the end of the step, not a bar */
-  .panel-body + .panel-nav { background: var(--paper); }
-}
+/* The nav bar stays at the bottom of the panel on every screen: a child
+   pressing "下一步" again and again finds it where it was (a short step's
+   spare room goes between its words and the bar). */
 
 /* Portrait tablets and phones: 3D on top, lessons below. */
 @media (orientation: portrait), (max-width: 760px) {
@@ -211,7 +205,10 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .home-kicker { margin: 2px 0 var(--sp-1); font-size: var(--fs-s); font-weight: 700; letter-spacing: 0.12em; color: var(--umber); }
 .home-title { margin: 0 0 var(--sp-3); font: 400 var(--fs-2xl)/1.1 var(--kai); color: var(--ink); letter-spacing: 0.12em; text-wrap: balance; }
 .home-hook { margin: 0 0 var(--sp-5); font-size: var(--fs-l); line-height: 1.65; color: var(--ink); text-wrap: pretty; }
-.home-cta { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+/* the two ways in, side by side and the same width in either language (in
+   English, a narrow panel breaks each button's words over two lines) */
+.home-cta { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.home-cta > .primary.big, .home-cta > .plain.big { padding: 6px 12px; text-align: center; text-wrap: balance; }
 .list-head { margin: var(--sp-6) 0 var(--sp-2); font-size: var(--fs-s); font-weight: 700; letter-spacing: 0.08em; color: var(--ink-2); }
 .asks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .ask {
@@ -463,6 +460,14 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .odo-read .num { font-size: var(--fs-lead); font-weight: 700; font-variant-numeric: tabular-nums; }
 .odo-read .unit { font-size: var(--fs-s); margin-left: 2px; }
 .odo-read .m { display: block; font-size: var(--fs-xs); color: var(--ink-2); }
+.odo-way { display: flex; align-items: center; justify-content: center; gap: 1px; font-size: var(--fs-s); font-weight: 700; white-space: nowrap; }
+.odo-way[hidden] { display: none; }
+.odo-way .icon { width: 16px; height: 16px; transform: rotate(180deg); }
+.odo-way.back .icon { transform: none; }
+.odo-way.still { visibility: hidden; }
+.odo-col.l .odo-way { color: var(--left); }
+.odo-col.r .odo-way { color: var(--right-ink); }
+.hud-odo.folded .odo-way > span { display: none; }
 .odo-col.l .num { color: var(--left); }
 .odo-col.r .num { color: var(--right-ink); }
 /* a gauge, not an empty slot: quarter marks on the tube (the fill covers them as it rises) */
@@ -897,3 +902,9 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .hud-odo.folded .odo-name { font-size: var(--fs-xs); }
   .hud-odo.folded .odo-read .num { font-size: var(--fs-s); }
 }
+
+/* A step with "draw a road" and no arrow keys (lesson 2): on phones the
+   buttons take their width from the keys, so with the keys hidden the bar
+   fell to a 10px sliver. Then they take their own width. */
+.stage-bar:has(> .pad[hidden]) > .bar-btns { width: auto; min-width: 0; }
+.stage-bar:has(> .pad[hidden]) .bar-btns .bar-btn { flex: 0 0 auto; min-width: 72px; white-space: nowrap; }

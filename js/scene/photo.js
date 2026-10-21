@@ -64,6 +64,9 @@ export function meanOf(tex) {
 }
 
 /** @typedef {{image: ImageBitmap | HTMLImageElement, flipY: boolean}} Decoded */
+
+/** The least time between two upload jobs (ms): about every frame at 60 Hz, every other at 120 (tick). */
+const JOB_GAP = 16;
 /** @import { TreeCard } from "./trees.js" */
 /** @typedef {{cards: Record<string, TreeCard>, atlases: Map<string, THREE.Texture>}} TreeSet */
 
@@ -153,6 +156,8 @@ export class Photos {
     this.aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     /** @type {{run: () => void, when?: () => boolean}[]} GPU work waiting for a frame of its own (and maybe for a calm one) */
     this.jobs = [];
+    /** when the last job ran (performance.now, ms) */
+    this.lastJob = -Infinity;
     /** @type {Promise<PhotoManifest | null>} */
     this.manifest = fetch(new URL("manifest.json", ROOT))
       .then((r) => (r.ok ? r.json() : null))
@@ -203,10 +208,20 @@ export class Photos {
     this.decoder.close();
   }
 
-  /** Run at most one waiting job. Call once a frame, before drawing. */
+  /**
+   * Run at most one waiting job, and not within JOB_GAP of the last one.
+   * Call once a frame, before drawing. (One a frame was too fast where frames
+   * are short, 120 Hz screens or no vsync: five 1024² uploads went in 13 ms,
+   * the GPU fell behind, and the sixth waited 40–70 ms for it, a hitch while
+   * driving. Spaced by the clock, each takes 3–5 ms.)
+   */
   tick() {
+    const now = performance.now();
+    if (now - this.lastJob < JOB_GAP) return;
     const i = this.jobs.findIndex((j) => !j.when || j.when());
-    if (i >= 0) this.jobs.splice(i, 1)[0].run();
+    if (i < 0) return;
+    this.lastJob = now;
+    this.jobs.splice(i, 1)[0].run();
   }
 
   /**

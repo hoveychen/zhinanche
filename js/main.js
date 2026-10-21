@@ -293,6 +293,8 @@ canvas.addEventListener("pointerdown", (e) => {
   // back to the view: fold the free-driving sheet away (phones)
   if (document.body.dataset.sheet === "open") course.setSheet(false);
   if (!input.drawOn || !e.isPrimary) return;
+  // the view still swinging round to the top view: put it there first
+  world.cam.land(world.camFocus());
   const p = world.groundAt(e.clientX, e.clientY);
   if (!p) return;
   canvas.setPointerCapture(e.pointerId);
@@ -318,12 +320,27 @@ const endDraw = () => {
   for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
   if (len < 4) world.route.clear();
   else {
+    // The road is down: the chariot drives it in this view from above, the
+    // whole road in the picture (from the chase view, low behind the
+    // chariot, the curve drawn read as a few kinked lines half under the
+    // box); back to the view from before the drawing once it is driven, or
+    // the child takes the wheel.
+    const back = viewBeforeDraw;
     app.followRoute(pts);
-    // the road is down: back to following the chariot along it
-    stopDrawing(true);
+    stopDrawing(false);
+    viewAfterRoute = back && back !== "top" ? back : null;
   }
   syncHint();
 };
+/** the view to go back to once the chariot has driven the road just drawn */
+/** @type {import("./app/directive.js").SceneState["view"] | null} */
+let viewAfterRoute = null;
+app.onTick(() => {
+  if (!viewAfterRoute || app.follow !== null || input.drawOn) return;
+  const back = viewAfterRoute;
+  viewAfterRoute = null;
+  if (app.state.view === "top" && app.state.controls.includes("draw")) app.direct({ view: back });
+});
 canvas.addEventListener("pointerup", (e) => {
   if (drawing) {
     endDraw();

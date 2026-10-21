@@ -99,12 +99,15 @@ export class Odometer {
       const fill = h("div", { class: "fill" });
       const num = h("b", { class: "num" });
       const m = h("small", { class: "m" });
+      // one wheel rolled backwards: each says which way in words with an
+      // arrow (no minus sign: not every 9-year-old reads one)
+      const way = h("span", { class: "odo-way", hidden: true }, [icon("arrow-down"), h("span")]);
       const el = h("div", { class: `odo-col ${side}` }, [
-        h("div", { class: "odo-read" }, [num, bind(h("span", { class: "unit" }), (str) => str.hud.unit), m]),
+        h("div", { class: "odo-read" }, [way, num, bind(h("span", { class: "unit" }), (str) => str.hud.unit), m]),
         h("div", { class: "odo-bar" }, [h("div", { class: "zero" }), fill]),
         bind(h("div", { class: "odo-name" }), (str) => str.hud[name]),
       ]);
-      return { el, fill, num, m };
+      return { el, fill, num, m, way };
     };
     this.l = col("l", "wheelL");
     this.r = col("r", "wheelR");
@@ -149,8 +152,14 @@ export class Odometer {
       c.fill.style.setProperty("--len", len.toFixed(4));
       c.fill.style.setProperty("--from", (neg && v < 0 ? 0.5 - len : neg ? 0.5 : 0).toFixed(4));
       c.fill.classList.toggle("back", v < -0.05);
-      c.num.textContent = t.num(v);
-      c.m.textContent = t.sub(v);
+      c.way.hidden = !neg;
+      const back = v < -0.05;
+      c.way.classList.toggle("back", back);
+      // a wheel standing still says neither (its place kept: the numbers stay level)
+      c.way.classList.toggle("still", Math.abs(v) <= 0.05);
+      /** @type {HTMLElement} */ (c.way.lastChild).textContent = back ? t.backward : t.forward;
+      c.num.textContent = t.num(Math.abs(v));
+      c.m.textContent = t.sub(Math.abs(v));
     }
     const d = distR - distL;
     let line = t.same;
