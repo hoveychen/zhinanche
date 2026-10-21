@@ -223,6 +223,8 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .ask:hover { background: var(--paper-2); border-color: var(--line-2); }
 .ask-q { font-size: var(--fs-m); font-weight: 700; line-height: 1.35; color: var(--ink); }
 .ask-a { grid-column: 1; font-size: var(--fs-s); line-height: 1.5; color: var(--ink-2); }
+/* no last line of one character ("偏。") */
+.ask-q, .ask-a, .lesson-sum, .trouble-note { text-wrap: pretty; }
 .ask-go { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-s); font-weight: 700; color: var(--umber); white-space: nowrap; }
 .lesson-list { list-style: none; margin: 0; padding: 0; }
 .lesson-list li + li { border-top: 1px solid var(--line); }
