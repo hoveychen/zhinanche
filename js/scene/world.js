@@ -109,6 +109,7 @@ export class World {
     /** @type {() => Insets[]} */
     this.hudBands = () => [this.hudInsets()];
     this.cam.insets = () => this.hudInsets();
+    this.cam.bands = () => this.hudBands();
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);

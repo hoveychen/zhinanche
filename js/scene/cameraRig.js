@@ -50,6 +50,12 @@ const ROOM = { x: 56, north: -100, south: 84 };
 /** The chariot's bulk (centre height, radius): the wide views keep out of it. */
 const BULK = { y: 5, r: 9 };
 
+/** Framing a route: the chariot's reach round its centre and its height (no figure: it is over the centre). */
+const BODY = { r: 5, h: 8 };
+/** ...tipped this far from straight down (degrees), with this much room to spare round it. */
+const TOP_TIP = 30;
+const TOP_SPARE = 1.1;
+
 /** Views close in on the works on purpose: they may look from inside the body. */
 const CLOSE = new Set(["gears", "works", "wheels", "figure", "hero", "intro"]);
 
@@ -71,7 +77,7 @@ export class CameraRig {
     /** the home page's opening (view "intro"): seconds into it, and whether it has pulled back yet */
     this.intro = { t: 0, out: false };
     /** fixed framing for the top view (route playback), else null */
-    /** @type {{cx: number, cz: number, h: number} | null} */
+    /** @type {{target: THREE.Vector3, pos: THREE.Vector3} | null} */
     this.box = null;
     this.last = { x: 0, z: 0, heading: Math.PI / 2 };
     this.extraRadius = 0;
@@ -88,6 +94,9 @@ export class CameraRig {
     /** the HUD's margins over the view (set by the world) */
     /** @type {() => Insets} */
     this.insets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+    /** the ways to keep clear of the HUD: beside it, or above and below it (set by the world) */
+    /** @type {() => Insets[]} */
+    this.bands = () => [this.insets()];
     /** how far from the target the camera wanted to be when last kept in the room (0: it wasn't) */
     this.wantDist = 0;
     /** the camera is where its view put it (nobody has dragged it since) */
@@ -188,7 +197,7 @@ export class CameraRig {
       }
       case "top": {
         if (this.box) {
-          return { target: new THREE.Vector3(this.box.cx, 0, this.box.cz), pos: new THREE.Vector3(this.box.cx, this.box.h, this.box.cz + 0.01) };
+          return { target: this.box.target.clone(), pos: this.box.pos.clone() };
         }
         if (this.extraRadius) {
           // A demo on the ground: frame just the demo, tipped a little (north
@@ -237,13 +246,18 @@ export class CameraRig {
       }
       case "above": {
         // Close over the chariot, north up, tipped so the figure reads as a
-        // figure; set in the part of the view the HUD leaves free.
-        const ins = this.insets();
+        // figure; set in the part of the view the HUD leaves free (beside it,
+        // or above and below it: whichever leaves the chariot bigger).
         const r = 11.5, tip = THREE.MathUtils.degToRad(32);
-        const ux = Math.max(0.4, 1 - ins.left - ins.right), uy = Math.max(0.4, 1 - ins.top - ins.bottom);
         const v = THREE.MathUtils.degToRad(this.camera.fov);
         const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
-        const d = r / Math.min(ux * th, uy * tv);
+        let best = { d: Infinity, ins: this.insets() };
+        for (const ins of this.bands()) {
+          const ux = Math.max(0.4, 1 - ins.left - ins.right), uy = Math.max(0.4, 1 - ins.top - ins.bottom);
+          const d = r / Math.min(ux * th, uy * tv);
+          if (d < best.d * 0.95) best = { d, ins };
+        }
+        const { d, ins } = best;
         const target = new THREE.Vector3(f.x - (ins.left - ins.right) * d * th, 0, f.z - (ins.top - ins.bottom) * d * tv);
         return { target, pos: target.clone().add(new THREE.Vector3(0, d * Math.cos(tip), d * Math.sin(tip))) };
       }
@@ -293,8 +307,9 @@ export class CameraRig {
   }
 
   /**
-   * Frame a region of the ground from above (route playback in the top view),
-   * in the part of the view the HUD leaves free.
+   * Frame a route from above (route playback in the top view), in the part of
+   * the view the HUD leaves free: the chariot's path and its bulk with about a
+   * fifth to spare, tipped a little (north still up) so it reads as a chariot.
    * @param {{x: number, z: number}[]} pts world points
    * @param {Focus} f
    * @param {Insets} [inset] HUD margins as fractions of the view
@@ -305,15 +320,29 @@ export class CameraRig {
       x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
       z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z);
     }
-    const pad = 9; // the compass ring (radius 8.2) round the chariot at every path point
+    // the chariot round each path point: wheels at ±3.6, the body and pole about as far
+    const pad = BODY.r;
     x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
-    const ux = Math.max(0.3, 1 - inset.left - inset.right), uz = Math.max(0.3, 1 - inset.top - inset.bottom);
-    const v = THREE.MathUtils.degToRad(this.camera.fov);
-    const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
-    const h = Math.max((z1 - z0) / (2 * uz * tv), (x1 - x0) / (2 * ux * th), this.fit(14));
-    // shift so the region sits in the middle of the free part
-    const ex = h * th, ez = h * tv;
-    this.box = { cx: (x0 + x1) / 2 - (inset.left - inset.right) * ex, cz: (z0 + z1) / 2 - (inset.top - inset.bottom) * ez, h };
+    const centre = new THREE.Vector3((x0 + x1) / 2, BODY.h / 2, (z0 + z1) / 2);
+    const tip = THREE.MathUtils.degToRad(TOP_TIP);
+    const off = new THREE.Vector3(0, Math.cos(tip), Math.sin(tip));
+    const right = new THREE.Vector3(1, 0, 0);
+    const up = new THREE.Vector3().crossVectors(off, right);
+    const tv0 = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), th0 = tv0 * this.camera.aspect;
+    const ux = Math.max(0.3, 1 - inset.left - inset.right), uy = Math.max(0.3, 1 - inset.top - inset.bottom);
+    let want = 0;
+    const c = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) {
+      c.set(i & 1 ? x1 : x0, i & 2 ? BODY.h : 0, i & 4 ? z1 : z0).sub(centre);
+      const z = c.dot(off);
+      want = Math.max(want, z + Math.abs(c.dot(right)) / (th0 * ux), z + Math.abs(c.dot(up)) / (tv0 * uy));
+    }
+    want = Math.max(want * TOP_SPARE, this.fit(8));
+    // aim off-centre so the route sits in the middle of the free part
+    const target = centre
+      .addScaledVector(right, -(inset.left - inset.right) * th0 * want)
+      .addScaledVector(up, -(inset.bottom - inset.top) * tv0 * want);
+    this.box = { target, pos: target.clone().addScaledVector(off, want) };
     this.setView("top", f);
   }
 
