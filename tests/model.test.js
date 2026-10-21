@@ -162,4 +162,45 @@ for (const m of /** @type {MechanismId[]} */ (["differential", "song"])) {
       assert.equal(byName.get("diff.sideA")?.extras?.sideTeeth, PARAMS.differential.sideGearTeeth.v);
     }
   });
+
+  test(`${m}: the gears in the GLB give exactly the ratio pointing south needs`, () => {
+    // The chariot turns by θ about one road wheel standing still: the other
+    // wheel rolls θ·track along the ground, i.e. turns θ·track/(D/2). The
+    // figure must turn −θ relative to the body. Nothing here is a written
+    // ratio: both sides come from the geometry and the tooth counts the GLB
+    // carries, and the sim (js/sim/chariot.js) uses those same counts.
+    const D = PARAMS[m].wheelDiameter.v, track = PARAMS[m].track.v;
+    const wheelPerBodyTurn = (2 * track) / D;
+    /** @param {string} name */
+    const teeth = (name) => {
+      const t = byName.get(name)?.extras?.teeth;
+      assert.equal(typeof t, "number", `${name}.extras.teeth`);
+      return /** @type {number} */ (t);
+    };
+    if (m === "song") {
+      // foot wheel → small flat wheel → big flat wheel: the small wheel's
+      // teeth cancel, the big flat wheel turns foot/big per wheel turn.
+      const figurePerWheelTurn = (teeth("song.foot.L") / teeth("song.small.L")) * (teeth("song.small.L") / teeth("song.bigFlat"));
+      assert.equal(teeth("song.foot.R"), teeth("song.foot.L"));
+      assert.equal(teeth("song.small.R"), teeth("song.small.L"));
+      assert.equal(figurePerWheelTurn * wheelPerBodyTurn, 1);
+      // 宋史 149 worked example: a quarter turn of the chariot is a quarter
+      // turn of the big flat wheel (the figure), the other way.
+      assert.equal(0.25 * wheelPerBodyTurn * figurePerWheelTurn, 0.25);
+    } else {
+      // Each crown wheel drives its horizontal gear; the carrier turns by half
+      // the difference of the two, so a wheel turning alone moves the figure
+      // by half of crown/flat per wheel turn.
+      const kL = teeth("diff.crown.L") / teeth("diff.sideA");
+      const kR = teeth("diff.crown.R") / teeth("diff.sideB");
+      assert.equal(kL, kR, "both wheel→side trains share one ratio");
+      assert.equal((kL / 2) * wheelPerBodyTurn, 1);
+    }
+    // And the sim agrees: drive one wheel alone through a quarter body turn.
+    const c = new Chariot({ mechanism: m });
+    const before = c.figureRel;
+    const steps = 200, arc = ((Math.PI / 2) * track) / steps;
+    for (let i = 0; i < steps; i++) c.step({ groundL: 0, groundR: arc });
+    assert.ok(Math.abs(Math.abs(c.figureRel - before) - Math.PI / 2) < 1e-9, `sim figure turn ${c.figureRel - before}`);
+  });
 }
