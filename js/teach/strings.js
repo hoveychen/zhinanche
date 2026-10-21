@@ -158,6 +158,9 @@ export const STR = {
     unit: "尺",
     /** the small line under it @param {number} chi */
     sub: (chi) => `约 ${fmt(chi * CHI_IN_METERS)} 米`,
+    /** over each wheel's number once one has rolled backwards (the numbers have no minus sign) */
+    backward: "往后退",
+    forward: "往前走",
     wheelL: "左轮",
     wheelR: "右轮",
     odoLabel: "两个车轮各走了多远（点一下收起或展开）",

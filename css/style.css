@@ -457,6 +457,14 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .odo-read .num { font-size: var(--fs-lead); font-weight: 700; font-variant-numeric: tabular-nums; }
 .odo-read .unit { font-size: var(--fs-s); margin-left: 2px; }
 .odo-read .m { display: block; font-size: var(--fs-xs); color: var(--ink-2); }
+.odo-way { display: flex; align-items: center; justify-content: center; gap: 1px; font-size: var(--fs-s); font-weight: 700; white-space: nowrap; }
+.odo-way[hidden] { display: none; }
+.odo-way .icon { width: 16px; height: 16px; transform: rotate(180deg); }
+.odo-way.back .icon { transform: none; }
+.odo-way.still { visibility: hidden; }
+.odo-col.l .odo-way { color: var(--left); }
+.odo-col.r .odo-way { color: var(--right-ink); }
+.hud-odo.folded .odo-way > span { display: none; }
 .odo-col.l .num { color: var(--left); }
 .odo-col.r .num { color: var(--right-ink); }
 /* a gauge, not an empty slot: quarter marks on the tube (the fill covers them as it rises) */

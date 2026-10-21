@@ -128,6 +128,8 @@ export const STR_EN = {
     num: (chi) => m(chi),
     unit: "m",
     sub: (_chi) => "",
+    backward: "Backward",
+    forward: "Forward",
     wheelL: "Left",
     wheelR: "Right",
     odoLabel: "How far each wheel has rolled (tap to fold or unfold)",
