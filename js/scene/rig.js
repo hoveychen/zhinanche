@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { ClutchDisplay } from "./clutchPhase.js";
 import { LEFT_NODES, PART_NODES, RIGHT_NODES, ownerOf } from "./parts.js";
-import { OUTLINES, SpinArc, TRAIN, WIRE_OPACITY, makeHull, makeWire } from "./gearviz.js";
+import { OUTLINES, SpinArc, TRAIN, WIRE_OPACITY, makeHull, makeWire, setGhostOpacity } from "./gearviz.js";
 import { TRAIN_SHADES } from "./materials.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
@@ -29,10 +29,10 @@ import { TRAIN_SHADES } from "./materials.js";
  * @property {THREE.Color} color
  * @property {string} group
  * @property {string} owner node name the mesh belongs to (marker teeth → their gear)
- * @property {boolean} wire drawn as a wireframe in x-ray (the body and the frame round the gears)
+ * @property {boolean} wire drawn as a glass ghost in x-ray (the body and the frame round the gears)
  * @property {boolean} [dim] faded back because other parts are highlighted
  * @property {THREE.Mesh} mesh
- * @property {THREE.LineSegments | null} lines its x-ray wireframe
+ * @property {THREE.Mesh | null} lines its x-ray ghost
  * @property {Placed | null} place the exploding node it moves with
  */
 
@@ -187,7 +187,6 @@ export class Rig {
       this.looks.push(look);
       if (wire) {
         const lines = makeWire(o);
-        lines.material = lines.material.clone();
         o.add(lines);
         look.lines = lines;
       } else if (group === "gear" || group === "wheel" || group === "figure") {
@@ -285,7 +284,7 @@ export class Rig {
   }
 
   /**
-   * The body: solid, a faint wireframe in x-ray, and fading away as it flies
+   * The body: solid, a glass ghost in x-ray, and fading away as it flies
    * off when taken apart (it hides the gears, and would fly out of the picture).
    */
   #shell() {
@@ -301,14 +300,14 @@ export class Rig {
       }
       m.opacity = 1 - gone;
       m.depthWrite = gone < 0.5;
-      // x-ray: the body itself is not drawn at all (its wireframe, a child
+      // x-ray: the body itself is not drawn at all (its ghost, a child
       // of it, still is); a draw that writes nothing would only cost the GPU
       // a pipeline of its own the first time (~100 ms)
       m.visible = !see;
       l.mesh.visible = gone < 0.999;
       if (l.lines) {
         l.lines.visible = see;
-        /** @type {THREE.LineBasicMaterial} */ (l.lines.material).opacity = WIRE_OPACITY * (1 - gone);
+        setGhostOpacity(l.lines, WIRE_OPACITY * (1 - gone));
       }
     }
   }
@@ -369,7 +368,7 @@ export class Rig {
       m.needsUpdate = true;
     }
     // x-ray: the body stops drawing (it writes nothing, casts no shadow) and
-    // its wireframe shows instead; no stacked see-through layers
+    // its ghost shows instead
     this.#shell();
     this.#outline();
   }

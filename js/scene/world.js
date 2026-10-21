@@ -233,7 +233,7 @@ export class World {
     /** @type {((o: THREE.Object3D) => boolean)[]} */
     const kinds = [
       () => false, // the gears and wheels in x-ray colours
-      (o) => o instanceof THREE.LineSegments,
+      (o) => o.name.endsWith(".ghost"),
       (o) => o instanceof THREE.Mesh && o.material === OUTLINES.ink,
       (o) => o instanceof THREE.Mesh && (o.material === OUTLINES.lit || o.material === OUTLINES.faded),
       (o) => o.name === "spinArc",
