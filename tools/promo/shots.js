@@ -48,7 +48,7 @@
 
     show('.hook', -1, T.hook - 0.05, t);
     cap(t);
-    show('.title', T.gears + 0.8, 99, t, 0.45);
+    show('.title', T.gears + 1.2, 99, t, 0.45);
     $('.veil').style.opacity = String(0.5 * ss(T.gears + 0.4, T.gears + 1.2, t));
 
     if (t < T.hook) {
@@ -57,14 +57,14 @@
       st.cmd = { fwd: 0, turn: 0 };
       const k = t / T.hook;
       st.fov = SQ ? 40 : 30;
-      st.cam = SQ ? { pos: lerp([11, 5.5, -34], [9.5, 6, -29], k), target: [0, 11.5, 30] } : { pos: lerp([17, 6, -38], [15, 6.4, -33], k), target: [4.4, 10, 30] };
+      st.cam = SQ ? { pos: lerp([11, 5.5, -34], [9.5, 6, -29], k), target: [0, 14.5, 30] } : { pos: lerp([17, 6, -38], [15, 6.4, -33], k), target: [4.4, 14, 30] };
       st.dof = false; st.shell = null;
     } else if (t < T.wide) {
       // high and fixed in the world: the chariot weaves, the hand stays on the gate
       if (phase !== 'wide') { phase = 'wide'; window.__place(WX, WZ, WH); world.setTrails(true); }
       st.cmd = { fwd: 1, turn: 0.8 };
-      st.fov = SQ ? 42 : 34;
-      st.cam = { pos: SQ ? [-6, 17, -46] : [-6, 15, -44], target: [-1, 2.5, 6] };
+      st.fov = SQ ? 50 : 36;
+      st.cam = SQ ? { pos: [-23, 13, -29], target: [3, 6.8, 12] } : { pos: [-22, 12, -27], target: [2, 7.2, 5] };
       st.dof = false;
     } else if (t < T.spin) {
       // close: it spins on the spot, the figure does not move
@@ -73,7 +73,7 @@
       st.cmd = { fwd: 0, turn: u < 0.15 ? 0 : -1 };
       const k = u / (T.spin - T.wide);
       st.fov = SQ ? 44 : 35;
-      st.cam = SQ ? { pos: lerp([19, 10.5, -35], [22, 10.2, -33], k), target: [6.4, 6.4, 3.8] } : { pos: lerp([24, 11, -28], [27, 10.5, -25], k), target: [3.2, 6.6, 8.6] };
+      st.cam = SQ ? { pos: lerp([19, 10.5, -35], [22, 10.2, -33], k), target: [6.4, 6.4, 3.8] } : { pos: lerp([24, 11, -28], [27, 10.5, -25], k), target: [3.2, 8.4, 8.6] };
       st.dof = false;
     } else if (t < T.gears) {
       // the body melts away and the camera drops onto the gears; it drives a curve
@@ -97,13 +97,13 @@
       if (!phase.startsWith('end')) { phase = 'end'; st.from = { pos: st.cam.pos.slice(), target: st.cam.target.slice(), fov: st.fov }; }
       const u = t - T.gears;
       st.cmd = { fwd: 0.4, turn: 0.75 };
-      const k = ss(0, 2.4, u);
+      const k = ss(0, 1.8, u);
       const L0 = { pos: L(-3.2, 13.5, 0.6), target: L(0.3, 2.1, 0) };
-      const to = { pos: W(-19, 15, -40), target: W(0, 8.5, 12) };
+      const to = { pos: W(-19, 15, -40), target: W(0, SQ ? 12 : 10.3, 12) };
       st.cam = { pos: lerp(L0.pos, to.pos, k), target: lerp(L0.target, to.target, k) };
       st.fov = (SQ ? 44 : 38) + ((SQ ? 40 : 34) - (SQ ? 44 : 38)) * k;
-      st.shell = ss(0.2, 1.4, u);
-      if (u > 1.4 && phase === 'end') { phase = 'end2'; window.__xray(false); st.shell = null; world.setFigureBig(true); world.ring.group.visible = true; }
+      st.shell = ss(0.55, 0.9, u);
+      if (u > 0.95 && phase === 'end') { phase = 'end2'; window.__xray(false); st.shell = null; world.setFigureBig(true); world.ring.group.visible = true; }
       if (phase === 'end2') st.shell = null;
     }
   };
