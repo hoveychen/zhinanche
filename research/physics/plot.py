@@ -18,6 +18,7 @@ from summarize import label  # noqa: E402
 C = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]  # categorical, fixed order
 INK, MUTED, GRID = "#1f1f1e", "#6b6a63", "#e4e3dc"
 W = "friction=0.1,latch=True"
+BEST = "chamfer=0.04,friction=0.1,latch=True,ridge=['small.L', 'small.R', 'big']"  # chamfer capped at 0.027 by the 0.06 tip
 plt.rcParams.update({"font.size": 9, "axes.edgecolor": MUTED, "axes.labelcolor": INK, "xtick.color": MUTED,
                      "ytick.color": MUTED, "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.6,
                      "axes.spines.top": False, "axes.spines.right": False, "lines.linewidth": 1.6,
@@ -46,9 +47,9 @@ def find(R, key, setting):
 def err_vs_dist(R, out):
     panels = [("差动式（任意开法）", "differential:any", ["straight", "circle", "sCurve", "figureEight", "spinLeft", "drawing"], "base"),
               ("宋史式 绕内轮转 · 基线（摩擦 0.4，靠重量压下）", "song:pivot", ["pivotLeft", "pivotSquare", "pivotZigzag", "drawing"], "base"),
-              ("宋史式 绕内轮转 · 上油 0.1 + 落座后插销", "song:pivot", ["pivotLeft", "pivotSquare", "pivotZigzag", "drawing"], W),
+              ("宋史式 绕内轮转 · 上油 0.1 + 插销 + 屋脊齿 + 倒角", "song:pivot", ["pivotLeft", "pivotSquare", "pivotZigzag", "drawing"], BEST),
               ("宋史式 普通转弯 · 基线", "song:normal", ["spinLeft", "circle", "sCurve", "figureEight", "drawing"], "base"),
-              ("宋史式 普通转弯 · 上油 0.1 + 落座后插销", "song:normal", ["spinLeft", "circle", "sCurve", "figureEight", "drawing"], W)]
+              ("宋史式 普通转弯 · 上油 0.1 + 插销 + 屋脊齿 + 倒角", "song:normal", ["spinLeft", "circle", "sCurve", "figureEight", "drawing"], BEST)]
     fig, axs = plt.subplots(len(panels), 1, figsize=(8, 2.3 * len(panels)), constrained_layout=True)
     for ax, (title, grp, names, st) in zip(axs, panels):
         for i, n in enumerate(names):
@@ -67,9 +68,10 @@ def err_vs_dist(R, out):
 
 def phys_vs_kin(R, out):
     cases = [("差动式 drawing", "differential:any:drawing", "base"),
-             ("宋史式 绕内轮转 drawing · 上油+插销", "song:pivot:drawing", W),
+             ("宋史式 绕内轮转 pivotSquare · 基线", "song:pivot:pivotSquare", "base"),
+             ("宋史式 绕内轮转 pivotSquare · 改进齿形", "song:pivot:pivotSquare", BEST),
              ("宋史式 普通转弯 circle · 基线", "song:normal:circle", "base"),
-             ("宋史式 普通转弯 circle · 上油+插销", "song:normal:circle", W)]
+             ("宋史式 普通转弯 circle · 改进齿形", "song:normal:circle", BEST)]
     fig, axs = plt.subplots(len(cases), 1, figsize=(8, 2.2 * len(cases)), constrained_layout=True)
     for ax, (title, key, st) in zip(axs, cases):
         m = find(R, key, st)
@@ -87,8 +89,8 @@ def phys_vs_kin(R, out):
 
 
 def engagements(R, out):
-    sets = [("base", "基线"), (W, "上油+插销"), ("chamfer=0.04,friction=0.1,latch=True", "上油+插销+倒角 0.04"),
-            ("dwell_lower=1.5,friction=0.1,latch=True", "上油+插销+放下等 1.5 s")]
+    sets = [("base", "基线"), (W, "上油+插销"), ("chamfer=0.04,friction=0.1,latch=True", "上油+插销+倒角 0.027"),
+            (BEST, "上油+插销+倒角+屋脊齿")]
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(9, 3.2), constrained_layout=True)
     bins_d = np.linspace(0, 3, 31)
     bins_j = np.linspace(-8, 8, 33)
@@ -139,7 +141,7 @@ def sensitivity(db, out):
 
 def lift(R, out):
     fig, (a1, a2) = plt.subplots(2, 1, figsize=(8, 4), sharex=True, constrained_layout=True)
-    for i, (st, name) in enumerate([("base", "基线：摩擦 0.4，重量 + 50 N"), ("friction=0.0", "摩擦 0"), (W, "上油 0.1 + 插销")]):
+    for i, (st, name) in enumerate([("base", "基线：摩擦 0.4，重量 + 50 N"), ("friction=0.0", "摩擦 0"), ("latch=True", "摩擦 0.4 + 插销"), (BEST, "改进齿形")]):
         m = find(R, "song:normal:circle", st)
         if m is None:
             continue
