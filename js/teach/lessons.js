@@ -33,11 +33,11 @@ export const LESSONS = [
     steps: [
       {
         text: "这是<b>指南车</b>。\n\n车上站着一个木头小人。他伸着手，指着南方。",
-        scene: { reset: true, mechanism: "differential", view: "follow", xray: false, explode: 0, demo: null, controls: [] },
+        scene: { reset: true, mechanism: "differential", view: "hero", xray: false, explode: 0, demo: null, controls: [] },
       },
       {
         text: "看，车拐来拐去。\n\n木人的手指向哪里？仔细看一看。",
-        scene: { reset: true, view: "follow", trails: true, play: "sCurve", controls: ["reset"] },
+        scene: { reset: true, view: "intro", trails: true, play: "sCurve", controls: ["reset"] },
         task: {
           kind: "choose",
           prompt: "车拐弯以后，木人指着哪里？",
@@ -179,7 +179,7 @@ export const LESSONS = [
       },
       {
         text: "<span class=\"l\">左轮</span>带着一个齿轮转，<span class=\"r\">右轮</span>带着另一个齿轮转。\n\n车轮转一圈，它带的齿轮也转一圈。只是这两个齿轮转的方向正好相反。",
-        scene: { highlight: ["sideA", "sideB"], play: "straight" },
+        scene: { view: "pair", highlight: ["wheelL", "wheelR", "sideA", "sideB"], play: "straight" },
       },
       {
         text: "两个齿轮中间，夹着几个小齿轮。小齿轮装在一个架子上，木人就站在这个架子上。\n\n车直着走，两个车轮转得一样多。两边一抵消，架子不动，木人也不动。",
@@ -200,7 +200,7 @@ export const LESSONS = [
       },
       {
         text: "刚才车拐了两个弯，一共掉了个头。外边的车轮比里边<b>多转了一圈</b>。\n\n车身转了半圈，木人就反着转半圈，还是指着南。",
-        scene: { reset: true, view: "top", trails: true, odometer: true, highlight: ["figure"], play: "pivotLeft" },
+        scene: { reset: true, view: "above", trails: true, odometer: true, highlight: ["figure"], play: "pivotLeft" },
       },
       {
         text: "把「拆开」的滑块往右拖，齿轮会一个一个分开。",
@@ -250,11 +250,11 @@ export const LESSONS = [
       },
       {
         text: "车轮转一圈，立子轮的 24 个齿都推过去。小平轮就转两圈，大平轮转半圈。\n\n拐一个直角弯，外边的车轮转半圈。大平轮转 12 个齿，就是四分之一圈。《宋史》里就是这么写的。",
-        scene: { view: "top", highlight: ["bigFlat", "figure"] },
+        scene: { view: "above", highlight: ["bigFlat", "figure"] },
       },
       {
         text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。这一回，「车夫帮忙」已经关掉了，车要随便绕一个大圈。",
-        scene: { reset: true, assist: false, view: "top", trails: true, highlight: [], play: "circle", controls: ["assist", "reset"] },
+        scene: { reset: true, assist: false, view: "above", trails: true, highlight: [], play: "circle", controls: ["assist", "reset"] },
         task: {
           kind: "choose",
           guess: true,
@@ -271,7 +271,7 @@ export const LESSONS = [
       },
       {
         text: "那差动式是谁想出来的？是 20 世纪的英国工程师兰彻斯特。他按机械的道理猜出来的。\n\n古书里<b>没有</b>写差动式，可它怎么走都准。所以这个网页先用差动式，你也能换成宋史式比一比。",
-        scene: { mechanism: "differential", assist: true, view: "top", highlight: [], controls: ["mechanism", "assist", "drive", "reset"] },
+        scene: { mechanism: "differential", assist: true, view: "follow", highlight: [], controls: ["mechanism", "assist", "drive", "reset"] },
         task: {
           kind: "choose",
           prompt: "下面哪句话是对的？",
@@ -291,7 +291,7 @@ export const LESSONS = [
     steps: [
       {
         text: "差动式的指南车，开多远都准吗？\n\n只要车造得刚刚好，就准。可要是哪里没做好呢？",
-        scene: { reset: true, mechanism: "differential", demo: null, xray: false, explode: 0, highlight: [], faults: {}, slip: {}, view: "top", trails: true, controls: [] },
+        scene: { reset: true, mechanism: "differential", demo: null, xray: false, explode: 0, highlight: [], faults: {}, slip: {}, view: "above", trails: true, controls: [] },
       },
       {
         text: "如果两个车轮装得太开了一点……\n\n齿轮是照原来的宽度做的，账就记错了。车只宽了一点点，绕一圈，木人却歪了好多。绕得越多，歪得越多。",

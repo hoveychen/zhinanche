@@ -26,6 +26,12 @@ import * as THREE from "three";
 
 const GLIDE = 0.8;
 
+/** The home page's opening: how long the close view of the figure holds, and how long the pull back to the chase view takes (s). */
+const INTRO = { hold: 1.8, out: 3.2 };
+
+/** The figure's middle, arm included (chariot local, big figure: js/scene/rig.js), and its height with the arm. */
+const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
+
 /**
  * The follow view looks along a fixed bearing in the world: from the north
  * and a little west, south past the chariot at the gate (js/scene/landmark.js).
@@ -44,11 +50,17 @@ const ROOM = { x: 56, north: -100, south: 84 };
 /** The chariot's bulk (centre height, radius): the wide views keep out of it. */
 const BULK = { y: 5, r: 9 };
 
+/** Framing a route: the chariot's reach round its centre and its height (no figure: it is over the centre). */
+const BODY = { r: 5, h: 8 };
+/** ...tipped this far from straight down (degrees), with this much room to spare round it. */
+const TOP_TIP = 30;
+const TOP_SPARE = 1.1;
+
 /** Views close in on the works on purpose: they may look from inside the body. */
-const CLOSE = new Set(["gears", "works", "wheels", "figure"]);
+const CLOSE = new Set(["gears", "works", "pair", "wheels", "figure", "hero", "intro"]);
 
 /** Views that swing round with the chariot. */
-const TURNING = new Set(["gears", "works", "wheels", "figure"]);
+const TURNING = new Set(["gears", "works", "pair", "wheels", "figure"]);
 
 export class CameraRig {
   /**
@@ -60,10 +72,12 @@ export class CameraRig {
     this.controls = controls;
     /** @type {ViewId} */
     this.view = "overview";
-    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number} | null} */
+    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number, dur?: number} | null} */
     this.glide = null;
+    /** the home page's opening (view "intro"): seconds into it, and whether it has pulled back yet */
+    this.intro = { t: 0, out: false };
     /** fixed framing for the top view (route playback), else null */
-    /** @type {{cx: number, cz: number, h: number} | null} */
+    /** @type {{target: THREE.Vector3, pos: THREE.Vector3} | null} */
     this.box = null;
     this.last = { x: 0, z: 0, heading: Math.PI / 2 };
     this.extraRadius = 0;
@@ -80,12 +94,20 @@ export class CameraRig {
     /** the HUD's margins over the view (set by the world) */
     /** @type {() => Insets} */
     this.insets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+    /** the HUD's margins over the lower part of the view, where the chase view has the chariot (set by the world) */
+    /** @type {() => Insets} */
+    this.lowInsets = () => this.insets();
+    /** the ways to keep clear of the HUD: beside it, or above and below it (set by the world) */
+    /** @type {() => Insets[]} */
+    this.bands = () => [this.insets()];
     /** how far from the target the camera wanted to be when last kept in the room (0: it wasn't) */
     this.wantDist = 0;
     /** the camera is where its view put it (nobody has dragged it since) */
     this.atPreset = false;
     controls.addEventListener("start", () => {
       this.atPreset = false;
+      // a drag in the opening: the child has taken the view, no pull back later
+      this.intro.out = true;
     });
   }
 
@@ -157,10 +179,28 @@ export class CameraRig {
       const c = Math.cos(f.heading), s = Math.sin(f.heading);
       return new THREE.Vector3(lx * c + lz * s, ly, -lx * s + lz * c).normalize();
     };
+    if (view === "intro") view = this.intro.out ? "follow" : "hero";
     switch (view) {
+      case "hero": {
+        // Close on the figure from behind it and to one side, the arm side-on
+        // enough to read, the South Gate it points at in the same picture.
+        // Figure and arm take about a third of the height; the wider the view,
+        // the further round to the side it can go and still have the gate in.
+        const v = THREE.MathUtils.degToRad(this.camera.fov);
+        const hf = 2 * Math.atan(Math.tan(v / 2) * this.camera.aspect);
+        const side = THREE.MathUtils.clamp(hf * 0.72, THREE.MathUtils.degToRad(14), THREE.MathUtils.degToRad(36));
+        const fig = new THREE.Vector3(f.x + FIGURE_MID.x, FIGURE_MID.y, f.z + FIGURE_MID.z);
+        const d = (FIGURE_MID.h * 2.05) / Math.tan(v / 2);
+        // from the north and a little west (the sunlit side, as the chase view)
+        const pos = fig.clone().addScaledVector(new THREE.Vector3(-Math.sin(side), 0.2, -Math.cos(side)).normalize(), d);
+        // aim between the figure and the gate (js/scene/landmark.js), so both are in
+        const gate = new THREE.Vector3(f.x, 12.5, f.z + 105);
+        const aim = fig.clone().sub(pos).normalize().add(gate.sub(pos).normalize()).normalize();
+        return { pos, target: pos.clone().addScaledVector(aim, d) };
+      }
       case "top": {
         if (this.box) {
-          return { target: new THREE.Vector3(this.box.cx, 0, this.box.cz), pos: new THREE.Vector3(this.box.cx, this.box.h, this.box.cz + 0.01) };
+          return { target: this.box.target.clone(), pos: this.box.pos.clone() };
         }
         if (this.extraRadius) {
           // A demo on the ground: frame just the demo, tipped a little (north
@@ -180,7 +220,14 @@ export class CameraRig {
         // A short stage (a tablet held upright, the lesson panel below it)
         // leaves it small too.
         const r = this.camera.aspect < 0.8 ? 15.5 : this.short ? 16 : 19;
-        return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(r)) };
+        const d = this.fit(r);
+        // in the middle of what the HUD leaves free across the view (the
+        // drive pad on a phone would sit on the chariot)
+        const ins = this.lowInsets();
+        const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
+        const right = new THREE.Vector3(0, 1, 0).cross(CHASE_DIR).normalize();
+        target.addScaledVector(right, ((ins.right - ins.left) / 2) * d * th);
+        return { target, pos: target.clone().addScaledVector(CHASE_DIR, d) };
       }
       case "gears": {
         const song = f.mechanism === "song";
@@ -207,15 +254,28 @@ export class CameraRig {
         const target = local(f.figureX * 0.5 + 0.1, 6.2, -0.3);
         return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.15, 0.8), this.fit(6.6)) };
       }
+      case "pair": {
+        // Low behind the differential, a little to the right: its two flat
+        // gears lie one above the other on the shaft (big left one under,
+        // small right one over), and from this low they and their turning
+        // arrows stand apart; the left wheel is on the left of the screen.
+        const target = local(0, 1.6, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.6, 0.25), this.fit(3.6)) };
+      }
       case "above": {
         // Close over the chariot, north up, tipped so the figure reads as a
-        // figure; set in the part of the view the HUD leaves free.
-        const ins = this.insets();
+        // figure; set in the part of the view the HUD leaves free (beside it,
+        // or above and below it: whichever leaves the chariot bigger).
         const r = 11.5, tip = THREE.MathUtils.degToRad(32);
-        const ux = Math.max(0.4, 1 - ins.left - ins.right), uy = Math.max(0.4, 1 - ins.top - ins.bottom);
         const v = THREE.MathUtils.degToRad(this.camera.fov);
         const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
-        const d = r / Math.min(ux * th, uy * tv);
+        let best = { d: Infinity, ins: this.insets() };
+        for (const ins of this.bands()) {
+          const ux = Math.max(0.4, 1 - ins.left - ins.right), uy = Math.max(0.4, 1 - ins.top - ins.bottom);
+          const d = r / Math.min(ux * th, uy * tv);
+          if (d < best.d * 0.95) best = { d, ins };
+        }
+        const { d, ins } = best;
         const target = new THREE.Vector3(f.x - (ins.left - ins.right) * d * th, 0, f.z - (ins.top - ins.bottom) * d * tv);
         return { target, pos: target.clone().add(new THREE.Vector3(0, d * Math.cos(tip), d * Math.sin(tip))) };
       }
@@ -243,6 +303,9 @@ export class CameraRig {
    * @param {boolean} [instant]
    */
   setView(view, f, instant = false) {
+    // the opening plays once: a reset while it runs (the home page's demo
+    // drive starting over) keeps going where it got to
+    if (view === "intro" && this.view !== "intro") this.intro = { t: 0, out: false };
     this.view = view;
     this.atPreset = true;
     // zooming in stops short of the chariot, except in the views that look inside it
@@ -262,8 +325,9 @@ export class CameraRig {
   }
 
   /**
-   * Frame a region of the ground from above (route playback in the top view),
-   * in the part of the view the HUD leaves free.
+   * Frame a route from above (route playback in the top view), in the part of
+   * the view the HUD leaves free: the chariot's path and its bulk with about a
+   * fifth to spare, tipped a little (north still up) so it reads as a chariot.
    * @param {{x: number, z: number}[]} pts world points
    * @param {Focus} f
    * @param {Insets} [inset] HUD margins as fractions of the view
@@ -274,15 +338,29 @@ export class CameraRig {
       x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
       z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z);
     }
-    const pad = 9; // the compass ring (radius 8.2) round the chariot at every path point
+    // the chariot round each path point: wheels at ±3.6, the body and pole about as far
+    const pad = BODY.r;
     x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
-    const ux = Math.max(0.3, 1 - inset.left - inset.right), uz = Math.max(0.3, 1 - inset.top - inset.bottom);
-    const v = THREE.MathUtils.degToRad(this.camera.fov);
-    const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
-    const h = Math.max((z1 - z0) / (2 * uz * tv), (x1 - x0) / (2 * ux * th), this.fit(14));
-    // shift so the region sits in the middle of the free part
-    const ex = h * th, ez = h * tv;
-    this.box = { cx: (x0 + x1) / 2 - (inset.left - inset.right) * ex, cz: (z0 + z1) / 2 - (inset.top - inset.bottom) * ez, h };
+    const centre = new THREE.Vector3((x0 + x1) / 2, BODY.h / 2, (z0 + z1) / 2);
+    const tip = THREE.MathUtils.degToRad(TOP_TIP);
+    const off = new THREE.Vector3(0, Math.cos(tip), Math.sin(tip));
+    const right = new THREE.Vector3(1, 0, 0);
+    const up = new THREE.Vector3().crossVectors(off, right);
+    const tv0 = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), th0 = tv0 * this.camera.aspect;
+    const ux = Math.max(0.3, 1 - inset.left - inset.right), uy = Math.max(0.3, 1 - inset.top - inset.bottom);
+    let want = 0;
+    const c = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) {
+      c.set(i & 1 ? x1 : x0, i & 2 ? BODY.h : 0, i & 4 ? z1 : z0).sub(centre);
+      const z = c.dot(off);
+      want = Math.max(want, z + Math.abs(c.dot(right)) / (th0 * ux), z + Math.abs(c.dot(up)) / (tv0 * uy));
+    }
+    want = Math.max(want * TOP_SPARE, this.fit(8));
+    // aim off-centre so the route sits in the middle of the free part
+    const target = centre
+      .addScaledVector(right, -(inset.left - inset.right) * th0 * want)
+      .addScaledVector(up, -(inset.bottom - inset.top) * tv0 * want);
+    this.box = { target, pos: target.clone().addScaledVector(off, want) };
     this.setView("top", f);
   }
 
@@ -298,6 +376,14 @@ export class CameraRig {
    */
   update(dt, f) {
     const cam = this.camera, ctl = this.controls;
+    if (this.view === "intro" && !this.intro.out) {
+      this.intro.t += dt;
+      if (this.intro.t >= INTRO.hold && !this.glide) {
+        // slowly back out to the whole scene
+        this.intro.out = true;
+        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: INTRO.out };
+      }
+    }
     // put back the distance taken off last frame, so the camera eases out
     // again once the way is clear (a glide or a jump places it afresh)
     if (this.wantDist && !this.glide) {
@@ -307,7 +393,7 @@ export class CameraRig {
     this.wantDist = 0;
     if (this.glide) {
       const g = this.glide;
-      g.t = Math.min(1, g.t + dt / GLIDE);
+      g.t = Math.min(1, g.t + dt / (g.dur ?? GLIDE));
       const k = g.t * g.t * (3 - 2 * g.t);
       const d = this.desired(this.view, f);
       cam.position.lerpVectors(g.fromPos, d.pos, k);

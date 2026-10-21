@@ -6,6 +6,7 @@ import { Chariot, wrap } from "../sim/chariot.js";
 import { pivotTwist, roll, twist } from "../sim/drive.js";
 import { applyDirective, freeBase, hasFaults, hasSlip, sameFaults } from "./directive.js";
 import { FollowPlayer, planPlayback } from "./playback.js";
+import { joinRoute } from "../sim/route.js";
 import { Tracker } from "./checks.js";
 import { RAMP, ease } from "./drive.js";
 import { toSim, toWorld } from "../scene/world.js";
@@ -122,12 +123,13 @@ export class App {
     if (st.demo !== prev.demo || res.reset) w.setDemo(st.demo);
     this.input.enabled = st.controls.includes("drive");
     if (!st.controls.includes("draw") && this.input.drawOn) this.input.setDraw(false);
-    if (res.viewChanged || st.view !== prev.view || (st.demo !== prev.demo && st.demo === "holdHands")) w.setView(st.view);
     // the big figure would fill the close view of the gears
-    w.setFigureBig(st.view !== "gears" && st.view !== "works", res.reset && res.viewChanged);
+    w.setFigureBig(st.view !== "gears" && st.view !== "works" && st.view !== "pair", res.reset && res.viewChanged);
     this.tracker.sawBroken(this.broken);
     for (const fn of this.stateListeners) fn(st);
-    // after the listeners: framing the route needs this step's HUD
+    // after the listeners: the views keep clear of this step's HUD (a view
+    // placed at once, as the first one is, would keep the last step's margins)
+    if (res.viewChanged || st.view !== prev.view || (st.demo !== prev.demo && st.demo === "holdHands")) w.setView(st.view);
     if (res.play) this.play(res.play);
     w.showPose(this.chariot.pose(), 0);
   }
@@ -154,7 +156,6 @@ export class App {
     for (const fn of this.stateListeners) fn(st);
     const pts = r.pts.map(toWorld);
     this.followRoute(pts);
-    this.world.route.set([toWorld(r), ...pts]);
   }
 
   /**
@@ -236,8 +237,11 @@ export class App {
     this.player = null;
     this.setPaused(false);
     const c = this.chariot;
-    this.drawn = { x: c.x, y: c.y, heading: c.heading, pts: worldPts.map(toSim) };
-    const pts = [{ x: c.x, y: c.y }, ...worldPts.map(toSim)];
+    // joined onto the chariot: it sets off along the line, and the line shown is the one it drives
+    const joined = joinRoute(c, worldPts.map(toSim));
+    this.drawn = { x: c.x, y: c.y, heading: c.heading, pts: joined };
+    const pts = [{ x: c.x, y: c.y }, ...joined];
+    this.world.route.set(pts.map(toWorld));
     const st = this.state;
     const style = st.mechanism === "song" && st.assist ? "pivot" : "smooth";
     this.follow = new FollowPlayer(pts, style, st.slip);
