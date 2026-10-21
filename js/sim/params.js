@@ -28,10 +28,25 @@ export const SONG_TEETH = {
 };
 
 export const DIFF = {
-  inputRatio: raw.differential.inputRatio.v,
+  /**
+   * Side gear angle per wheel angle, from the tooth counts: each crown wheel
+   * (fixed to a road wheel) drives a horizontal gear of its own; the two
+   * trains have the same ratio (asserted here), so one number serves. For the
+   * figure to keep its bearing this must equal wheelDiameter / track
+   * (tests/sim/chariot.test.js, tests/model.test.js).
+   */
+  inputRatio: raw.differential.crownLeftTeeth.v / raw.differential.flatLeftTeeth.v,
+  crownLeftTeeth: raw.differential.crownLeftTeeth.v,
+  crownRightTeeth: raw.differential.crownRightTeeth.v,
+  flatLeftTeeth: raw.differential.flatLeftTeeth.v,
+  flatRightTeeth: raw.differential.flatRightTeeth.v,
   sideGearTeeth: raw.differential.sideGearTeeth.v,
   pinionTeeth: raw.differential.pinionTeeth.v,
 };
+
+if (DIFF.crownRightTeeth / DIFF.flatRightTeeth !== DIFF.inputRatio) {
+  throw new Error("differential: the two wheel→side gear trains must have the same ratio");
+}
 
 export const CHI_IN_METERS = raw.units.chiInMeters.v;
 
