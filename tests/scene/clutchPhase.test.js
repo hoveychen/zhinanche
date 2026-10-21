@@ -1,11 +1,12 @@
-// Song clutch display (js/scene/clutchPhase.js): a small flat wheel lowered
-// after a straight run is shown in mesh with its foot gear and the big flat wheel.
+// Song clutch display (js/scene/clutchPhase.js): the drop is eased, and the
+// angles it shows are the sim's, which keep a lowered small flat wheel in mesh
+// with its foot gear and the big flat wheel even after a straight run.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Chariot } from "../../js/sim/chariot.js";
+import { Chariot, SMALL_PITCH, modCentered } from "../../js/sim/chariot.js";
 import { pivot, straight } from "../../js/sim/drive.js";
-import { ClutchDisplay, SMALL_PITCH, bigOffset, modCentered, smallOffset } from "../../js/scene/clutchPhase.js";
+import { CLUTCH_TIME, ClutchDisplay } from "../../js/scene/clutchPhase.js";
 
 const D = Math.PI / 180;
 /** @param {number} x */
@@ -19,52 +20,37 @@ test("modCentered stays in (-p/2, p/2]", () => {
   }
 });
 
-test("offsets put any angle in phase, by at most half a tooth", () => {
-  for (const small of [0, 0.1, -2.3, 7]) {
-    for (const foot of [0, 0.37, -5.1]) {
-      const oR = smallOffset("R", small, foot);
-      const oL = smallOffset("L", small, foot);
-      assert.ok(inPhase(small + oR - 2 * foot));
-      assert.ok(inPhase(small + oL + 2 * foot));
-      assert.ok(Math.abs(oR) <= SMALL_PITCH / 2 + 1e-12);
-      const b = bigOffset(small + oR, 1.234);
-      assert.ok(inPhase(small + oR + 4 * (1.234 + b)));
-      assert.ok(Math.abs(b) <= SMALL_PITCH / 8 + 1e-12, "under half a big-wheel tooth");
-    }
-  }
-});
-
 for (const [name, angle, side] of /** @type {const} */ ([["left", 90, "R"], ["right", -90, "L"]])) {
-  test(`straight run then turn ${name}: lowered ${side} wheel shown in mesh all through the turn`, () => {
+  test(`straight run then turn ${name}: lowered ${side} wheel in mesh all through the turn, eased down`, () => {
     const c = new Chariot({ mechanism: "song" });
     const cd = new ClutchDisplay();
     straight(7.3)(c);
     let p = c.pose();
-    cd.update(p.clutch, p.gears, 1 / 60);
+    cd.update(p.clutch, 1 / 60);
     const steps = 30;
     for (let i = 0; i < steps; i++) {
       pivot((angle * D) / steps)(c);
       p = c.pose();
-      cd.update(p.clutch, p.gears, 1 / 60);
-      const shown = cd.shown(p.gears);
+      cd.update(p.clutch, 1 / 60);
       const g = p.gears;
-      if (side === "R") assert.ok(inPhase(shown.smallR - 2 * g.footR), `step ${i}`);
-      else assert.ok(inPhase(shown.smallL + 2 * g.footL), `step ${i}`);
+      if (side === "R") assert.ok(inPhase(g.smallR - 2 * g.footR), `step ${i}`);
+      else assert.ok(inPhase(g.smallL + 2 * g.footL), `step ${i}`);
+      assert.ok(inPhase(g[`small${side}`] + 4 * g.bigFlat), `step ${i}: big flat wheel in mesh`);
+      if (i === 0) assert.ok(cd.e[side] > 0 && cd.e[side] < 1, "dropping, not down yet");
     }
-    for (let i = 0; i < 60; i++) cd.update(p.clutch, p.gears, 1 / 60);
-    const shown = cd.shown(p.gears);
-    assert.ok(inPhase(shown[`small${side}`] + 4 * shown.bigFlat), "big flat wheel settles in mesh");
+    for (let i = 0; i < 60 * CLUTCH_TIME; i++) cd.update(p.clutch, 1 / 60);
     assert.equal(cd.e[side], 1);
     assert.equal(cd.e[side === "R" ? "L" : "R"], 0);
+    assert.ok(cd.eased(side) === 1);
   });
 }
 
-test("the display never touches the sim's angles", () => {
-  const c = new Chariot({ mechanism: "song" });
+test("dt 0 or Infinity jumps to the end state; reset raises both", () => {
   const cd = new ClutchDisplay();
-  straight(3.3)(c);
-  pivot(30 * D)(c);
-  const before = c.pose();
-  cd.update(before.clutch, before.gears, 1);
-  assert.deepEqual(c.pose(), before);
+  cd.update({ left: true, right: false }, 0);
+  assert.deepEqual(cd.e, { L: 1, R: 0 });
+  cd.update({ left: false, right: true }, Infinity);
+  assert.deepEqual(cd.e, { L: 0, R: 1 });
+  cd.reset();
+  assert.deepEqual(cd.e, { L: 0, R: 0 });
 });

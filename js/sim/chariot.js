@@ -15,6 +15,17 @@ import { DESIGN, DIFF, SONG_TEETH } from "./params.js";
 
 export const SOUTH = -Math.PI / 2;
 
+/** One tooth of the Song 12-tooth small flat wheel (rad); 4 big-wheel teeth. */
+export const SMALL_PITCH = (2 * Math.PI) / 12;
+
+/** x mod p into (−p/2, p/2]. @param {number} x @param {number} p */
+export function modCentered(x, p) {
+  let r = x - p * Math.round(x / p);
+  if (r <= -p / 2) r += p;
+  if (r > p / 2) r -= p;
+  return r;
+}
+
 /** Wrap an angle to (-PI, PI]. @param {number} a */
 export function wrap(a) {
   const t = Math.atan2(Math.sin(a), Math.cos(a));
@@ -54,6 +65,8 @@ export function wrap(a) {
  * @property {number} pathL absolute distance travelled by left wheel (chi)
  * @property {number} pathR
  * @property {{left: boolean, right: boolean}} clutch Song mechanism: which small flat wheel is lowered
+ * @property {number} engagements Song: how many times a small flat wheel has been lowered
+ * @property {number} engageDeg Song: what those lowerings added to the figure, degrees (signed sum)
  * @property {Record<string, number>} gears named gear angles (rad), see docs/model-contract.md
  */
 
@@ -90,6 +103,9 @@ export class Chariot {
     this.figureRel = 0;
     this.figureOffset = wrap(SOUTH - this.heading);
     this.clutch = { left: false, right: false };
+    this.engagements = 0;
+    /** figure angle added by the Song clutch's engagements (rad) */
+    this.engageErr = 0;
     /** @type {Record<string, number>} */
     this.gears = {};
     this.#updateGears(0, 0);
@@ -147,7 +163,10 @@ export class Chariot {
     } else {
       // Song (Yan Su): turning left lowers the right small flat wheel, which
       // couples the right road wheel to the big flat wheel, and vice versa.
+      const was = this.clutch;
       this.clutch = { left: turn < 0, right: turn > 0 };
+      if (this.clutch.right && !was.right) this.#engage("R", dPhiR);
+      if (this.clutch.left && !was.left) this.#engage("L", dPhiL);
       const foot = SONG_TEETH.footGear, small = SONG_TEETH.smallFlat, big = SONG_TEETH.bigFlat;
       let dSmallL = 0, dSmallR = 0, dBig = 0;
       if (this.clutch.right) {
@@ -160,6 +179,33 @@ export class Chariot {
       this.figureRel += dBig;
       this.#updateGears(dSmallL, dSmallR);
     }
+  }
+
+  /**
+   * Song: a small flat wheel drops into mesh (docs/model-contract.md, "Song
+   * meshing phase"; design/decisions/0007-song-clutch-error.md). While it was
+   * raised its foot gear kept turning with the road wheel, so its teeth no
+   * longer line up. On the real chariot (research/physics/REPORT.md §5) the
+   * road wheel stands on the ground and cannot give way; the raised small
+   * wheel and the big flat wheel with the figure turn freely. So the small
+   * wheel turns (up to half its tooth, 15°) to sit in the foot gear's gaps,
+   * then pushes the big flat wheel, and the figure with it, to the nearest
+   * gap: at most half a big-wheel tooth, 3.75°. Deterministic, no randomness;
+   * the occasional whole-tooth skip the physics also shows is left out.
+   * @param {"L" | "R"} side
+   * @param {number} dPhi this step's turn of that side's road wheel, applied
+   *   after the drop (the wheel is lowered before the step moves it)
+   */
+  #engage(side, dPhi) {
+    const g = this.gears;
+    const footAt = (side === "R" ? this.wheelR : this.wheelL) - dPhi;
+    const key = side === "R" ? "smallR" : "smallL";
+    const rel = side === "R" ? g[key] - 2 * footAt : g[key] + 2 * footAt;
+    g[key] -= modCentered(rel, SMALL_PITCH);
+    const dBig = -modCentered(g[key] + 4 * this.figureRel, SMALL_PITCH) / 4;
+    this.figureRel += dBig;
+    this.engageErr += dBig;
+    this.engagements++;
   }
 
   /**
@@ -204,6 +250,8 @@ export class Chariot {
       pathL: this.pathL,
       pathR: this.pathR,
       clutch: { ...this.clutch },
+      engagements: this.engagements,
+      engageDeg: (this.engageErr * 180) / Math.PI,
       gears: { ...this.gears },
     };
   }

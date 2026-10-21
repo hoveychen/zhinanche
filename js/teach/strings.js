@@ -52,8 +52,8 @@ export const STR = {
 
   /** questions on the home page that jump straight into a lesson step (1-based) */
   asks: [
-    { q: "它会走偏吗？", a: "轮子做歪一点、地面一打滑，木人就慢慢指歪了。", lesson: 6, step: 2 },
-    { q: "古人真的这么造吗？", a: "《宋史》写了一种造法，现代人又猜了一种。两种都能开。", lesson: 5, step: 1 },
+    { q: "它会走偏吗？", a: "轮子做歪一点、地面一打滑，木人就慢慢指歪了。宋史式的车拐弯多了，也会慢慢偏。", lesson: 6, step: 2 },
+    { q: "古人真的这么造吗？", a: "《宋史》写了一种造法，现代人又猜了一种。两种都能开，宋史式拐弯多了会偏一点。", lesson: 5, step: 1 },
   ],
 
   stage: {
@@ -173,7 +173,7 @@ export const STR = {
     assistBlock: "宋史式开法",
     assist: "车夫帮忙",
     assistOff: "换成宋史式才用得上。",
-    assistOn: "拐弯时，车夫让里边的车轮停住，车绕着它转。",
+    assistOn: "拐弯时，车夫让里边的车轮停住，车绕着它转。每拐一次弯，齿要重新对上，差一点点；拐多了，木人会慢慢偏几度。",
     assistNone: "车夫不管了，车随便拐弯。",
     faults: "毛病",
     faultsBlock: "车造得准不准",

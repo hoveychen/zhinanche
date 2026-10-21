@@ -1,6 +1,6 @@
 // Auto-play (js/app/playback.js): played step by step, a route must end exactly
 // where running the manoeuvre in one go ends, and the Song chariot with the
-// charioteer's help stays true.
+// charioteer's help is off only by its clutch's engagements.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -49,22 +49,48 @@ test("tracePath follows the circle and does not move the real chariot", () => {
   assert.ok(Math.hypot(end.x, end.y) < 1e-6, "back at the start");
 });
 
-test("Song chariot: circle with the charioteer's help stays true, without it drifts", () => {
+test("Song chariot: circle with the charioteer's help is off only by the clutch's engagements, without it drifts far", () => {
   const helped = new Chariot({ mechanism: "song" });
   finish(planPlayback("circle", helped, { mechanism: "song", assist: true }).player, helped);
-  assert.ok(Math.abs(helped.pose().errorDeg) < 1e-6, `helped error ${helped.pose().errorDeg}`);
+  const h = helped.pose();
+  // each drop of a small flat wheel re-seats the big flat wheel, half a tooth (3.75°) at most
+  assert.ok(Math.abs(h.errorDeg - h.engageDeg) < 1e-6, `helped error ${h.errorDeg}° vs engagements ${h.engageDeg}°`);
+  assert.ok(Math.abs(h.errorDeg) <= h.engagements * 3.75, `helped error ${h.errorDeg}°`);
 
   const alone = new Chariot({ mechanism: "song" });
   finish(planPlayback("circle", alone, { mechanism: "song", assist: false }).player, alone);
   assert.ok(Math.abs(alone.pose().errorDeg) > 20, `unhelped error ${alone.pose().errorDeg}`);
+  assert.ok(Math.abs(alone.pose().errorDeg) > 3 * Math.abs(h.errorDeg), "help still makes a big difference");
+});
+
+test("a followed route ends the same whatever the frame rate or speed (Song with help: same engagements)", () => {
+  /** @type {string[]} */
+  const ends = [];
+  for (const [dt, speed] of [[1 / 60, 1], [1 / 30, 1], [1 / 144, 1], [1 / 60, 2], [1 / 45, 0.5]]) {
+    const c = new Chariot({ mechanism: "song" });
+    const { player } = planPlayback("circle", c, { mechanism: "song", assist: true });
+    assert.ok(player instanceof FollowPlayer);
+    for (let i = 0; i < 400000 && !player.done; i++) player.update(c, dt, speed);
+    const p = c.pose();
+    ends.push(`${p.errorDeg.toFixed(9)} ${p.engagements} ${p.x.toFixed(9)} ${p.y.toFixed(9)}`);
+  }
+  assert.equal(new Set(ends).size, 1, ends.join(" | "));
 });
 
 test("Song pivot route with help is played exactly as written (lesson 5: a right-angle turn is 12 teeth)", () => {
   const c = new Chariot({ mechanism: "song" });
   const { player } = planPlayback("pivotLeft", c, { mechanism: "song", assist: true });
   assert.ok(player instanceof StepPlayer);
+  // the first turn, from rest: the teeth start in mesh, so exactly 12 teeth
+  const first = new Chariot({ mechanism: "song" });
+  run(first, MANOEUVRES.pivotLeft.slice(0, 1));
+  assert.ok(Math.abs(first.gears.bigFlat + Math.PI / 2) < 1e-9, `big flat a quarter turn: ${first.gears.bigFlat}`);
+  assert.ok(Math.abs(first.pose().errorDeg) < 1e-9);
+  // the second turn, after a straight run, re-seats the big flat wheel: under half a tooth
   finish(player, c);
-  assert.ok(Math.abs(c.pose().errorDeg) < 1e-9);
+  const p = c.pose();
+  assert.equal(p.engagements, 2);
+  assert.ok(Math.abs(p.errorDeg) <= 3.75 && Math.abs(p.errorDeg - p.engageDeg) < 1e-9, `${p.errorDeg}`);
 });
 
 test("a drawn route that starts sideways or zigzags is driven to its end, not orbited", () => {

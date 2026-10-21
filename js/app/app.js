@@ -197,6 +197,7 @@ export class App {
       c.figureRel = old.figureRel; c.figureOffset = old.figureOffset;
       c.gears = { ...old.gears };
       c.clutch = { ...old.clutch };
+      c.engagements = old.engagements; c.engageErr = old.engageErr;
     } else {
       for (const r of Object.values(this.world.rigs)) r.resetClutch();
     }

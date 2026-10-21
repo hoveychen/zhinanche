@@ -176,14 +176,24 @@ export const LESSONS_EN = {
       { text: "Going straight, both small flat wheels are lifted up, and the man stays still.\n\nOn a turn, the <b>pole</b> (the long bar at the front, where the animal is hitched) swings to one side, and the outside small wheel drops down. That links the outside road wheel to the big flat wheel." },
       { text: "When a road wheel turns once, all 24 teeth of its upright wheel push past. That turns the small flat wheel twice, and the big flat wheel half a turn.\n\nOn a right-angle turn, the outside wheel turns half a turn. The big flat wheel moves 12 teeth — a quarter turn. That's exactly what the <em>History of Song</em> says." },
       {
-        text: "Later, people did the maths and found Yan Su's chariot had a catch: on every turn, the inside wheel has to <b>stay still</b> while the chariot swings round it.\n\nThe driver had to steer just like that, or the man wouldn't point true. This time <b>Driver helps</b> is already off, and the chariot will drive a big, sloppy circle.",
+        text: "Later, people did the maths and found Yan Su's chariot had a catch: on every turn, the inside wheel has to <b>stay still</b> while the chariot swings round it.\n\nThe driver had to steer just like that, or the man wouldn't point anywhere near true. This time <b>Driver helps</b> is already off, and the chariot will drive a big, sloppy circle.",
         task: {
           prompt: "With “Driver helps” off, does the man still point south after a lap?",
           options: ["Still south", "He's pointing the wrong way"],
-          right: "Right — Yan Su's chariot only points true if the driver plays along. Switch “Driver helps” on and press Watch again to compare.",
+          right: "Right — Yan Su's chariot needs the driver to play along. Switch “Driver helps” on and press Watch again to compare.",
           wrong: "Look where he's pointing at the end.",
         },
       },
+      {
+        text: "Even with the driver helping, the man isn't <b>perfectly</b> right. This time the driver is careful and makes three turns. Where does the man point at the end?\n\nWhile a small flat wheel is lifted, its upright wheel keeps turning with the road wheel. When the small wheel drops again, its teeth may not sit right over the gaps, so it has to squeeze in. That squeeze nudges the big flat wheel a tiny bit, and the man with it.",
+        task: {
+          prompt: "With the driver helping, why does the man still drift a little?",
+          options: ["When a small wheel drops, its teeth have to line up again", "The road wheels are too big", "The man can't stand still"],
+          right: "Yes! On every turn the teeth line up again and land a tiny bit off. After lots of turns, the man slowly drifts.",
+          wrong: "Watch a small flat wheel drop. Do its teeth land right in the gaps?",
+        },
+      },
+      { text: "So a real chariot like this needs help to drop the small wheel cleanly into place: grease on the gears, teeth with pointed tips, and an iron weight or a pin to hold the wheel down. Wu Deren's chariot had an iron weight hanging on each small flat wheel.\n\nThe later differential keeps its gears meshed all the time. Nothing lifts or drops, so it doesn't have this problem." },
       { text: "Wu Deren's chariot had even more gears; its big flat wheel had 100 teeth.\n\nBut the book never says clearly how all those gears connect. Nobody has worked it out for certain, even today." },
       {
         text: "So who came up with the differential? A British engineer, George Lanchester, in the 1940s. He worked it out from how the machine would have to behave.\n\nThe old books <b>never</b> mention a differential, but it points true however you drive. That's why this page starts with it — and you can switch to the Song dynasty gears to compare.",
