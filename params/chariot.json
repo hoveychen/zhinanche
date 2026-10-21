@@ -46,6 +46,8 @@
     "toothAddendum":       { "v": 0.15, "unit": "chi", "conf": "est", "src": "cad-report", "note": "齿顶超出节圆的长度：齿伸出轮辋约一个齿距 0.3，节圆在齿高中部（§6.3）" },
     "toothDedendum":       { "v": 0.2, "unit": "chi", "conf": "design", "src": "this-project", "note": "轮辋外缘在节圆以内的距离，比齿顶高多 0.05 作顶隙，对面的齿顶才不顶住轮辋" },
     "toothTenon":          { "v": 0.05, "unit": "chi", "conf": "eyeballed", "src": "hommel1937", "note": "齿根穿透轮辋后在内侧露出的长度（Hommel 图 75 轮缘内侧的一排榫头）" },
+    "toothRoofAngle":      { "v": 45, "unit": "deg", "conf": "est", "src": "physics-check", "note": "推断（物理验证）：宋史式小平轮、大平轮的齿，上下两面削成这个角度的屋脊，截面成六边形，屋脊沿齿长。小平轮从上往下落进大平轮和立子轮的齿间，平面压平面就会顶住；刚体仿真里开车前没落座 78% → 33%，整齿台阶 319 → 88 次（research/physics/REPORT.md §5.4）。立子轮和差动式的齿不削" },
+    "toothTipChamfer":     { "v": 0.027, "unit": "chi", "conf": "est", "src": "physics-check", "note": "推断（物理验证）：宋史式所有齿的齿顶倒角，45°（不是屋脊的齿，四条长棱也倒同样大）。齿顶宽只有 0.06，0.027（齿顶宽的 0.45）已是上限；刚体仿真里开车前没落座 78% → 37%，加屋脊、上油和插销后 21%（research/physics/REPORT.md §5.4）。齿隙不变，节圆处仍是 48%；差动式不倒角（倒角只会让它晃得更大，§3）" },
     "rimWidthBig":         { "v": 0.3, "unit": "chi", "conf": "est", "src": "cad-report", "note": "大平轮轮辋的径向宽，分 6 段（§6.3）" },
     "rimWidthFoot":        { "v": 0.25, "unit": "chi", "conf": "est", "src": "cad-report", "note": "立子轮（和差动式冠轮）轮辋的径向宽（§6.3）" },
     "rimThickBig":         { "v": 0.15, "unit": "chi", "conf": "design", "src": "this-project", "note": "大平轮轮辋和辐的轴向厚" },

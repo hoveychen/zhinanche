@@ -146,7 +146,7 @@ def geometry(root, mechanism, opts):
                 center=tuple(g["center"]), axis=tuple(g["axis"]), u=tuple(g["ref"]), r=g["pitchRadius"],
                 n=g["teeth"], kind=g["kind"], phase=math.radians(g["phaseDeg"]),
                 tooth=dict(root_w=t["rootWidth"], tip_w=t["tipWidth"], thick=t["thick"], add=t["addendum"],
-                           ded=t["dedendum"]),
+                           ded=t["dedendum"], roof=t.get("roofDeg", 0.0), tip_chamfer=t.get("tipChamfer", 0.0)),
                 rim=g.get("rimOuter"), h0=g.get("h0", 0.0), h1=g.get("h1", 0.0))
         out["meshes"] = [tuple(KEYS[n] for n in m["pair"]) for m in L["meshes"]]
     else:
@@ -216,20 +216,25 @@ def _m(v):
     return tuple(x * CHI for x in v)
 
 
-def _tooth_mesh(name, L, w_root, w_tip, t, c, ridge=False):
+def _tooth_mesh(name, L, w_root, w_tip, t, c, ridge=False, roof=45.0):
     """Convex tooth, long axis local x (root at -L/2, tip at +L/2), width y (tapering), thickness z.
-    ridge: the +-z faces become 45 deg roofs meeting at a ridge on the centre line."""
+    ridge: the +-z faces become `roof`-degree roofs meeting at a ridge on the centre line; with
+    c > 0 the tip end is then chamfered too (the last c of the tooth narrows by c on every side,
+    layout.py's Song teeth); without a ridge c cuts the tip edges and the four long edges."""
     def hw(x):
         return (w_root + (w_tip - w_root) * (x + L / 2) / L) / 2
 
     ht = t / 2
+    k = math.tan(math.radians(roof))
     pts = []
     if ridge:
-        for x in (-L / 2, L / 2):
-            h = hw(x)
-            r = min(h, ht * 0.9)
+        secs = [(x, hw(x), ht) for x in (-L / 2, L / 2 - c)]
+        if c > 0:
+            secs.append((L / 2, max(hw(L / 2) - c, 1e-3), ht - c))
+        for x, h, top in secs:
+            r = min(h * k, top * 0.9)
             for sz in (-1, 1):
-                pts += [(x, -h, sz * (ht - r)), (x, h, sz * (ht - r)), (x, 0.0, sz * ht)]
+                pts += [(x, -h, sz * (top - r)), (x, h, sz * (top - r)), (x, 0.0, sz * top)]
         verts = " ".join(_f(*_m(p)) for p in pts)
         return f'<mesh name="{name}" vertex="{verts}"/>'
 
@@ -265,15 +270,19 @@ def build(root, mechanism, opts=None):
     def gear_geoms(key, body_center):
         g = G[key]
         t = g["tooth"]
-        c = min(opts.chamfer, 0.45 * t["tip_w"], 0.45 * t["thick"])
+        cap = min(0.45 * t["tip_w"], 0.45 * t["thick"])
+        c = min(max(opts.chamfer, t.get("tip_chamfer", 0.0)), cap)
+        ridge = key in opts.ridge or t.get("roof", 0.0) > 0
+        if ridge:  # a ridged tooth's tip chamfer comes from the layout only (REPORT §5.4 ran ridge without it)
+            c = min(t.get("tip_chamfer", 0.0), cap)
         tooth_info[key] = dict(n=g["n"], r=g["r"], pitch_len=t["pitch_len"], w_pitch=t["w_pitch"], root_w=t["root_w"],
                                tip_w=t["tip_w"], length=t["length"], thick=t["thick"], backlash=t["backlash"],
-                               chamfer=c, kind=g["kind"], rim=g["rim"])
-        ridge = key in opts.ridge
+                               chamfer=c, ridge=ridge, kind=g["kind"], rim=g["rim"])
         box = c == 0 and not ridge and abs(t["root_w"] - t["tip_w"]) < 1e-9
         mesh_name = f"tooth_{mechanism}_{key}"
         if not box:
-            assets.append(_tooth_mesh(mesh_name, t["length"], t["root_w"], t["tip_w"], t["thick"], c, ridge))
+            assets.append(_tooth_mesh(mesh_name, t["length"], t["root_w"], t["tip_w"], t["thick"], c, ridge,
+                                      t.get("roof") or 45.0))
         off = _sub(g["center"], body_center)
         u, ax = _norm(g["u"]), _norm(g["axis"])
         v = _cross(ax, u)

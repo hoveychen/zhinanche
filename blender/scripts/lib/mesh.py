@@ -178,9 +178,11 @@ class MB:
                     t1 -= seam
             self.frustum(poly(t0), poly(t1), mat)
 
-    def bar(self, p0, s0, p1, s1, mat, up=(0, 0, 1), chamfer=0.0):
+    def bar(self, p0, s0, p1, s1, mat, up=(0, 0, 1), chamfer=0.0, roof=0.0):
         """Tapered bar from p0 (section s0 = (w, h)) to p1 (section s1); h runs along
-        `up` where possible. chamfer > 0 cuts the four corners (an octagonal section)."""
+        `up` where possible. chamfer > 0 cuts the four corners (an octagonal section);
+        roof > 0 (degrees) cuts the two faces across h to a ridge along the bar instead (a
+        hexagonal section)."""
         p0, p1 = V(p0), V(p1)
         d = (p1 - p0).normalized()
         s = d.cross(V(up))
@@ -190,6 +192,11 @@ class MB:
         u = s.cross(d).normalized()
 
         def sect(p, w, h):
+            if roof > 0:
+                a, b = w / 2, h / 2
+                e = max(b - a * math.tan(math.radians(roof)), b * 0.05)
+                pts = [(-a, -e), (0.0, -b), (a, -e), (a, e), (0.0, b), (-a, e)]
+                return [p + s * x + u * y for x, y in pts]
             if chamfer <= 0:
                 return [p + s * sx * (w / 2) + u * ux * (h / 2) for sx, ux in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
             cw, ch = min(chamfer, w / 2 * 0.99), min(chamfer, h / 2 * 0.99)

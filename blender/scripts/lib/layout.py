@@ -77,10 +77,20 @@ def pv(raw, path):
 class Tooth:
     """Block tooth dimensions: trapezoid in the gear plane (root_w at the rim, tip_w at
     the tip), `thick` along the axis; the tip stands `add` beyond the pitch circle, the
-    rim's outer edge lies `ded` inside it, the root shows `tenon` inside the rim."""
+    rim's outer edge lies `ded` inside it, the root shows `tenon` inside the rim.
+    `roof` > 0 (degrees): the two faces across `thick` are cut to a ridge along the tooth at
+    that angle (a hexagonal section); `chamfer` (chi): the tip's edges cut at 45 deg, and on
+    a tooth without a roof the four long edges too (research/physics/REPORT.md §5.4)."""
 
-    def __init__(self, root_w, tip_w, thick, add, ded, tenon=0.0):
+    def __init__(self, root_w, tip_w, thick, add, ded, tenon=0.0, roof=0.0, chamfer=0.0):
         self.root_w, self.tip_w, self.thick, self.add, self.ded, self.tenon = root_w, tip_w, thick, add, ded, tenon
+        self.roof, self.chamfer = roof, chamfer
+        assert chamfer < tip_w / 2, "tip chamfer wider than half the tip"
+
+    def shaped(self, roof=None, chamfer=None):
+        """A copy with another roof angle and/or tip chamfer."""
+        return Tooth(self.root_w, self.tip_w, self.thick, self.add, self.ded, self.tenon,
+                     self.roof if roof is None else roof, self.chamfer if chamfer is None else chamfer)
 
     def width_at(self, s):
         """Tangential width at a fraction s of the way from the rim (0) to the tip (1)."""
@@ -143,7 +153,8 @@ class Gear:
         t = self.tooth
         d = {"name": self.name, "kind": self.kind, "teeth": self.n, "pitchRadius": self.r, "center": self.center,
              "axis": self.axis, "ref": self.u, "phaseDeg": math.degrees(self.phase), "circularPitch": self.r * self.pitch,
-             "tooth": {"rootWidth": t.root_w, "tipWidth": t.tip_w, "thick": t.thick, "addendum": t.add, "dedendum": t.ded, "tenon": t.tenon}}
+             "tooth": {"rootWidth": t.root_w, "tipWidth": t.tip_w, "thick": t.thick, "addendum": t.add, "dedendum": t.ded, "tenon": t.tenon,
+                       "roofDeg": t.roof, "tipChamfer": t.chamfer}}
         if self.kind == "radial":
             d.update(rimOuter=self.rim_outer, rimInner=self.rim_inner, tipRadius=self.tip_r, rootRadius=self.r0)
         else:
@@ -262,6 +273,13 @@ class SongLayout(Common):
         self.r_small = s["smallFlatDiameter"]["v"] / 2
         self.r_big = s["bigFlatDiameter"]["v"] / 2
         n_foot, n_small, n_big = s["footGearTeeth"]["v"], s["smallFlatTeeth"]["v"], s["bigFlatTeeth"]["v"]
+        # The clutch's teeth (research/physics/REPORT.md §5.4): every tooth's tip chamfered; the
+        # flat wheels' teeth, which meet when a small wheel drops, roofed top and bottom.
+        gp = raw["gear"]
+        chamfer, roof = gp["toothTipChamfer"]["v"], gp["toothRoofAngle"]["v"]
+        tooth_foot = self.tooth.shaped(chamfer=chamfer)
+        tooth_small = self.tooth_small.shaped(roof=roof, chamfer=chamfer)
+        tooth_big = self.tooth.shaped(roof=roof, chamfer=chamfer)
         for r, n in ((self.r_foot, n_foot), (self.r_small, n_small), (self.r_big, n_big)):
             assert abs(self.radius(n) - r) < 1e-9, "Song diameters and tooth counts give one pitch"
         self.foot_y = s["footGearPlane"]["v"]
@@ -276,12 +294,12 @@ class SongLayout(Common):
         self.shaft_bottom = self.shaft_top - pv(raw, "song.centralShaftHeight")
         zc = self.axle_z
         g = {}
-        g["foot.R"] = self.radial("song.foot.R", (0.0, -self.foot_y, zc), Y, Z, n_foot, self.rim_foot)
-        g["foot.L"] = self.radial("song.foot.L", (0.0, self.foot_y, zc), Y, Z, n_foot, self.rim_foot)
+        g["foot.R"] = self.radial("song.foot.R", (0.0, -self.foot_y, zc), Y, Z, n_foot, self.rim_foot, tooth_foot)
+        g["foot.L"] = self.radial("song.foot.L", (0.0, self.foot_y, zc), Y, Z, n_foot, self.rim_foot, tooth_foot)
         # the small wheels are solid discs: the tooth root is let deep into the disc
-        g["small.R"] = self.radial("song.small.R", (0.0, -self.small_y, self.mesh_z), Z, X, n_small, 0.25, self.tooth_small)
-        g["small.L"] = self.radial("song.small.L", (0.0, self.small_y, self.mesh_z), Z, X, n_small, 0.25, self.tooth_small)
-        g["big"] = self.radial("song.bigFlat", (self.big_x, 0.0, self.mesh_z), Z, X, n_big, self.rim_big)
+        g["small.R"] = self.radial("song.small.R", (0.0, -self.small_y, self.mesh_z), Z, X, n_small, 0.25, tooth_small)
+        g["small.L"] = self.radial("song.small.L", (0.0, self.small_y, self.mesh_z), Z, X, n_small, 0.25, tooth_small)
+        g["big"] = self.radial("song.bigFlat", (self.big_x, 0.0, self.mesh_z), Z, X, n_big, self.rim_big, tooth_big)
         self.gears = g
         self.contacts = {}
 

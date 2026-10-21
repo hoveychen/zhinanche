@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
 from lib import layout as lay  # noqa: E402
-from lib.mesh import MB, empty, set_lift, set_rotate, set_teach  # noqa: E402
+from lib.mesh import MB, V, empty, set_lift, set_rotate, set_teach  # noqa: E402
 
 ASSETS = os.path.join(lay.ROOT, "assets")
 
@@ -68,7 +68,20 @@ def tooth_block(mb, g, k, mat):
         # straight through the rim, then tapered beyond it
         pr = g.point(ang, g.rim_outer)
         mb.bar(p0, (t.root_w, t.thick), pr, (t.root_w, t.thick), mat, up=g.axis)
-        mb.bar(pr, (t.root_w, t.thick), p1, (t.tip_w, t.thick * 0.85), mat, up=g.axis)
+        if not (t.roof or t.chamfer):
+            mb.bar(pr, (t.root_w, t.thick), p1, (t.tip_w, t.thick * 0.85), mat, up=g.axis)
+            return
+        # The Song clutch's teeth (layout.Tooth): a roof on the faces across the thickness,
+        # or (no roof) the long edges chamfered; then the tip's edges chamfered at 45 deg.
+        c = t.chamfer
+        L = (V(p1) - V(pr)).length
+        k = c / L
+        pc = V(p1) + (V(pr) - V(p1)) * k
+        wc, hc = t.tip_w + (t.root_w - t.tip_w) * k, t.thick * (0.85 + 0.15 * k)
+        long_edges = 0.0 if t.roof else c
+        mb.bar(pr, (t.root_w, t.thick), pc, (wc, hc), mat, up=g.axis, chamfer=long_edges, roof=t.roof)
+        if c > 0:
+            mb.bar(pc, (wc, hc), p1, (wc - 2 * c, hc - 2 * c), mat, up=g.axis, chamfer=long_edges, roof=t.roof)
     else:
         if abs(g.h0 + t.add) < 1e-9:   # the tip is at h0 (teeth pointing to -axis): taper the other way
             p0, p1 = p1, p0
