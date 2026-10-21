@@ -13,6 +13,7 @@ import { decodeShare, setupOf } from "./app/share.js";
 import { placeCallout as placeCalloutBox } from "./app/callout.js";
 import { ShareButton } from "./app/sharelink.js";
 import { SceneLabels } from "./app/labels.js";
+import { hasSlip } from "./app/directive.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -170,6 +171,7 @@ app.onState((st) => {
   gearsText.textContent = gears ? S().free.gearsOff : S().free.gearsOn;
   demoCount.hidden = st.demo !== "holdHands";
   dial.el.hidden = st.demo === "holdHands";
+  world.setIce(hasSlip(st.slip));
   hideCallout();
 });
 world.holdHands.onLap = () => app.tracker.demoLap();
@@ -208,15 +210,44 @@ world.hudBands = () => {
   const r = stage.getBoundingClientRect();
   const band = { left: 0, right: 0, top: 0, bottom: 0 };
   if (!r.width || !r.height) return [world.hudInsets()];
+  /** @type {DOMRect[]} */
+  const boxes = [];
   for (const el of [dial.el, dial.text, pauseBtn, share.el, odo.el, input.pad, input.drawBtn, gearsBtn]) {
     if (el.hidden || el.offsetParent === null) continue;
     const b = el.getBoundingClientRect();
     if (!b.width || !b.height) continue;
+    boxes.push(b);
     if ((b.top + b.bottom) / 2 < r.top + r.height / 2) band.top = Math.max(band.top, (b.bottom - r.top + 8) / r.height);
     else band.bottom = Math.max(band.bottom, (r.bottom - b.top + 8) / r.height);
   }
-  return [world.hudInsets(), band];
+  return [world.hudInsets(), band, freeBox(r, boxes)];
 };
+
+/**
+ * The biggest clear rectangle among the HUD's panels (a crowded HUD, as in
+ * free driving on a tablet, leaves neither a clear column nor a clear band,
+ * but a clear middle), as margins of the view. Biggest: the largest square
+ * that fits in it, then the largest area.
+ * @param {DOMRect} r the view @param {DOMRect[]} boxes the panels over it
+ */
+function freeBox(r, boxes) {
+  const pad = 8;
+  const xs = [r.left, r.right, ...boxes.flatMap((b) => [b.left - pad, b.right + pad])].filter((x) => x >= r.left && x <= r.right);
+  const ys = [r.top, r.bottom, ...boxes.flatMap((b) => [b.top - pad, b.bottom + pad])].filter((y) => y >= r.top && y <= r.bottom);
+  let best = { left: 0, right: 0, top: 0, bottom: 0 }, score = -1;
+  for (const x0 of xs) for (const x1 of xs) {
+    if (x1 <= x0) continue;
+    for (const y0 of ys) for (const y1 of ys) {
+      if (y1 <= y0) continue;
+      const s = Math.min(x1 - x0, y1 - y0) * 1e6 + (x1 - x0) * (y1 - y0);
+      if (s <= score) continue;
+      if (boxes.some((b) => b.left - pad < x1 && b.right + pad > x0 && b.top - pad < y1 && b.bottom + pad > y0)) continue;
+      score = s;
+      best = { left: (x0 - r.left) / r.width, right: (r.right - x1) / r.width, top: (y0 - r.top) / r.height, bottom: (r.bottom - y1) / r.height };
+    }
+  }
+  return best;
+}
 
 // ---------- pointer: draw a route, or tap a part ----------
 

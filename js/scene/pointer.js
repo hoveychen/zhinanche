@@ -1,14 +1,17 @@
-// What the figure points with: a solid arrow out of its hand, and a long
+// What the figure points with: a slender arrow out of its hand, and a long
 // beam beyond it that fades out on the way to the gate in the south. Child of
 // the figure node, so it turns with the figure; green on south, vermilion off.
+// The arrow is lit like the rest of the scene (glowing a little in its
+// colour), so seen end-on its head reads as a cone, not a flat disc.
 
 import * as THREE from "three";
 import { COLORS, OK_DEG } from "./ground.js";
 import { FIGURE_SCALE } from "./rig.js";
 import { LANDMARK_DISTANCE } from "./landmark.js";
 
-/** Lengths in chi, as seen in the world while the figure is drawn big. */
-const SHAFT = 3.2, HEAD = 1.3;
+/** Lengths in chi, as seen in the world while the figure is drawn big: shaft and head length, their radii (the head narrower than the figure's own head). */
+const SHAFT = 3.2, HEAD = 1.05;
+const SHAFT_R = 0.085, HEAD_R = 0.27;
 /** The beam reaches about as far as the gate, so a hand on south lights up its plaque. */
 const BEAM = LANDMARK_DISTANCE - 8;
 
@@ -42,13 +45,13 @@ function along(r0, r1, len, x0) {
 export class Pointer {
   /** @param {THREE.Vector3} tip figure-local hand position */
   constructor(tip) {
-    this.mat = new THREE.MeshBasicMaterial({ color: COLORS.ok });
+    this.mat = new THREE.MeshStandardMaterial({ color: COLORS.ok, emissive: COLORS.ok, emissiveIntensity: 0.45, roughness: 0.35 });
     this.beamMat = new THREE.MeshBasicMaterial({ color: COLORS.ok, transparent: true, opacity: 0.6, alphaMap: fadeTexture(), depthWrite: false });
     const g = new THREE.Group();
     g.name = "pointer";
-    const shaft = new THREE.Mesh(along(0.16, 0.16, SHAFT, 0.1), this.mat);
-    const head = new THREE.Mesh(along(0.5, 0.001, HEAD, 0.1 + SHAFT), this.mat);
-    const beam = new THREE.Mesh(along(0.12, 0.3, BEAM, 0.1 + SHAFT + HEAD * 0.6), this.beamMat);
+    const shaft = new THREE.Mesh(along(SHAFT_R, SHAFT_R, SHAFT, 0.1), this.mat);
+    const head = new THREE.Mesh(along(HEAD_R, 0.001, HEAD, 0.1 + SHAFT), this.mat);
+    const beam = new THREE.Mesh(along(0.07, 0.25, BEAM, 0.1 + SHAFT + HEAD * 0.6), this.beamMat);
     beam.renderOrder = 4;
     for (const m of [shaft, head]) m.castShadow = true;
     g.add(shaft, head, beam);
@@ -62,6 +65,7 @@ export class Pointer {
   update(errorDeg) {
     const hex = Math.abs(errorDeg) < OK_DEG ? COLORS.ok : COLORS.off;
     this.mat.color.setHex(hex);
+    this.mat.emissive.setHex(hex);
     this.beamMat.color.setHex(hex);
   }
 }
