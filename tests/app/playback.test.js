@@ -63,6 +63,20 @@ test("Song chariot: circle with the charioteer's help is off only by the clutch'
   assert.ok(Math.abs(alone.pose().errorDeg) > 3 * Math.abs(h.errorDeg), "help still makes a big difference");
 });
 
+test("a followed route ends the same whatever the frame rate or speed (Song with help: same engagements)", () => {
+  /** @type {string[]} */
+  const ends = [];
+  for (const [dt, speed] of [[1 / 60, 1], [1 / 30, 1], [1 / 144, 1], [1 / 60, 2], [1 / 45, 0.5]]) {
+    const c = new Chariot({ mechanism: "song" });
+    const { player } = planPlayback("circle", c, { mechanism: "song", assist: true });
+    assert.ok(player instanceof FollowPlayer);
+    for (let i = 0; i < 400000 && !player.done; i++) player.update(c, dt, speed);
+    const p = c.pose();
+    ends.push(`${p.errorDeg.toFixed(9)} ${p.engagements} ${p.x.toFixed(9)} ${p.y.toFixed(9)}`);
+  }
+  assert.equal(new Set(ends).size, 1, ends.join(" | "));
+});
+
 test("Song pivot route with help is played exactly as written (lesson 5: a right-angle turn is 12 teeth)", () => {
   const c = new Chariot({ mechanism: "song" });
   const { player } = planPlayback("pivotLeft", c, { mechanism: "song", assist: true });

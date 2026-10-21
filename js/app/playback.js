@@ -90,6 +90,9 @@ export class StepPlayer {
   }
 }
 
+/** Route seconds per follower tick. */
+export const FOLLOW_TICK = 1 / 60;
+
 /** A RouteFollower as a Player. */
 export class FollowPlayer {
   /**
@@ -103,15 +106,26 @@ export class FollowPlayer {
     this.follower = new RouteFollower(points, style === "smooth" ? { style, turnRate: 3, lookahead: 3 } : { style });
     this.slip = slip;
     this.done = this.follower.done;
-    /** guard against a route the follower can never finish */
+    /** route seconds asked for so far, and fixed ticks run */
     this.elapsed = 0;
+    this.ticks = 0;
   }
 
-  /** @param {Chariot} c @param {number} dt @param {number} speed */
+  /**
+   * The follower runs in fixed ticks of route time, so a replay ends the same
+   * whatever the frame rate or speed: the Song chariot's clutch drops a wheel
+   * wherever the follower decides to turn, and each drop costs a little
+   * (design/decisions/0007-song-clutch-error.md).
+   * @param {Chariot} c @param {number} dt @param {number} speed
+   */
   update(c, dt, speed) {
-    const t = dt * speed;
-    this.elapsed += t;
-    this.follower.update(c, t, this.slip);
+    this.elapsed += dt * speed;
+    const due = Math.floor(this.elapsed / FOLLOW_TICK + 1e-6);
+    while (this.ticks < due && !this.follower.done) {
+      this.follower.update(c, FOLLOW_TICK, this.slip);
+      this.ticks++;
+    }
+    // guard against a route the follower can never finish
     this.done = this.follower.done || this.elapsed > 600;
   }
 }
