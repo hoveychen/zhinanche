@@ -8,6 +8,7 @@
 const CREDIT = {
   sancai: { alt: "A picture from an old Chinese book: a wooden man on a stand, one arm stretched out", credit: "From the Sancai Tuhui, compiled by Wang Qi and Wang Siyi (Ming dynasty, 1609). Public domain, Wikimedia Commons" },
   museum: { alt: "A wooden model of a south-pointing chariot, with the wooden man on top pointing. This model uses the differential design", credit: "South-pointing chariot model (differential design), Science Museum, London. Photo: Andy Dingley, CC BY 3.0, Wikimedia Commons" },
+  sinan: { alt: "A square bronze plate with a black lodestone spoon on it. The spoon's handle points to a red mark on the plate's edge: that way is south", credit: "Drawing of a sinan: a lodestone spoon on a bronze plate, its handle pointing south. Drawn for this site, CC BY-SA 4.0" },
   gears: { alt: "A stack of gears inside a model chariot, beside an upright shaft", credit: "Gears of a reconstructed south-pointing chariot, National Museum of Natural Science, Taiwan. Photo: SSR2000, CC BY-SA 3.0, Wikimedia Commons" },
 };
 
@@ -32,15 +33,18 @@ export const LESSONS_EN = {
         picture: CREDIT.sancai,
       },
       {
-        text: "So is it a compass?\n\n<b>Nope!</b> A compass has a magnetic needle inside. A magnet makes it point south.\n\nThe chariot has <b>no magnets at all</b> — only wooden gears.",
+        text: "So is it a compass?\n\nThat's a <b>compass</b> next to the chariot. It has a magnetic needle inside. A magnet makes it point south.\n\nThe chariot points south too. Is there a magnet hidden inside it as well?",
         task: {
-          prompt: "What makes the chariot point south?",
+          prompt: "Take a guess: what makes the chariot point south?",
           options: ["Magnets", "Gears", "The wind"],
-          right: "Right! It's a gear machine.",
-          wrong: "There are no magnets in it. Try again?",
+          right: "Right! There isn't a single magnet in the chariot — only wooden gears. It's a gear machine.",
+          wrong: "Not that one. The secret is hidden inside the cart. Guess again?",
         },
       },
-      { text: "Old books also mention a <em>sinan</em>, or “south-governor”. People think it was a little spoon carved from lodestone, a rock that is naturally magnetic.\n\nThe chariot was sometimes called the <em>sinan chariot</em> too. Similar names, totally different machines: the sinan uses a magnet, the chariot uses gears." },
+      {
+        text: "Old books also mention a <em>sinan</em>, or “south-governor”. People think it was a little spoon carved from lodestone, a rock that is naturally magnetic, set on a smooth plate. Give the spoon a spin, and when it stops, its handle points south.\n\nThe chariot was sometimes called the <em>sinan chariot</em> too. Similar names, totally different machines: the sinan uses a magnet, the chariot uses gears.",
+        picture: CREDIT.sinan,
+      },
       {
         text: "So how does it find south?\n\nThe secret is hidden inside the cart. Press <b>X-ray</b> to see what's in there.",
         task: { prompt: "Press “X-ray” and look inside the cart", done: "See? It's packed with gears!" },
@@ -103,7 +107,7 @@ export const LESSONS_EN = {
       },
       { text: "A chariot's two wheels work the same way.\n\nWhen it drives straight, the <span class=\"l\">left wheel</span> and the <span class=\"r\">right wheel</span> roll exactly the same distance." },
       {
-        text: "Now the chariot drives a circle to the left.\n\nThe <span class=\"l\">left wheel</span> is on the inside, the <span class=\"r\">right wheel</span> is on the outside. Watch how far each one rolls.",
+        text: "Now the chariot is going to drive a circle to the left.\n\nThe <span class=\"l\">left wheel</span> is on the inside, the <span class=\"r\">right wheel</span> is on the outside. Make a guess first, then watch how far each one rolls.",
         task: {
           prompt: "Which wheel rolls further?",
           options: ["The blue left wheel", "The orange right wheel", "Both the same"],

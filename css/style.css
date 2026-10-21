@@ -151,8 +151,10 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
   background: var(--zhu); color: #fff8ef; font-weight: 600;
   box-shadow: inset 0 -4px 0 var(--zhu-dark);
 }
-.primary:hover { background: #d23f27; }
-.primary:active { box-shadow: inset 0 -1px 0 var(--zhu-dark); transform: translateY(2px); }
+.primary:hover:not(:disabled) { background: #d23f27; }
+.primary:active:not(:disabled) { box-shadow: inset 0 -1px 0 var(--zhu-dark); transform: translateY(2px); }
+/* held back (a guess comes first): greyed, still readable */
+.primary:disabled { background: var(--wood-mid); color: var(--ink); box-shadow: none; opacity: 0.75; cursor: default; }
 .primary.big { min-height: 64px; font-size: 24px; padding: 0 34px; }
 .plain {
   display: inline-flex; align-items: center; justify-content: center;
@@ -295,6 +297,15 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 .trouble .tool { margin-top: 10px; }
 .tool { margin-top: 14px; }
 .tool-title { font-size: 17px; color: var(--wood-dark); font-weight: 600; margin-bottom: 6px; }
+/* phones: the control a task asks for sits tight under it, its heading left
+   to the task's own words, so it is on screen without scrolling */
+@media (max-width: 600px) {
+  .tools.led { margin-top: 6px; padding-top: 0; border-top: 0; }
+  .tools.led > .tool.lead { margin-top: 4px; }
+  .tools.led > .tool.lead > .tool-title { display: none; }
+  .tools.led > .trouble.lead { margin-top: 4px; padding-top: 4px; }
+  .tools.led > .trouble.lead > .trouble-head, .tools.led > .trouble.lead > .trouble-note { display: none; }
+}
 .tool-note { margin: 6px 0 0; font-size: 17px; color: var(--ink-soft); line-height: 1.5; }
 .seg { display: flex; flex-wrap: wrap; gap: 0; }
 .seg-btn {
@@ -527,6 +538,13 @@ body[data-mode="home"] .stage-hook { display: flex; }
   content: ""; position: absolute; top: 100%; left: var(--tail-x, 50%); width: 10px; height: 10px; margin: -5px 0 0 -6px;
   background: inherit; border: solid; border-color: inherit; border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
+/* level with the anchor: the tail points sideways at it (tail-r: the label is on its left) */
+.scene-label.tail-r::after, .scene-label.tail-l::after {
+  content: ""; position: absolute; top: var(--tail-y, 50%); width: 10px; height: 10px; margin: -6px 0 0 0;
+  background: inherit; border: solid; border-color: inherit;
+}
+.scene-label.tail-r::after { left: 100%; margin-left: -5px; border-width: 2px 2px 0 0; transform: rotate(45deg); }
+.scene-label.tail-l::after { right: 100%; margin-right: -5px; border-width: 0 0 2px 2px; transform: rotate(45deg); }
 
 /* Tablets on their side (1024x768): the panel is narrow and short, so set the
    lesson a little tighter and the question and its answers come up with the

@@ -53,6 +53,9 @@ export class Course {
     this.doTask = null;
     /** @type {HTMLButtonElement | null} */
     this.replayBtn = null;
+    /** "walk them round" (the hold-hands demo), held back by a guess-first question */
+    /** @type {HTMLButtonElement | null} */
+    this.walkBtn = null;
     /** what the child has to press in this step: kept in view (short panels) */
     /** @type {HTMLElement | null} */
     this.target = null;
@@ -168,6 +171,7 @@ export class Course {
 
   #renderFree() {
     this.doTask = null;
+    this.tools.lead(null);
     const t = S().free;
     const body = h("div", { class: "free" }, [
       h("h2", { class: "panel-title", text: t.title }),
@@ -281,8 +285,12 @@ export class Course {
       this.replayBtn = h("button", { type: "button", class: "plain replay", hidden: this.held !== null, onclick: () => this.app.replay() }, [h("span", { text: t.replay })]);
       parts.push(this.replayBtn);
     }
+    this.walkBtn = null;
     if (stateAt(lesson.steps, this.step).demo === "holdHands") {
-      parts.push(h("button", { type: "button", class: "primary walk", "data-demo": "walk", onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: t.walk })]));
+      // a guess first: walking them now would give the answer away
+      const held = this.held !== null;
+      this.walkBtn = h("button", { type: "button", class: "primary walk", "data-demo": "walk", disabled: held, onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: held ? t.walkAfterGuess : t.walk })]);
+      parts.push(this.walkBtn);
     }
     this.doTask = null;
     this.target = null;
@@ -291,11 +299,12 @@ export class Course {
       parts.push(box);
       this.target = box;
     }
+    const tool = step.task?.kind === "do" ? TOOL_FOR[step.task.check] ?? null : null;
     if (step.task?.kind === "do") {
       parts.push(this.#do(step.task));
-      const tool = TOOL_FOR[step.task.check];
       if (tool) this.target = this.tools.blocks[tool];
     }
+    this.tools.lead(tool);
     const last = this.step === n - 1;
     const nav = h("nav", { class: "panel-nav", "aria-label": t.navLabel }, [
       h("button", { type: "button", class: "plain", disabled: this.step === 0 && this.lesson === 0, onclick: () => this.back(), text: t.back }),
@@ -342,6 +351,10 @@ export class Course {
     // not if "walk them round" already did
     if (held.walk && !hh.walking && hh.steps.in === 0) hh.walk();
     if (this.replayBtn) this.replayBtn.hidden = false;
+    if (this.walkBtn) {
+      this.walkBtn.disabled = false;
+      /** @type {HTMLElement} */ (this.walkBtn.firstElementChild).textContent = S().course.walk;
+    }
   }
 
   /** @param {DoTask} t */
@@ -401,7 +414,8 @@ export class Course {
    * step (`all` false) scroll at most until the lesson's heading ("第三课"
    * and the title) is at the top, so the child still sees which lesson this
    * is and reads the text from its first line (phones held upright: the panel
-   * is short); the cue covers the rest.
+   * is short); the cue covers the rest. A control the task is done with may
+   * scroll the heading away, as far as the text's first line.
    * @param {boolean} all
    * @param {HTMLElement | null} [el] default: this step's target
    */
@@ -410,7 +424,7 @@ export class Course {
     if (!sc || !el) return;
     const need = this.#below(el) + 14;
     if (need <= 0) return;
-    const top = sc.querySelector(".lesson-head");
+    const top = sc.querySelector(this.doTask && el !== this.doTask.el && !all ? ".lesson-text" : ".lesson-head");
     const room = top ? top.getBoundingClientRect().top - sc.getBoundingClientRect().top - 2 : 0;
     const by = all ? need : Math.min(need, Math.max(0, room));
     if (by <= 0) return;

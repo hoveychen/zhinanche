@@ -119,6 +119,7 @@ export const STR = {
     /** under a question asked before the scene plays (ChoiceTask.guess) */
     guessNote: "先猜一猜，选好了就演给你看。",
     walk: "让他们走一圈",
+    walkAfterGuess: "先选答案，再走一圈",
     navLabel: "翻页",
     back: "上一步",
     next: "下一步",

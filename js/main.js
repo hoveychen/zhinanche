@@ -71,6 +71,10 @@ function stopDrawing(restore) {
   keepView = false;
 }
 const app = new App(world, input);
+world.busy = () => {
+  const c = input.command();
+  return c.fwd !== 0 || c.turn !== 0;
+};
 app.onPause((on) => {
   pauseBtn.classList.toggle("on", on);
   pauseBtn.setAttribute("aria-pressed", String(on));
@@ -139,6 +143,14 @@ const pauseBtn = bind(h("button", { type: "button", class: "pause-btn", "aria-pr
 const share = new ShareButton(() => setupOf(app.state, app.drawn));
 const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [bind(h("b"), (s) => s.ui.paused), bind(h("span"), (s) => s.ui.pausedHow)]);
 // the pause note and the drawing hint stack at the top middle, never on top of each other
+// Esc backs out of what the view's own buttons go into: the gears close-up, drawing a road
+addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (input.drawOn) stopDrawing(true);
+  else if (app.state.view === "gears" && !gearsBtn.hidden) gearsBtn.click();
+  else return;
+  e.preventDefault();
+});
 overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), h("div", { class: "stage-notes" }, [pausedNote, hint]), demoCount, callout, stageHook, pauseBtn, share.el, share.status);
 /** The drawing hint shows while a road is wanted: not while one is being drawn or driven. */
 function syncHint() {
@@ -382,7 +394,11 @@ function frame(/** @type {number} */ now) {
     const cam = world.camera.position, tgt = world.controls.target;
     const camBearing = Math.atan2(-(tgt.z - cam.z), tgt.x - cam.x);
     dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
-    if (!odo.el.hidden) odo.update(pose.distL, pose.distR);
+    if (!odo.el.hidden) {
+      odo.update(pose.distL, pose.distR);
+      // a guess-first question about the wheels: the line that compares them waits too
+      odo.diff.hidden = course.held !== null;
+    }
     syncHint();
     if (!demoCount.hidden) demoCount.textContent = S().stage.demoCount(world.holdHands.steps.in, world.holdHands.steps.out);
     placeCallout();

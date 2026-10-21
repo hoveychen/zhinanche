@@ -29,9 +29,10 @@ function overlap(a, b) {
  * @param {{w: number, h: number}} view
  * @param {Box[]} controls what it must not cover, px within the view
  * @param {number} [gap] between the point and the callout, px
+ * @param {"above" | "left" | "right"} [prefer] where it would rather sit: over the point, or level with it on one side
  * @returns {{x: number, y: number}} the callout's top left
  */
-export function placeCallout(at, size, view, controls, gap = GAP) {
+export function placeCallout(at, size, view, controls, gap = GAP, prefer = "above") {
   const { w, h } = size;
   const clampX = (/** @type {number} */ x) => Math.max(PAD, Math.min(view.w - w - PAD, x));
   const clampY = (/** @type {number} */ y) => Math.max(PAD, Math.min(view.h - h - PAD, y));
@@ -47,6 +48,8 @@ export function placeCallout(at, size, view, controls, gap = GAP) {
   /** @type {{x: number, y: number}[]} */
   const tries = [];
   for (const y of ys) for (const x of xs) tries.push({ x: clampX(x), y: clampY(y) });
+  // the middle of where it would rather be
+  const want = prefer === "left" ? { x: at.x - gap - w / 2, y: at.y } : prefer === "right" ? { x: at.x + gap + w / 2, y: at.y } : { x: at.x, y: at.y - h / 2 - gap };
   let best = tries[0], bestCost = Infinity;
   for (const t of tries) {
     const box = { x: t.x, y: t.y, w, h };
@@ -54,7 +57,7 @@ export function placeCallout(at, size, view, controls, gap = GAP) {
     // covering a control costs far more than sitting a little further away
     // (or a little over the point, which the clamping at the edges may do)
     const cx = t.x + w / 2, cy = t.y + h / 2;
-    const cost = covered * 100 + Math.hypot(cx - at.x, cy - (at.y - h / 2 - gap)) + overlap(box, { x: at.x - 4, y: at.y - 4, w: 8, h: 8 }) * 10;
+    const cost = covered * 100 + Math.hypot(cx - want.x, cy - want.y) + overlap(box, { x: at.x - 4, y: at.y - 4, w: 8, h: 8 }) * 10;
     if (cost < bestCost) {
       bestCost = cost;
       best = t;
