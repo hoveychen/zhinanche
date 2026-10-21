@@ -260,8 +260,9 @@ export class CameraRig {
         // Phones held upright (polish-mobile): fit() goes by the narrow width
         // there and leaves the chariot small, so come in closer.
         // A short stage (a tablet held upright, the lesson panel below it)
-        // leaves it small too.
-        const r = this.camera.aspect < 0.8 ? 15.5 : this.short ? 16 : 19;
+        // leaves it small too, and so does a stage narrower than it is tall
+        // (a tablet held flat, the panel beside it).
+        const r = this.camera.aspect < 0.8 ? 15.5 : this.short || this.camera.aspect < 1 ? 16 : 19;
         const d = this.fit(r);
         // in the middle of what the HUD leaves free across the view (the
         // drive pad on a phone would sit on the chariot)
