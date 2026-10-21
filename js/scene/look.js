@@ -27,10 +27,20 @@ import { BakedAO } from "./bakedao.js";
  * @property {() => void} resize
  */
 
+/** @returns {import("./quality.js").Device} */
 function device() {
-  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-  const nav = /** @type {Navigator & {connection?: {saveData?: boolean}}} */ (navigator);
-  return { coarse, shortSide: Math.min(screen.width, screen.height), saveData: !!nav.connection?.saveData };
+  const mq = (/** @type {string} */ q) => typeof matchMedia === "function" && matchMedia(q).matches;
+  // touch-first: the main pointer is a finger, or a finger is the only way in
+  // and nothing hovers (an iPad with a trackpad still says coarse somewhere)
+  const coarse = mq("(pointer: coarse)") || (mq("(any-pointer: coarse)") && !mq("(hover: hover)"));
+  const nav = /** @type {Navigator & {connection?: {saveData?: boolean}, deviceMemory?: number}} */ (navigator);
+  return {
+    coarse,
+    shortSide: Math.min(screen.width, screen.height),
+    saveData: !!nav.connection?.saveData,
+    cores: nav.hardwareConcurrency || undefined,
+    memory: nav.deviceMemory,
+  };
 }
 
 /**
