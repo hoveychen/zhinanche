@@ -240,6 +240,24 @@ export function contactShadow() {
 }
 
 /**
+ * Draw a scratch scene for a bake: every mesh with `mat`, except those that
+ * bring their own (userData.bakeMaterial: the tree cards, trees.js, which are
+ * spread in their shader and cut out by their atlas).
+ * @param {THREE.WebGLRenderer} renderer @param {THREE.Scene} scene @param {THREE.Camera} camera @param {THREE.Material} mat
+ */
+export function drawCasters(renderer, scene, camera, mat) {
+  /** @type {[THREE.Mesh, THREE.Material | THREE.Material[]][]} */
+  const was = [];
+  scene.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    was.push([o, o.material]);
+    o.material = o.userData.bakeMaterial ?? mat;
+  });
+  renderer.render(scene, camera);
+  for (const [o, m] of was) o.material = m;
+}
+
+/**
  * Sun shadows for the courtyard. The courtyard moves with the chariot but
  * never turns, and the sun never moves, so its shadows are fixed relative to
  * it: render its depth from the sun once, and let the courtyard's and the
@@ -279,7 +297,7 @@ export class SetShadow {
    */
   bake(renderer, casters) {
     const scratch = new THREE.Scene();
-    scratch.overrideMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
+    const depth = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
     /** @type {[THREE.Object3D, THREE.Object3D | null, THREE.Matrix4][]} */
     const back = [];
     for (const o of casters) {
@@ -299,7 +317,7 @@ export class SetShadow {
     renderer.shadowMap.autoUpdate = false;
     renderer.setRenderTarget(this.rt);
     renderer.clear();
-    renderer.render(scratch, this.camera);
+    drawCasters(renderer, scratch, this.camera, depth);
     renderer.setRenderTarget(prev);
     renderer.shadowMap.autoUpdate = shadowOn;
     for (const [o, parent, mw] of back) {
@@ -309,7 +327,7 @@ export class SetShadow {
         local.decompose(o.position, o.quaternion, o.scale);
       }
     }
-    scratch.overrideMaterial.dispose();
+    depth.dispose();
     this.uniforms.setShadowMap.value = this.rt.depthTexture;
     this.uniforms.setShadowOn.value = 1;
     this.move(this.offset.x, this.offset.z);

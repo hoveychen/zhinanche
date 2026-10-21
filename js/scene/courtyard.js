@@ -19,9 +19,13 @@ import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { meanOf, placeholder } from "./photo.js";
 import { age } from "./aging.js";
+import { Trees } from "./trees.js";
+import { Eaves, TILE_REPEAT, UV_PER_CHI } from "./eaves.js";
 
 /** @import { Textures } from "./materials.js" */
 /** @import { PhotoSet } from "./photo.js" */
+/** @import { TreePlace } from "./trees.js" */
+/** @import { EaveOpts } from "./eaves.js" */
 
 /** Stand-ins for photographed textures: white colour, a flat normal, no occlusion and roughness ×1. */
 const BLANK = { white: placeholder([255, 255, 255]), flat: placeholder([128, 128, 255]), arm: placeholder([255, 255, 0]) };
@@ -45,6 +49,27 @@ class Bucket {
   constructor() {
     /** @type {Map<string, THREE.BufferGeometry[]>} */
     this.parts = new Map();
+    /** @type {TreePlace[]} */
+    this.trees = [];
+    /** @type {Map<string, Eaves>} eave pieces, by the roof material their tiles take */
+    this.eaves = new Map();
+  }
+
+  /** The eave pieces of roofs in material `key`. @param {string} key */
+  eavesOf(key) {
+    let e = this.eaves.get(key);
+    if (!e) this.eaves.set(key, (e = new Eaves()));
+    return e;
+  }
+
+  /** Put the eave pieces in with the rest (their tiles under their roof's key, the paint under "eave"). */
+  addEaves() {
+    for (const [key, e] of this.eaves) {
+      const tiles = e.tiles.geometry(), trim = e.trim.geometry();
+      if (tiles) this.add(key, tiles);
+      if (trim) this.add("eave", trim, true);
+    }
+    this.eaves.clear();
   }
 
   /**
@@ -95,9 +120,13 @@ function worldUV(g, s, cx, cy, cz) {
 
 /**
  * A curved hip roof (庑殿顶): concave slopes, upturned corners. Long axis x.
+ * The tile rows run straight down each slope, as on a real roof (u is the
+ * distance along the eave, so the hips cut the rows short), and v is the
+ * distance up the slope.
  * @param {Bucket} b @param {string} key
- * @param {{cx: number, cz: number, hx: number, hz: number, y0: number, y1: number, lift: number, tMax?: number}} o
- *   hx, hz: half size at the eave line; y0 eave height, y1 ridge height
+ * @param {{cx: number, cz: number, hx: number, hz: number, y0: number, y1: number, lift: number, tMax?: number, eaves?: EaveOpts | false}} o
+ *   hx, hz: half size at the eave line; y0 eave height, y1 ridge height;
+ *   eaves: tile ends along the eave (eaves.js), with these extras (false: none)
  */
 function hipRoof(b, key, o) {
   const n = 7, m = 10;
@@ -106,26 +135,39 @@ function hipRoof(b, key, o) {
   const swap = o.hz > o.hx;
   const HX = swap ? o.hz : o.hx, HZ = swap ? o.hx : o.hz;
   const ridgeHalf = Math.max(0, HX - HZ);
-  /** @param {number} t @param {number} e 0..1 along the side @param {number} side 0..3 */
-  const point = (t, e, side) => {
+  /** half the length of side `side`'s edge at t @param {number} t @param {number} side */
+  const half = (t, side) => (side % 2 === 0 ? ridgeHalf + (HX - ridgeHalf) * (1 - t) : HZ * (1 - t));
+  /** in the roof's own frame @param {number} t @param {number} e 0..1 along the side @param {number} side 0..3 */
+  const local = (t, e, side) => {
     const hz = HZ * (1 - t), hx = ridgeHalf + (HX - ridgeHalf) * (1 - t);
     const s = 2 * e - 1;
     const x = side === 0 ? s * hx : side === 2 ? -s * hx : side === 1 ? hx : -hx;
     const z = side === 0 ? hz : side === 2 ? -hz : side === 1 ? -s * hz : s * hz;
     const lift = o.lift * (1 - t) ** 2 * Math.abs(s) ** 4;
-    const y = o.y0 + (o.y1 - o.y0) * t ** 1.7 + lift;
-    return swap ? new THREE.Vector3(o.cx + z, y, o.cz + x) : new THREE.Vector3(o.cx + x, y, o.cz + z);
+    return [x, o.y0 + (o.y1 - o.y0) * t ** 1.7 + lift, z];
   };
+  const world = (/** @type {number[]} */ [x, y, z]) => (swap ? new THREE.Vector3(o.cx + z, y, o.cz + x) : new THREE.Vector3(o.cx + x, y, o.cz + z));
   for (let side = 0; side < 4; side++) {
     const pos = [], uv = [], idx = [];
+    /** distance up the slope so far, per column @type {number[]} */
+    const up = new Array(m + 1).fill(0);
+    /** @type {number[][]} */
+    let last = [];
     for (let k = 0; k <= n; k++) {
       const t = (k / n) * tMax;
       for (let j = 0; j <= m; j++) {
         const e = j / m;
-        const p = point(t, e, side);
+        const l = local(t, e, side);
+        if (k) {
+          // across the slope only (x on the long sides, z on the ends): what the rows run along
+          const [px, py, pz] = last[j];
+          up[j] += side % 2 === 0 ? Math.hypot(l[1] - py, l[2] - pz) : Math.hypot(l[1] - py, l[0] - px);
+        }
+        last[j] = l;
+        const p = world(l);
         pos.push(p.x, p.y, p.z);
-        const len = side % 2 === 0 ? 2 * HX : 2 * HZ;
-        uv.push(e * len * 0.12, point(0, e, side).distanceTo(p) * 0.12);
+        // u: along the eave, rightwards seen from outside (the same for every side)
+        uv.push((2 * e - 1) * half(t, side) * UV_PER_CHI, up[j] * UV_PER_CHI);
       }
     }
     for (let k = 0; k < n; k++) {
@@ -141,6 +183,11 @@ function hipRoof(b, key, o) {
     g.setIndex(idx);
     g.computeVertexNormals();
     b.add(key, g);
+    if (o.eaves !== false && o.eaves !== undefined) {
+      const h0 = half(0, side);
+      const out = world([side === 1 ? 1 : side === 3 ? -1 : 0, 0, side === 0 ? 1 : side === 2 ? -1 : 0]).sub(world([0, 0, 0]));
+      b.eavesOf(key).eave((a) => world(local(0, (a / h0 + 1) / 2, side)), out, -h0, h0, o.eaves);
+    }
   }
   if (tMax >= 1) {
     // ridge beam with upturned ends (dark glazed)
@@ -152,6 +199,43 @@ function hipRoof(b, key, o) {
     box(-L, y - 0.6, -0.9, L, y + 1.6, 0.9);
     if (o.lift > 0) for (const sx of [-1, 1]) box(sx * (ridgeHalf + 0.2) - 1, y, -0.8, sx * (ridgeHalf + 0.2) + 1, y + 4.2, 0.8);
   }
+}
+
+/**
+ * The bracket sets (斗拱) under an eave: a band round a hall, y0 to y1, half
+ * sizes hx, hz, its faces carrying the baked band (build_photo.py
+ * dougong_band: one set in the middle of each module). mx, mz: the module
+ * along x and z; x0, z0: where a set stands along each (over a column),
+ * from the centre. The underside takes the plank's colour.
+ * @param {Bucket} b @param {number} cx @param {number} cz @param {number} hx @param {number} hz
+ * @param {number} y0 @param {number} y1 @param {number} mx @param {number} x0 @param {number} mz @param {number} z0
+ */
+function bracketBand(b, cx, cz, hx, hz, y0, y1, mx, x0, mz, z0) {
+  /** @type {number[]} */ const pos = [];
+  /** @type {number[]} */ const nor = [];
+  /** @type {number[]} */ const uv = [];
+  const vOf = (/** @type {number} */ y) => 0.01 + (0.98 * (y - y0)) / (y1 - y0);
+  /** a quad from four corners (counter-clockwise seen from outside) @param {number[][]} q @param {number[]} n @param {(p: number[]) => number[]} map */
+  const quad = (q, n, map) => {
+    for (const i of [0, 1, 2, 0, 2, 3]) {
+      pos.push(...q[i]);
+      nor.push(...n);
+      uv.push(...map(q[i]));
+    }
+  };
+  const ux = (/** @type {number[]} */ p) => [(p[0] - cx - x0) / mx + 0.5, vOf(p[1])];
+  const uz = (/** @type {number[]} */ p) => [(p[2] - cz - z0) / mz + 0.5, vOf(p[1])];
+  const X0 = cx - hx, X1 = cx + hx, Z0 = cz - hz, Z1 = cz + hz;
+  quad([[X0, y0, Z1], [X1, y0, Z1], [X1, y1, Z1], [X0, y1, Z1]], [0, 0, 1], ux);
+  quad([[X1, y0, Z0], [X0, y0, Z0], [X0, y1, Z0], [X1, y1, Z0]], [0, 0, -1], ux);
+  quad([[X1, y0, Z1], [X1, y0, Z0], [X1, y1, Z0], [X1, y1, Z1]], [1, 0, 0], uz);
+  quad([[X0, y0, Z0], [X0, y0, Z1], [X0, y1, Z1], [X0, y1, Z0]], [-1, 0, 0], uz);
+  quad([[X0, y0, Z0], [X1, y0, Z0], [X1, y0, Z1], [X0, y0, Z1]], [0, -1, 0], (p) => [(p[0] - cx) / mx, 0.03]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  b.add("dougong", g);
 }
 
 /**
@@ -199,20 +283,26 @@ function hall(b, o) {
       b.column("column", o.cx + a, o.cz + c, y0, y1, 1.1);
     }
   }
-  // architrave and the painted bracket band under the eaves
+  // architrave and the bracket sets under the eaves: a set over every column
+  // and two or three between (about 3 chi apart), on the front and the ends
   box("column", -W - 1, y1 - 1.6, -D - 1, W + 1, y1, D + 1);
-  box("bracket", -W - 1.8, y1, -D - 1.8, W + 1.8, y1 + 2.4, D + 1.8);
   const rot = face === "e" || face === "w";
+  const bay = (o.w - 1) / bays, mw = bay / Math.max(1, Math.round(bay / 3));
+  const md = o.d / 4 / Math.max(1, Math.round(o.d / 12));
+  const [mx, x0, mz, z0] = rot ? [md, -D, mw, -W + 0.5] : [mw, -W + 0.5, md, -D];
+  const [bx, bz] = rot ? [D + 1.8, W + 1.8] : [W + 1.8, D + 1.8];
+  bracketBand(b, o.cx, o.cz, bx, bz, y1, y1 + 2.4, mx, x0, mz, z0);
   const [hx, hz] = rot ? [D + 8, W + 8] : [W + 8, D + 8];
+  const eaves = { fascia: true, rafters: true };
   if (o.double) {
-    hipRoof(b, o.roof, { cx: o.cx, cz: o.cz, hx, hz, y0: y1 + 1.6, y1: y1 + 10, lift: 2.4, tMax: 0.42 });
+    hipRoof(b, o.roof, { cx: o.cx, cz: o.cz, hx, hz, y0: y1 + 1.6, y1: y1 + 10, lift: 2.4, tMax: 0.42, eaves });
     const up = y1 + 6.5;
     const [ux, uz] = rot ? [D * 0.8, W * 0.8] : [W * 0.8, D * 0.8];
     b.box("wallRed", [o.cx - ux, y1 + 2, o.cz - uz], [o.cx + ux, up + 4, o.cz + uz]);
-    b.box("bracket", [o.cx - ux - 1, up + 2.4, o.cz - uz - 1], [o.cx + ux + 1, up + 4.6, o.cz + uz + 1]);
-    hipRoof(b, o.roof, { cx: o.cx, cz: o.cz, hx: ux + 7, hz: uz + 7, y0: up + 4, y1: up + 4 + Math.min(ux, uz, 14) * 0.9 + 4, lift: 2.6 });
+    bracketBand(b, o.cx, o.cz, ux + 1, uz + 1, up + 2.4, up + 4.6, mx, 0, mz, 0);
+    hipRoof(b, o.roof, { cx: o.cx, cz: o.cz, hx: ux + 7, hz: uz + 7, y0: up + 4, y1: up + 4 + Math.min(ux, uz, 14) * 0.9 + 4, lift: 2.6, eaves });
   } else {
-    hipRoof(b, o.roof, { cx: o.cx, cz: o.cz, hx, hz, y0: y1 + 1.6, y1: y1 + 1.6 + Math.min(hx, hz) * 0.85, lift: 2 });
+    hipRoof(b, o.roof, { cx: o.cx, cz: o.cz, hx, hz, y0: y1 + 1.6, y1: y1 + 1.6 + Math.min(hx, hz) * 0.85, lift: 2, eaves });
   }
 }
 
@@ -227,8 +317,8 @@ function wall(b, p0, p1, h = 17) {
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, half = alongX ? Math.abs(x1 - x0) / 2 + t + 1.5 : Math.abs(z1 - z0) / 2 + t + 1.5;
   // the coping is a little gable roof; build as a hip roof with no hips
   hipRoof(b, "roofYellow", alongX
-    ? { cx, cz, hx: half + 3.4, hz: 3.4, y0: h, y1: h + 2.8, lift: 0 }
-    : { cx, cz, hx: 3.4, hz: half + 3.4, y0: h, y1: h + 2.8, lift: 0 });
+    ? { cx, cz, hx: half + 3.4, hz: 3.4, y0: h, y1: h + 2.8, lift: 0, eaves: {} }
+    : { cx, cz, hx: 3.4, hz: half + 3.4, y0: h, y1: h + 2.8, lift: 0, eaves: {} });
 }
 
 /**
@@ -293,7 +383,8 @@ function corridor(b, sx, z0, z1, lanterns) {
     if (lanterns && k < n && k % 2 === 0) lantern(b, X(63.5), z + (z1 - z0) / n / 2, 12.1);
   }
   b.box("column", [lo(62.9, 64.1), 11, z0], [hi(62.9, 64.1), 12.2, z1]);
-  b.box("bracket", [lo(62.6, 75), 12.2, z0], [hi(62.6, 75), 13.6, z1]);
+  // small bracket sets (a set over each column and four between: the band is lower than a hall's)
+  bracketBand(b, (lo(62.6, 75) + hi(62.6, 75)) / 2, (z0 + z1) / 2, 6.2, (z1 - z0) / 2, 12.2, 13.6, 2, 0, (z1 - z0) / n / 5, z0 - (z0 + z1) / 2);
   // lean-to roof: eave at 60, ridge over the back wall, slightly sagging
   const pos = [], uv = [], idx = [];
   const m = 6;
@@ -303,7 +394,7 @@ function corridor(b, sx, z0, z1, lanterns) {
     const y = 13.2 + 5.6 * t ** 1.4;
     for (const z of [z0 - 1.5, z1 + 1.5]) {
       pos.push(x, y, z);
-      uv.push((z - z0) * 0.12, t * 19 * 0.12);
+      uv.push((z - z0) * UV_PER_CHI, t * 19 * UV_PER_CHI);
     }
   }
   for (let i = 0; i < m; i++) {
@@ -318,6 +409,8 @@ function corridor(b, sx, z0, z1, lanterns) {
   g.computeVertexNormals();
   b.add("roofGray", g);
   b.box("roofGray", [lo(77, 79.5), 18.4, z0 - 1.5], [hi(77, 79.5), 20, z1 + 1.5]);
+  // the eave: u above is the distance from z0
+  b.eavesOf("roofGray").eave((a) => new THREE.Vector3(X(59.5), 13.2, z0 + a), new THREE.Vector3(-sx, 0, 0), -1.5, z1 - z0 + 1.5, { fascia: true, rafters: true });
 }
 
 /** A red palace lantern hanging from y. @param {Bucket} b @param {number} x @param {number} z @param {number} y */
@@ -360,54 +453,15 @@ function lump(rad, ph, rough, detail = 2) {
 }
 
 /**
- * Pine / cypress: trunk and a crown of ragged clumps, darker underneath.
+ * A pine or fir (trees.js draws them): where it stands, how tall, which kind.
+ * The firs are the dense ones, so most are firs.
  * @param {Bucket} b @param {number} x @param {number} z @param {number} h @param {number} seed
- * @param {boolean} [near] inside the yard: more and finer clumps
+ * @param {import("./trees.js").TreeKind} [kind] else picked by the seed
  */
-function tree(b, x, z, h, seed, near = false) {
+function tree(b, x, z, h, seed, kind) {
   const r = rand(seed);
-  // A trunk that leans a little, so the tiers step sideways as they rise.
-  const lean = r() * Math.PI * 2, leanBy = h * 0.05 * r();
-  const at = (/** @type {number} */ t) => [x + Math.cos(lean) * leanBy * t, z + Math.sin(lean) * leanBy * t];
-  const trunk = new THREE.CylinderGeometry(h * 0.018, h * 0.032, h * 0.92, 7, 1, true);
-  trunk.translate(0, h * 0.46, 0);
-  const tp = trunk.getAttribute("position");
-  for (let i = 0; i < tp.count; i++) {
-    const [dx, dz] = at(tp.getY(i) / h);
-    tp.setXYZ(i, tp.getX(i) + dx, tp.getY(i), tp.getZ(i) + dz);
-  }
-  b.add("trunk", trunk);
-  // The crown: tiers of flattened foliage pads (an old palace pine / cypress),
-  // lit on top and dark underneath, so it reads as layers, not as one blob.
-  const tiers = near ? 8 : 6;
-  const bottom = h * 0.34, top = h * 1.0;
-  const tint = 0.85 + 0.3 * r();
-  for (let k = 0; k < tiers; k++) {
-    const t = k / (tiers - 1);
-    const y = bottom + (top - bottom) * t + h * 0.03 * (r() - 0.5);
-    const reach = h * (0.25 - 0.16 * t) * (0.8 + 0.4 * r());
-    const pads = t > 0.85 ? 1 : 3 + Math.floor(r() * 2);
-    const a0 = r() * Math.PI * 2;
-    const [tx, tz] = at(y / h);
-    for (let j = 0; j < pads; j++) {
-      const a = a0 + (j / pads) * Math.PI * 2 + 0.6 * (r() - 0.5);
-      const d = pads === 1 ? 0 : reach * (0.4 + 0.3 * r());
-      const rad = reach * (pads === 1 ? 0.85 : 0.66) * (0.85 + 0.3 * r());
-      const g = lump(rad, r() * 10, 1.3, near ? 2 : 1);
-      g.scale(1.15, 0.5 + 0.15 * r(), 1.15);
-      const p = g.getAttribute("position");
-      const col = new Float32Array(p.count * 3);
-      const hy = rad * 0.6;
-      for (let i = 0; i < p.count; i++) {
-        const up = Math.max(0, Math.min(1, p.getY(i) / hy * 0.5 + 0.5));
-        const v = Math.min(1.25, (0.25 + 0.85 * up * up + 0.15 * t) * tint * (0.85 + 0.25 * r()));
-        col.set([v * 0.9, v, v * 0.78], i * 3);
-      }
-      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      g.translate(tx + Math.cos(a) * d, y, tz + Math.sin(a) * d);
-      b.add("leaves", g, true);
-    }
-  }
+  const pick = r();
+  b.trees.push({ kind: kind ?? (pick < 0.45 ? "fir" : pick < 0.8 ? "firb" : "pine"), x, z, h, tint: 0.9 + 0.2 * r() });
 }
 
 /** A bronze tripod cauldron (鼎) on a plinth. @param {Bucket} b @param {number} x @param {number} z */
@@ -539,7 +593,7 @@ function lion(b, x, z, seed, paw) {
 /** A far hall seen over the wall: a red body and a hip roof, no detail. @param {Bucket} b @param {number} cx @param {number} cz @param {number} w @param {number} d @param {number} y0 */
 function farHall(b, cx, cz, w, d, y0) {
   b.box("wallRed", [cx - w / 2, 0, cz - d / 2], [cx + w / 2, y0, cz + d / 2]);
-  hipRoof(b, "roofYellow", { cx, cz, hx: w / 2 + 6, hz: d / 2 + 6, y0, y1: y0 + (d / 2 + 6) * 0.8, lift: 2 });
+  hipRoof(b, "roofYellow", { cx, cz, hx: w / 2 + 6, hz: d / 2 + 6, y0, y1: y0 + (d / 2 + 6) * 0.8, lift: 2, eaves: false });
 }
 
 /** Two rings of far hills. @param {Bucket} b */
@@ -579,9 +633,14 @@ function materials() {
     panel: M(0x5e1d16, 0.7),
     column: M(0x9a2618, 0.55),
     bracket: M(0x2c6a5f, 0.7),
+    // the bracket band: its colour comes with the baked band (photo), till then the old flat green
+    dougong: M(0x2c6a5f, 0.8),
+    // fascia boards and rafter ends (eaves.js): painted, colours per vertex
+    eave: M(0xffffff, 0.75, { vertexColors: true }),
     roofYellow: M(0xe0a62a, 0.34, { side: THREE.DoubleSide }),
     roofGray: M(0x4b5354, 0.6, { side: THREE.DoubleSide }),
-    leaves: M(0x2d5226, 0.85, { vertexColors: true }),
+    // green glaze: the gate's roofs (landmark.js; Courtyard.dressGate)
+    roofGreen: M(0x2c4f55, 0.34),
     trunk: M(0x4a3626, 0.95),
     bronze: M(0x6b5634, 0.38, { metalness: 0.85 }),
     gold: M(0xd2a443, 0.3, { metalness: 1 }),
@@ -625,18 +684,29 @@ function* layout(b, lite) {
   yield;
   // pines in the corners of the court
   const r = rand(5);
-  for (const [x, z, h] of [[-50, 196, 36], [52, 190, 40], [-52, -112, 34], [50, -108, 32]]) tree(b, x, z, h, Math.floor(r() * 1e6), true);
-  // beyond the walls: tree crowns, far roofs
+  /** @type {[number, number, number, import("./trees.js").TreeKind][]} */
+  const court = [[-50, 196, 40, "fir"], [52, 190, 44, "fir"], [-52, -112, 38, "pine"], [50, -108, 36, "fir"]];
+  for (const [x, z, h, kind] of court) tree(b, x, z, h, Math.floor(r() * 1e6), kind);
+  // beyond the walls: groves of one to three trees (the photographed trees
+  // are slimmer than the old crowns were, and a card costs next to nothing)
   const outer = lite ? 18 : 40;
+  /** @param {number} x @param {number} z @param {number} h */
+  const grove = (x, z, h) => {
+    const n = 1 + Math.floor(r() * 3);
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2, d = i ? 7 + r() * 9 : 0;
+      tree(b, x + Math.cos(a) * d, z + Math.sin(a) * d, h * (i ? 0.75 + 0.3 * r() : 1), Math.floor(r() * 1e6));
+    }
+  };
   for (let k = 0; k < outer; k++) {
     const t = k / outer;
     if (t < 0.45) {
       // south, behind the gate wall
       const x = (r() < 0.5 ? -1 : 1) * (48 + r() * 170), z = C.south + 25 + r() * 120;
-      tree(b, x, z, 34 + r() * 20, Math.floor(r() * 1e6));
+      grove(x, z, 40 + r() * 22);
     } else {
       const side = k % 2 ? 1 : -1;
-      tree(b, side * (95 + r() * 110), -230 + r() * 420, 36 + r() * 24, Math.floor(r() * 1e6));
+      grove(side * (95 + r() * 110), -230 + r() * 420, 42 + r() * 26);
     }
     if (k % 8 === 7) yield;
   }
@@ -646,6 +716,7 @@ function* layout(b, lite) {
   farHall(b, -200, -320, 90, 34, 22);
   farHall(b, 190, -300, 70, 30, 20);
   hills(b);
+  b.addEaves();
 }
 
 export class Courtyard {
@@ -658,6 +729,8 @@ export class Courtyard {
     const b = new Bucket();
     for (const _ of layout(b, !!opts.lite)) await pause();
     const yard = new Courtyard();
+    yard.trees = new Trees(b.trees);
+    yard.group.add(yard.trees.group);
     // merging is a good share of the work too: one material's meshes per slice
     for (const [key, list] of b.parts) {
       await pause();
@@ -673,6 +746,8 @@ export class Courtyard {
     this.tex = null;
     this.group = new THREE.Group();
     this.group.name = "courtyard";
+    /** @type {Trees | null} */
+    this.trees = null;
   }
 
   /** Merge one material's geometries into a mesh. @param {string} key @param {THREE.BufferGeometry[]} list */
@@ -696,16 +771,18 @@ export class Courtyard {
   dress(tex) {
     const m = this.materials;
     this.tex = tex;
-    for (const k of /** @type {const} */ (["roofYellow", "roofGray"])) {
+    for (const k of /** @type {const} */ (["roofYellow", "roofGray", "roofGreen"])) {
       m[k].map = tex.tiles;
       m[k].normalMap = tex.tilesNormal;
       m[k].roughnessMap = tex.tilesRough;
       m[k].aoMap = BLANK.arm;
     }
-    m.wallRed.map = BLANK.white;
-    m.wallRed.normalMap = BLANK.flat;
-    m.wallRed.roughnessMap = BLANK.arm;
-    m.wallRed.aoMap = BLANK.arm;
+    for (const k of /** @type {const} */ (["wallRed", "dougong"])) {
+      m[k].map = BLANK.white;
+      m[k].normalMap = BLANK.flat;
+      m[k].roughnessMap = BLANK.arm;
+      m[k].aoMap = BLANK.arm;
+    }
     m.marble.map = tex.stone;
     m.marble.roughnessMap = tex.stoneRough;
     for (const mat of Object.values(m)) mat.needsUpdate = true;
@@ -719,7 +796,7 @@ export class Courtyard {
     const m = this.materials;
     age(m.wallRed, "plaster", noise);
     for (const k of /** @type {const} */ (["column", "panel"])) age(m[k], "lacquer", noise);
-    for (const k of /** @type {const} */ (["roofYellow", "roofGray"])) age(m[k], "roof", noise);
+    for (const k of /** @type {const} */ (["roofYellow", "roofGray", "roofGreen"])) age(m[k], "roof", noise);
     age(m.marble, "stone", noise);
     age(m.bronze, "bronze", noise);
     age(m.gold, "gold", noise);
@@ -727,17 +804,32 @@ export class Courtyard {
 
   /**
    * Swap a photographed set in (photo.js), keeping each material's average
-   * colour. Only textures and uniforms change: nothing recompiles.
-   * @param {"plaster" | "roof"} name @param {PhotoSet} set
+   * colour (the bracket band brings its own paint). Only textures and
+   * uniforms change: nothing recompiles.
+   * @param {"plaster" | "roof" | "dougong"} name @param {PhotoSet} set
    */
   photo(name, set) {
     const m = this.materials;
-    const keys = name === "plaster" ? /** @type {const} */ (["wallRed"]) : /** @type {const} */ (["roofYellow", "roofGray"]);
+    if (name === "dougong") {
+      // u counts modules, v runs up the band: no repeat of its own
+      const mat = m.dougong;
+      mat.color.set(0xffffff);
+      mat.map = set.albedo;
+      mat.normalMap = set.normal;
+      if (set.arm) {
+        mat.roughnessMap = set.arm;
+        mat.aoMap = set.arm;
+      }
+      mat.roughness = 1;
+      return;
+    }
+    const keys = name === "plaster" ? /** @type {const} */ (["wallRed"]) : /** @type {const} */ (["roofYellow", "roofGray", "roofGreen"]);
     // what the material's colour was multiplied by before: white, or the procedural tiles
     const was = name === "plaster" ? new THREE.Color(1, 1, 1) : meanOf(/** @type {Textures} */ (this.tex).tiles);
     const k = new THREE.Color(was.r / set.mean.r, was.g / set.mean.g, was.b / set.mean.b);
-    // the scans are 2 m (plaster) and 2.5 m (roof) square; walls carry 0.05–0.1 uv per chi
-    const repeat = name === "plaster" ? 2 : 0.6;
+    // the plaster scan is 2 m square, walls carry 0.05–0.1 uv per chi; the
+    // baked roof tiles span TILE.span chi, the roofs carry UV_PER_CHI
+    const repeat = name === "plaster" ? 2 : TILE_REPEAT;
     for (const t of [set.albedo, set.normal, set.arm]) t?.repeat.set(repeat, repeat);
     for (const key of keys) {
       const mat = m[key];
@@ -748,9 +840,23 @@ export class Courtyard {
         mat.roughnessMap = set.arm;
         mat.aoMap = set.arm;
       }
-      // the scan's roughness is absolute, not a multiplier; glazed tiles stay glossier
-      mat.roughness = name === "roof" ? 0.75 : 1;
+      // the set's roughness is absolute, not a multiplier (the baked tiles' glaze is in it)
+      mat.roughness = 1;
     }
+  }
+
+  /**
+   * The gate (landmark.js) in the courtyard's roof, bracket and eave
+   * materials, so it weathers and takes the photographed sets with them.
+   * @param {THREE.Object3D} gate
+   */
+  dressGate(gate) {
+    const m = /** @type {Record<string, THREE.MeshStandardMaterial>} */ (this.materials);
+    gate.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const key = o.material.userData.yard;
+      if (key && m[key]) o.material = m[key];
+    });
   }
 
   /** The meshes that cast baked shadows (all but the hills). */

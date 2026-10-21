@@ -93,6 +93,15 @@ precedence = "override"
 SPDX-FileCopyrightText = "Poly Haven (polyhaven.com): Greg Zaal, Jarod Guest, Rob Tuytel, Amal Kumar, Dimitrios Savva, Dario Barresi, Rico Cilliers"
 SPDX-License-Identifier = "CC0-1.0"
 
+# Baked by tools/assets/build_photo.py from this project's own height fields
+# (the palace tile rows, the bracket sets), with the Poly Haven scans above
+# (clay_roof_tiles_02, red_plaster_weathered - Amal Kumar) only as grain.
+[[annotations]]
+path = ["assets/photo/roof-*.webp", "assets/photo/dougong-*.webp"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 zhinanche contributors", "Poly Haven (polyhaven.com): Amal Kumar"]
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
 # Icons: Tabler Icons (outline set), copied by tools/vendor.mjs (pnpm vendor)
 # from the npm package @tabler/icons; keeps its LICENSE.
 [[annotations]]

@@ -17,6 +17,7 @@
 
 import * as THREE from "three";
 import { AGE_ORIGIN } from "./aging.js";
+import { drawCasters } from "./environment.js";
 
 /** Heights (chi above the paving) the four channels are baked at. */
 const LEVELS = [0.5, 4, 10, 20];
@@ -95,7 +96,7 @@ export class BakedAO {
     heights.depthTexture.minFilter = heights.depthTexture.magFilter = THREE.NearestFilter;
 
     const scratch = new THREE.Scene();
-    scratch.overrideMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
+    const depth = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
     /** @type {[THREE.Object3D, THREE.Object3D | null, THREE.Matrix4][]} */
     const back = [];
     for (const o of casters) {
@@ -109,7 +110,7 @@ export class BakedAO {
     renderer.shadowMap.autoUpdate = false;
     renderer.setRenderTarget(heights);
     renderer.clear();
-    renderer.render(scratch, cam);
+    drawCasters(renderer, scratch, cam, depth);
     for (const [o, parent, mw] of back) {
       if (!parent) continue;
       parent.add(o);
@@ -132,7 +133,7 @@ export class BakedAO {
     renderer.setRenderTarget(prev);
     renderer.shadowMap.autoUpdate = shadowOn;
 
-    scratch.overrideMaterial.dispose();
+    depth.dispose();
     pass.dispose();
     quad.geometry.dispose();
     heights.depthTexture.dispose();

@@ -169,9 +169,10 @@ export class PostFX {
    * @param {THREE.Scene} scene
    * @param {THREE.PerspectiveCamera} camera
    * @param {() => THREE.Vector3} target what the camera looks at (for focus)
-   * @param {{signature?: () => number, jitter?: (k: number) => void}} [still] what tells a still
-   *   picture (a number that changes whenever anything in view does), and how
-   *   to move the light for frame k of an average (0: back as it was)
+   * @param {{signature?: () => number, jitter?: (k: number) => void, ready?: () => boolean}} [still] what tells a still
+   *   picture (a number that changes whenever anything in view does), how
+   *   to move the light for frame k of an average (0: back as it was), and
+   *   whether the picture is final (every photographed texture asked for is in)
    */
   constructor(renderer, scene, camera, target, still = {}) {
     this.renderer = renderer;
@@ -256,12 +257,13 @@ export class PostFX {
       const sig = this.still.signature();
       if (sig !== this.lastSig) {
         this.lastSig = sig;
-        if (acc.n > ACC_MAX) delete document.body.dataset.still;
+        delete document.body.dataset.still;
         acc.n = 0;
       }
       acc.n++;
-      // body[data-still]: the average is full (for tests and screenshots)
-      if (acc.n === ACC_MAX + 1) document.body.dataset.still = "settled";
+      // body[data-still]: the average is full and the photographed textures
+      // are all in (for tests and screenshots: the picture won't change again)
+      if (acc.n > ACC_MAX && !document.body.dataset.still && (this.still.ready?.() ?? true)) document.body.dataset.still = "settled";
       // the first still frame only starts the history: the one before may have moved
       acc.enabled = acc.n > 1;
       if (acc.enabled) {
