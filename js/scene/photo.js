@@ -250,4 +250,16 @@ export class Photos {
     ]);
     return { albedo, normal, arm, mean: new THREE.Color(t.mean[0], t.mean[1], t.mean[2]) };
   }
+
+  /**
+   * A baked occlusion atlas for one chariot (blender/scripts/build_chariot.py
+   * writes chariot-<mechanism>-ao.webp next to the scans): read on the GLB's
+   * own UVs, so no repeat. Fetched after the sky like the surfaces.
+   * @param {string} mechanism
+   * @returns {Promise<THREE.Texture>}
+   */
+  async atlas(mechanism) {
+    await this.skyDone;
+    return this.#load(`chariot-${mechanism}-ao-${this.level === "lite" ? 512 : 1024}.webp`, { colour: false, repeat: false, mips: true });
+  }
 }

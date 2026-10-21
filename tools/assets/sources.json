@@ -34,6 +34,13 @@
       "author": "Dimitrios Savva, Dario Barresi, Rico Cilliers",
       "page": "https://polyhaven.com/a/dark_wood",
       "use": "the chariot's wood (materials.js)"
+    },
+    "iron": {
+      "id": "rusty_metal_04",
+      "res": "2k",
+      "author": "Amal Kumar",
+      "page": "https://polyhaven.com/a/rusty_metal_04",
+      "use": "the chariot's ironwork: hub bands, axle caps and linchpins, straps, the shaft's point and collar (materials.js)"
     }
   }
 }

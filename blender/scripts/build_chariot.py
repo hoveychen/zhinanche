@@ -14,6 +14,7 @@ into Y-up with -Z = left.
 import math
 import os
 import sys
+import time
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -697,6 +698,95 @@ def export(path):
                               export_apply=False, export_cameras=False, export_lights=False)
 
 
+# --------------------------------------------------------------------------- occlusion atlas
+#
+# The weathering is baked, not shaded at run time (design/decisions/0004): every mesh is
+# unwrapped into one atlas (TEXCOORD_0 in the GLB; the page keeps it as uv1 and lays its
+# own planar grain UVs over uv), and Cycles bakes ambient occlusion times a little dust
+# on upward faces into it. materials.js reads it as the aoMap of the wooden, lacquered
+# and iron parts (not the blue/orange/marker ones: those must stay clean colours).
+
+
+def meshes():
+    return [o for o in bpy.data.objects if o.type == "MESH"]
+
+
+def unwrap():
+    """One UV atlas over every mesh, deterministic (so the GLB stays reproducible)."""
+    objs = meshes()
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=1.5, island_margin=0.0, scale_to_bounds=False)
+    bpy.ops.uv.pack_islands(margin=0.002, rotate=True, scale=True)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.object.select_all(action="DESELECT")
+
+
+def bake(mechanism, size=1024, samples=32):
+    """Cycles bake of AO x dust into assets/photo/chariot-<m>-ao-{1024,512}.webp. Call after export:
+    it rewires every material to an emission shader."""
+    img = bpy.data.images.new("atlas", size, size, alpha=False, float_buffer=False)
+    img.colorspace_settings.name = "Non-Color"
+    for mat in bpy.data.materials:
+        if not mat.use_nodes:
+            continue
+        nt = mat.node_tree
+        tex = nt.nodes.new("ShaderNodeTexImage")
+        tex.image = img
+        nt.nodes.active = tex
+        ao = nt.nodes.new("ShaderNodeAmbientOcclusion")
+        ao.inputs["Distance"].default_value = 1.2
+        ao.samples = 8
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(geo.outputs["Normal"], sep.inputs["Vector"])
+        # dust: faces turned up (blender z) a little darker, as a matt film of it
+        dust = nt.nodes.new("ShaderNodeMapRange")
+        dust.inputs["From Min"].default_value = 0.3
+        dust.inputs["From Max"].default_value = 1.0
+        dust.inputs["To Min"].default_value = 1.0
+        dust.inputs["To Max"].default_value = 0.84
+        nt.links.new(sep.outputs["Z"], dust.inputs["Value"])
+        mul = nt.nodes.new("ShaderNodeMath")
+        mul.operation = "MULTIPLY"
+        nt.links.new(ao.outputs["AO"], mul.inputs[0])
+        nt.links.new(dust.outputs["Result"], mul.inputs[1])
+        emit = nt.nodes.new("ShaderNodeEmission")
+        nt.links.new(mul.outputs["Value"], emit.inputs["Color"])
+        nt.links.new(emit.outputs["Emission"], nt.nodes["Material Output"].inputs["Surface"])
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = samples
+    sc.cycles.seed = 7
+    sc.cycles.use_denoising = False
+    sc.render.bake.use_selected_to_active = False
+    sc.render.bake.margin = 12
+    if sc.world is None:
+        sc.world = bpy.data.worlds.new("sky")
+    sc.world.use_nodes = True
+    sc.world.node_tree.nodes["Background"].inputs["Color"].default_value = (1, 1, 1, 1)
+    objs = meshes()
+    for o in objs:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.bake(type="EMIT")
+    img.file_format = "WEBP"
+    out = []
+    for s in (size, size // 2):
+        if s != size:
+            img.scale(s, s)
+        path = os.path.join(ASSETS, "photo", f"chariot-{mechanism}-ao-{s}.webp")
+        img.filepath_raw = path
+        img.save()
+        out.append((path, os.path.getsize(path)))
+    return out
+
+
 def triangles():
     return sum(sum(len(f.vertices) - 2 for f in o.data.polygons) for o in bpy.data.objects if o.type == "MESH")
 
@@ -708,10 +798,15 @@ def main():
     for m in mechs:
         out = argv[argv.index("--out") + 1] if "--out" in argv and len(mechs) == 1 else os.path.join(ASSETS, f"chariot-{m}.glb")
         build(m)
+        unwrap()
         export(out)
         if "--blend" in argv:
             bpy.ops.wm.save_as_mainfile(filepath=argv[argv.index("--blend") + 1])
         print(f"BUILD_OK mechanism={m} out={out} objects={len(bpy.data.objects)} triangles={triangles()} bytes={os.path.getsize(out)}")
+        if "--no-bake" not in argv:
+            t0 = time.time()
+            for path, size in bake(m):
+                print(f"BAKE_OK mechanism={m} out={path} bytes={size} seconds={time.time() - t0:.0f}")
 
 
 if __name__ == "__main__":
