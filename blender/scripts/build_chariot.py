@@ -241,23 +241,38 @@ def figure(L, root, lift):
     def at(dx, dy, dz):
         return (s + dx, dy, z + dz)
 
-    def octo(r, dz):
-        return [at(r * math.cos(math.pi / 8 + k * math.pi / 4), r * math.sin(math.pi / 8 + k * math.pi / 4), dz) for k in range(8)]
+    def ring(r, dz, n=16, ry=None):
+        ry = r if ry is None else ry
+        return [at(r * math.cos(math.pi / n + k * 2 * math.pi / n), ry * math.sin(math.pi / n + k * 2 * math.pi / n), dz) for k in range(n)]
 
-    mb.disc(at(0, 0, 0.07), (0, 0, 1), 0.32, 0.14, "gold", n=12)
-    mb.frustum(octo(0.3, 0.14), octo(0.17, 0.95), "robe")
-    mb.frustum(octo(0.19, 0.5), octo(0.2, 0.58), "gold")             # belt
-    mb.cyl(at(0.02, 0, 0.84), at(0.72, 0, 0.9), 0.065, "robe", n=8)    # pointing arm (+X)
-    mb.cyl(at(0.72, 0, 0.9), at(0.93, 0, 0.92), 0.04, "skin", n=6)    # hand, finger
-    mb.cyl(at(-0.02, 0.17, 0.86), at(0.06, 0.24, 0.45), 0.06, "robe", n=8)
-    mb.cyl(at(0, 0, 0.94), at(0, 0, 1.02), 0.06, "skin", n=8)
-    mb.frustum(octo(0.11, 1.0), octo(0.14, 1.12), "skin")
-    mb.frustum(octo(0.14, 1.12), octo(0.11, 1.25), "skin")
-    mb.disc(at(0, 0, 1.25), (0, 0, 1), 0.2, 0.03, "hat", n=12)
-    mb.frustum(octo(0.12, 1.26), octo(0.08, 1.43), "hat")
-    for dy in (-0.05, 0.05):                                           # eyes, facing +X
-        mb.box(at(0.125, dy - 0.015, 1.15), at(0.145, dy + 0.015, 1.18), "hat")
-    fig = mb.build("figure", c, root)
+    # Carved and lacquered, rounded like a turned wooden doll: a robe that
+    # flares a little at the hem and rounds over the shoulders, an egg of a
+    # head, a long sleeve to a slender hand that points along +X. Built smooth
+    # (faces under 40° apart shade as one surface; hems, cuffs and caps stay crisp).
+    mb.disc(at(0, 0, 0.07), (0, 0, 1), 0.32, 0.14, "gold", n=24)
+    mb.frustum(ring(0.31, 0.14), ring(0.29, 0.22), "robe")             # hem
+    mb.frustum(ring(0.29, 0.22), ring(0.19, 0.8), "robe")
+    mb.frustum(ring(0.19, 0.8), ring(0.15, 0.9), "robe")               # shoulders
+    mb.frustum(ring(0.15, 0.9), ring(0.08, 0.95), "robe")
+    mb.frustum(ring(0.198, 0.5), ring(0.205, 0.58), "gold")             # belt
+    mb.cyl(at(0.02, 0, 0.84), at(0.56, 0, 0.9), 0.07, "robe", n=12)    # pointing arm (+X), sleeve
+    mb.disc(at(0.58, 0, 0.902), (1, 0, 0.11), 0.085, 0.05, "robe", n=12)  # cuff
+    mb.ellipsoid(at(0.64, 0, 0.905), (0.055, 0.045, 0.045), "skin", n=10, m=6)  # hand
+    mb.cyl(at(0.66, 0, 0.912), at(0.79, 0, 0.925), 0.018, "skin", n=8)  # finger
+    mb.cyl(at(-0.02, 0.17, 0.86), at(0.05, 0.235, 0.5), 0.065, "robe", n=12)  # other arm, hanging
+    mb.ellipsoid(at(0.055, 0.24, 0.46), (0.045, 0.04, 0.05), "skin", n=10, m=6)
+    mb.cyl(at(0, 0, 0.93), at(0, 0, 1.01), 0.055, "skin", n=12)        # neck
+    mb.ellipsoid(at(0, 0, 1.115), (0.122, 0.115, 0.135), "skin", n=20, m=10)  # head
+    mb.ellipsoid(at(0.118, 0, 1.105), (0.022, 0.018, 0.026), "skin", n=8, m=5)  # nose
+    for dy in (-0.048, 0.048):                                          # eyes and brows, facing +X
+        mb.ellipsoid(at(0.109, dy, 1.128), (0.02, 0.017, 0.012), "hat", n=8, m=5)
+        mb.beam(at(0.114, dy - 0.028, 1.152), at(0.114, dy + 0.028, 1.152), 0.014, 0.008, "hat")
+    mb.beam(at(0.112, -0.028, 1.062), at(0.112, 0.028, 1.062), 0.012, 0.008, "robe")  # mouth
+    # a rounded black cap with a band, its crown standing up at the back
+    mb.ellipsoid(at(-0.01, 0, 1.23), (0.135, 0.13, 0.085), "hat", n=20, m=10)
+    mb.ellipsoid(at(-0.035, 0, 1.31), (0.085, 0.085, 0.085), "hat", n=16, m=8)
+    mb.frustum(ring(0.126, 1.175, 20, 0.12), ring(0.132, 1.2, 20, 0.126), "hat")
+    fig = mb.build("figure", c, root, smooth=40)
     set_rotate(fig, "figure", (0, 0, 1))
     set_teach(fig, "figure", "木人", (0, 0, lift + 1.0))
 

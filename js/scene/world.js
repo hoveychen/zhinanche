@@ -13,6 +13,7 @@ import { Ribbon, RouteLine } from "./trails.js";
 import { CompassDemo, HoldHands } from "./demos.js";
 import { CameraRig } from "./cameraRig.js";
 import { partCaption } from "./parts.js";
+import { Ice } from "./ice.js";
 import { bind } from "../i18n.js";
 import { Look } from "./look.js";
 import { OUTLINES, updateOutlines } from "./gearviz.js";
@@ -84,6 +85,9 @@ export class World {
     this.trackL = new Ribbon(COLORS.left, 0.32);
     this.trackR = new Ribbon(COLORS.right, 0.32);
     scene.add(this.trackL.mesh, this.trackR.mesh);
+    /** a sheet of ice under the chariot while a wheel slips */
+    this.ice = new Ice();
+    scene.add(this.ice.mesh);
     this.route = new RouteLine(COLORS.off);
     scene.add(this.route.line);
 
@@ -333,6 +337,7 @@ export class World {
 
   /** @param {number} v 0..1 @param {boolean} [instant] */
   setExplode(v, instant = false) {
+    this.cam.setApart(v > 0);
     // closing up: glide back to the view's own framing
     if (v === 0 && this.explodeTarget > 0 && !instant) this.cam.setView(this.cam.view, this.camFocus());
     this.explodeTarget = v;
@@ -354,6 +359,11 @@ export class World {
       this.holdHands.group.position.set(this.focus.x, 0, this.focus.z);
     }
     this.trackL.mesh.visible = this.trackR.mesh.visible = this.trailsOn && d !== "holdHands";
+  }
+
+  /** Ice on the ground: a wheel slips. @param {boolean} on */
+  setIce(on) {
+    this.ice.set(on);
   }
 
   /** @param {boolean} on */
@@ -429,15 +439,29 @@ export class World {
     }
     const rig = this.rig;
     if (this.cam.reframe > 0 && rig) {
-      this.cam.parts = rig.bounds(this.partsBox, this.cam.view === "gears");
-      this.cam.partsInset = this.hudBands();
+      this.cam.parts = rig.bounds(this.partsBox, this.cam.gearsOnly);
+      this.cam.partsInset = this.#partsBands();
     }
+    this.ice.update(dt, this.focus);
     rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
     this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works" || this.cam.view === "pair"), dt);
     this.cam.update(dt, this.camFocus());
     this.#liftOver(dt);
+  }
+
+  /**
+   * Where the parts may go: the HUD's bands, and with a sheet pulled up over
+   * the view, only what it leaves showing (the picture is moved up to the
+   * middle of that, #liftOver).
+   * @returns {Insets[]}
+   */
+  #partsBands() {
+    const bands = this.hudBands(), c = this.cover();
+    if (c <= 0.05) return bands;
+    const k = Math.min(c, 0.7) / 2;
+    return bands.map((b) => ({ left: b.left, right: b.right, top: b.top + k, bottom: c - k + Math.max(0, b.bottom - c) }));
   }
 
   /**

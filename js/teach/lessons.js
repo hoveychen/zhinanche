@@ -151,7 +151,7 @@ export const LESSONS = [
       },
       {
         text: "现在车要向左绕一个圈。\n\n<span class=\"l\">左轮</span>在里圈，<span class=\"r\">右轮</span>在外圈。先猜一猜，再看两个轮子各走了多远。",
-        scene: { reset: true, view: "top", play: "circle" },
+        scene: { reset: true, view: "above", play: "circle" },
         task: {
           kind: "choose",
           guess: true,
@@ -164,7 +164,7 @@ export const LESSONS = [
       },
       {
         text: "车还能原地打转。\n\n这时<span class=\"l\">左轮</span>往后退，<span class=\"r\">右轮</span>往前走。两个轮子差得最多。",
-        scene: { reset: true, play: "spinLeft" },
+        scene: { reset: true, view: "overview", play: "spinLeft" },
       },
       {
         text: "<b>记住：</b>车转得越多，两个轮子走的路就差得越多。\n\n反过来，只要知道两个轮子差了多少，就知道车转了多少。",
