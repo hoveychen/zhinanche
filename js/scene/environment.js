@@ -429,6 +429,8 @@ export class Environment {
     this.tex = null;
     /** @type {PhotoSky | null} */
     this.photo = null;
+    /** @type {THREE.PMREMGenerator | null} */
+    this.pmrem = null;
     /** the photo's fade-in, 0..1 */
     this.photoFade = 0;
     this.fogFrom = FOG.clone();
@@ -496,9 +498,14 @@ export class Environment {
     sunDisc.position.copy(SUN_DIR).multiplyScalar(30);
     sunDisc.lookAt(0, 0, 0);
     envScene.add(sunDisc);
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    const rt = pmrem.fromScene(envScene, 0.02, 0.1, 100);
-    pmrem.dispose();
+    // Kept until the photographed sky is in: disposing it frees its blur
+    // programs, and a second bake then compiled them again (~30 ms).
+    this.pmrem ??= new THREE.PMREMGenerator(this.renderer);
+    const rt = this.pmrem.fromScene(envScene, 0.02, 0.1, 100);
+    if (this.photo) {
+      this.pmrem.dispose();
+      this.pmrem = null;
+    }
     envMat.dispose();
     envSky.geometry.dispose();
     this.scene.environment?.dispose();
