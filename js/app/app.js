@@ -6,6 +6,7 @@ import { Chariot, wrap } from "../sim/chariot.js";
 import { pivotTwist, roll, twist } from "../sim/drive.js";
 import { applyDirective, freeBase, hasFaults, hasSlip, sameFaults } from "./directive.js";
 import { FollowPlayer, planPlayback } from "./playback.js";
+import { joinRoute } from "../sim/route.js";
 import { Tracker } from "./checks.js";
 import { RAMP, ease } from "./drive.js";
 import { toSim, toWorld } from "../scene/world.js";
@@ -155,7 +156,6 @@ export class App {
     for (const fn of this.stateListeners) fn(st);
     const pts = r.pts.map(toWorld);
     this.followRoute(pts);
-    this.world.route.set([toWorld(r), ...pts]);
   }
 
   /**
@@ -237,8 +237,11 @@ export class App {
     this.player = null;
     this.setPaused(false);
     const c = this.chariot;
-    this.drawn = { x: c.x, y: c.y, heading: c.heading, pts: worldPts.map(toSim) };
-    const pts = [{ x: c.x, y: c.y }, ...worldPts.map(toSim)];
+    // joined onto the chariot: it sets off along the line, and the line shown is the one it drives
+    const joined = joinRoute(c, worldPts.map(toSim));
+    this.drawn = { x: c.x, y: c.y, heading: c.heading, pts: joined };
+    const pts = [{ x: c.x, y: c.y }, ...joined];
+    this.world.route.set(pts.map(toWorld));
     const st = this.state;
     const style = st.mechanism === "song" && st.assist ? "pivot" : "smooth";
     this.follow = new FollowPlayer(pts, style, st.slip);
