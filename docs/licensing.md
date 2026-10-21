@@ -25,6 +25,8 @@ uvx reuse lint      # 或者 pip install reuse && reuse lint
 | `images/lessons/science-museum-model.jpg` | Andy Dingley（2008 年摄） | CC BY 3.0 | [Commons: South-pointing chariot (Science Museum model).jpg](https://commons.wikimedia.org/wiki/File:South-pointing_chariot_(Science_Museum_model).jpg)，缩小到 1200 px 宽 |
 | `images/lessons/taiwan-museum-gears.jpg` | SSR2000（2014 年摄） | CC BY-SA 3.0（Commons 上是 GFDL 与 CC BY-SA 3.0 双许可，本项目按后者使用） | [Commons: Gears of South-pointing chariot Model in National Museum of Natural Science, Taiwan.JPG](https://commons.wikimedia.org/wiki/File:Gears_of_South-pointing_chariot_Model_in_National_Museum_of_Natural_Science,_Taiwan.JPG)，缩小到 1200 px 高 |
 | `assets/photo/*.webp` | Poly Haven：Greg Zaal、Jarod Guest（天空）；Rob Tuytel（地砖）；Amal Kumar（墙、瓦）；Dimitrios Savva、Dario Barresi、Rico Cilliers（木） | CC0 1.0 | [polyhaven.com](https://polyhaven.com)，素材 id 与页面见 `tools/assets/sources.json`；`pnpm assets`（`tools/assets/build_photo.py`）下载、裁小、重新压成 webp。许可于 2026-10-21 在 https://polyhaven.com/license 核对 |
+| `assets/photo/tree-*.webp`、`trees.json` | Poly Haven：Rico Cilliers（建模）、Rob Tuytel（摄影），pine_tree_01、fir_tree_01 | CC0 1.0 | `tools/assets/fetch_models.py` 下载模型，`blender/scripts/render_impostors.py` 在 Blender 里渲 16 方位贴片，`pnpm trees`（`tools/assets/build_trees.py`）拼图集 |
+| `assets/photo/roof-*.webp`、`dougong-*.webp` | 本项目（筒瓦垄、斗拱的高度场）；Poly Haven Amal Kumar（clay_roof_tiles_02、red_plaster_weathered，只取颗粒） | CC BY-SA 4.0 | `pnpm assets --only roof,dougong`（`tools/assets/build_photo.py` tile_rows、dougong_band） |
 | `research/sources/songshi-149-zhinanche.txt`、`early-records.txt` | 《宋史》《宋书》《南齐书》 | 公有领域 | 维基文库 |
 
 三张图片的作者和许可已于 2026-10-20 用 Commons API（`action=query&prop=imageinfo&iiprop=extmetadata`）核实。课件在每张图下面显示署名（`Picture.credit`）。
