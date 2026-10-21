@@ -137,6 +137,9 @@ const FRAG_MAP = /* glsl */ `
     vec2 texels = fwidth(vTreeA) * vec2(textureSize(map, 0));
     float lod = max(0.0, log2(max(texels.x, texels.y)));
     diffuseColor.a = min(1.0, diffuseColor.a * (1.0 + 0.45 * lod));
+    // alpha to coverage over the cut-outs' wide soft rims dithered a broken
+    // pale line round every clump: the edge sharpened to one pixel at the cut
+    diffuseColor.a = clamp((diffuseColor.a - 0.5) / max(fwidth(diffuseColor.a), 1e-4) + 0.5, 0.0, 1.0);
     #endif
   }`;
 
