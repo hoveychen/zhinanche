@@ -28,6 +28,8 @@ const GLIDE = 0.8;
 
 /** The home page's opening: how long the close view of the figure holds, and how long the pull back to the chase view takes (s). */
 const INTRO = { hold: 1.8, out: 3.2 };
+/** A lesson step's opening (its demo waits for it): a glance at the hand, then out. */
+const INTRO_BRIEF = { hold: 0.5, out: 2.2 };
 
 /** The figure's middle, arm included (chariot local, big figure: js/scene/rig.js), and its height with the arm. */
 const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
@@ -83,6 +85,8 @@ export class CameraRig {
     this.glide = null;
     /** the home page's opening (view "intro"): seconds into it, and whether it has pulled back yet */
     this.intro = { t: 0, out: false };
+    /** the opening is a lesson step's, which waits with its demo till it is out: keep it short */
+    this.brief = false;
     /** fixed framing for the top view (route playback), else null */
     /** @type {{target: THREE.Vector3, pos: THREE.Vector3} | null} */
     this.box = null;
@@ -408,6 +412,11 @@ export class CameraRig {
     this.box = null;
   }
 
+  /** Still in the opening's close view or pulling back from it. */
+  get opening() {
+    return this.view === "intro" && (!this.intro.out || this.glide !== null);
+  }
+
   /**
    * Follow the chariot and finish any glide.
    * @param {number} dt
@@ -417,10 +426,11 @@ export class CameraRig {
     const cam = this.camera, ctl = this.controls;
     if (this.view === "intro" && !this.intro.out) {
       this.intro.t += dt;
-      if (this.intro.t >= INTRO.hold && !this.glide) {
+      const o = this.brief ? INTRO_BRIEF : INTRO;
+      if (this.intro.t >= o.hold && !this.glide) {
         // slowly back out to the whole scene
         this.intro.out = true;
-        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: INTRO.out };
+        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: o.out };
       }
     }
     // put back the distance taken off last frame, so the camera eases out

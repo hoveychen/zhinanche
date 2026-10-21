@@ -39,6 +39,9 @@ export class App {
     /** the last route played, for "再看一遍" */
     /** @type {string | null} */
     this.lastPlay = null;
+    /** a lesson's route that waits for the opening close view to pull back (else the child misses its start) */
+    /** @type {string | null} */
+    this.waiting = null;
     /** following a route the child drew */
     /** @type {FollowPlayer | null} */
     this.follow = null;
@@ -129,8 +132,11 @@ export class App {
     for (const fn of this.stateListeners) fn(st);
     // after the listeners: the views keep clear of this step's HUD (a view
     // placed at once, as the first one is, would keep the last step's margins)
+    w.cam.brief = !this.idleLoop;
     if (res.viewChanged || st.view !== prev.view || (st.demo !== prev.demo && st.demo === "holdHands")) w.setView(st.view);
-    if (res.play) this.play(res.play);
+    this.waiting = null;
+    if (res.play && st.view === "intro" && !this.idleLoop) this.waiting = res.play;
+    else if (res.play) this.play(res.play);
     w.showPose(this.chariot.pose(), 0);
   }
 
@@ -201,6 +207,7 @@ export class App {
 
   /** @param {string} name a MANOEUVRES key */
   play(name) {
+    this.waiting = null;
     this.follow = null;
     this.world.route.clear();
     this.lastPlay = name;
@@ -220,7 +227,7 @@ export class App {
   }
 
   get playing() {
-    return this.player !== null && !this.player.done;
+    return this.waiting !== null || (this.player !== null && !this.player.done);
   }
 
   /** Run any auto-play to its end at once (self-test). */
@@ -253,6 +260,7 @@ export class App {
   takeOver() {
     this.setPaused(false);
     if (this.player) this.player = null;
+    this.waiting = null;
     this.world.cam.unframe();
     if (this.follow) {
       this.follow = null;
@@ -268,6 +276,7 @@ export class App {
     const before = { x: c.x, y: c.y, heading: c.heading, d: (c.distL + c.distR) / 2 };
     let byChild = false;
     const speed = this.state.speed;
+    if (this.waiting && dt > 0 && !this.world.cam.opening) this.play(this.waiting);
     if ((this.player && !this.player.done) || this.follow) this.drive = { fwd: 0, turn: 0 };
     if (this.player && !this.player.done) {
       this.player.update(c, dt, speed);

@@ -10,7 +10,8 @@
  * chariot from the north side, following it (north stays up); "hero": close
  * on the figure from behind and to one side, the gate it points at beyond;
  * "intro": the hero view for a moment, then slowly out to "follow" (the home
- * page's opening); "pair": low behind the differential's two flat gears,
+ * page's opening; in a lesson step a shorter one, and the step's route
+ * waits till it is out); "pair": low behind the differential's two flat gears,
  * which lie one above the other, so both and their turning arrows show.
  * @typedef {"overview" | "top" | "follow" | "gears" | "works" | "wheels" | "figure" | "above" | "hero" | "intro" | "pair"} ViewId
  */
