@@ -13,6 +13,7 @@ import { decodeShare, setupOf } from "./app/share.js";
 import { placeCallout as placeCalloutBox } from "./app/callout.js";
 import { ShareButton } from "./app/sharelink.js";
 import { SceneLabels } from "./app/labels.js";
+import { hasSlip } from "./app/directive.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -170,6 +171,7 @@ app.onState((st) => {
   gearsText.textContent = gears ? S().free.gearsOff : S().free.gearsOn;
   demoCount.hidden = st.demo !== "holdHands";
   dial.el.hidden = st.demo === "holdHands";
+  world.setIce(hasSlip(st.slip));
   hideCallout();
 });
 world.holdHands.onLap = () => app.tracker.demoLap();

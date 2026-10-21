@@ -13,6 +13,7 @@ import { Ribbon, RouteLine } from "./trails.js";
 import { CompassDemo, HoldHands } from "./demos.js";
 import { CameraRig } from "./cameraRig.js";
 import { partCaption } from "./parts.js";
+import { Ice } from "./ice.js";
 import { bind } from "../i18n.js";
 import { Look } from "./look.js";
 import { OUTLINES, updateOutlines } from "./gearviz.js";
@@ -75,6 +76,9 @@ export class World {
     this.trackL = new Ribbon(COLORS.left, 0.32);
     this.trackR = new Ribbon(COLORS.right, 0.32);
     scene.add(this.trackL.mesh, this.trackR.mesh);
+    /** a sheet of ice under the chariot while a wheel slips */
+    this.ice = new Ice();
+    scene.add(this.ice.mesh);
     this.route = new RouteLine(COLORS.off);
     scene.add(this.route.line);
 
@@ -333,6 +337,11 @@ export class World {
     this.trackL.mesh.visible = this.trackR.mesh.visible = this.trailsOn && d !== "holdHands";
   }
 
+  /** Ice on the ground: a wheel slips. @param {boolean} on */
+  setIce(on) {
+    this.ice.set(on);
+  }
+
   /** @param {boolean} on */
   setTrails(on) {
     this.trailsOn = on;
@@ -409,6 +418,7 @@ export class World {
       this.cam.parts = rig.bounds(this.partsBox, this.cam.gearsOnly);
       this.cam.partsInset = this.#partsBands();
     }
+    this.ice.update(dt, this.focus);
     rig?.pulse(this.time);
     if (this.demo === "holdHands") this.holdHands.update(dt);
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
