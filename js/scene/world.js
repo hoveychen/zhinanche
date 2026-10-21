@@ -16,12 +16,16 @@ import { partCaption } from "./parts.js";
 import { Ice } from "./ice.js";
 import { bind } from "../i18n.js";
 import { Look } from "./look.js";
-import { OUTLINES, updateOutlines } from "./gearviz.js";
+import { HighlightGlow, OUTLINES, setBoxLineSize, updateOutlines } from "./gearviz.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { MechanismId } from "../sim/params.js" */
 /** @import { PartId, ViewId, DemoId } from "../teach/types.js" */
 /** @import { Insets } from "./cameraRig.js" */
+
+/** Parts small enough to be hard to tap: a tap this near one (CSS px) picks it. */
+const SMALL_PART = /pinion/;
+const PICK_RING = 12;
 
 /** Half the distance between the model's wheels (chi). */
 const HALF_TRACK = 3;
@@ -88,6 +92,8 @@ export class World {
     this.trackR = new Ribbon(COLORS.right, 0.32);
     scene.add(this.trackL.mesh, this.trackR.mesh);
     /** a sheet of ice under the chariot while a wheel slips */
+    /** the halo round the parts a step names */
+    this.glow = new HighlightGlow();
     this.ice = new Ice();
     scene.add(this.ice.mesh);
     this.route = new RouteLine(COLORS.off);
@@ -238,7 +244,7 @@ export class World {
       () => false, // the gears and wheels in x-ray colours
       (o) => o.name.endsWith(".ghost"),
       (o) => o instanceof THREE.Mesh && o.material === OUTLINES.ink,
-      (o) => o instanceof THREE.Mesh && (o.material === OUTLINES.lit || o.material === OUTLINES.faded),
+      (o) => o instanceof THREE.Mesh && o.material === OUTLINES.faded,
       (o) => o.name === "spinArc",
     ];
     const extras = [
@@ -257,6 +263,19 @@ export class World {
       this.#xrayLook(rig, false);
       rig.setLook(st.xray, st.highlight);
       this.render();
+    }
+    // the highlight's halo: its programs (drawn with nothing in it), then
+    // (not holding up what comes next) the shapes of the gears and wheels
+    this.glow.warm(this.renderer, this.camera);
+    void this.#hulls(rig);
+  }
+
+  /** The shapes the halo is drawn round, a few at a time while idle (a wheel's takes a few ms). @param {Rig} rig */
+  async #hulls(rig) {
+    const round = rig.turnedMeshes();
+    for (let i = 0; i < round.length; i++) {
+      if (i % 4 === 0) await this.#idle();
+      this.glow.proxy(round[i], true);
     }
   }
 
@@ -492,10 +511,14 @@ export class World {
   }
 
   render() {
-    updateOutlines(this.renderer, this.time);
+    updateOutlines(this.renderer);
     // looking at the works is a diagram: every gear sharp, near or far
     if (this.look.postfx) this.look.postfx.dofOn = !this.rig?.inside;
+    this.rig?.fadeBoxLines(this.camera);
     this.look.render();
+    // the highlighted parts' halo, over the finished picture
+    const lit = this.rig?.glowParts();
+    if (lit?.length) this.glow.render(this.renderer, this.camera, lit, this.time);
   }
 
   resize() {
@@ -512,6 +535,7 @@ export class World {
     // a view placed before the layout settled was framed for the old shape
     if (this.#viewed && this.cam.atPreset && !this.cam.glide) this.cam.setView(this.cam.view, this.camFocus(), true);
     this.route.resize(w, h);
+    setBoxLineSize(w, h);
     this.look?.resize(w, h);
   }
 
@@ -538,8 +562,25 @@ export class World {
    * @returns {{title: string, detail: string, point: THREE.Vector3, side: "l" | "r" | null} | null}
    */
   pick(clientX, clientY) {
-    if (!this.holder.visible || !this.rig) return null;
-    const hit = this.rig.pick(this.#ray(clientX, clientY));
+    const rig = this.rig;
+    if (!this.holder.visible || !rig) return null;
+    let hit = rig.pick(this.#ray(clientX, clientY));
+    // Looking inside, a finger is wider than the differential's small gears,
+    // and from behind and above the top flat gear's teeth stand in front of
+    // most of them: look round the point as well (a ring of PICK_RING CSS
+    // px). A small gear there wins; a tap between parts takes what is round it.
+    if (rig.inside && !SMALL_PART.test(String(hit?.node.userData.name ?? ""))) {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const near = rig.pick(this.#ray(clientX + Math.cos(a) * PICK_RING, clientY + Math.sin(a) * PICK_RING));
+        if (!near) continue;
+        if (SMALL_PART.test(String(near.node.userData.name ?? ""))) {
+          hit = near;
+          break;
+        }
+        hit ??= near;
+      }
+    }
     if (!hit) return null;
     const cap = partCaption(hit.node.userData);
     const name = String(hit.node.userData.name ?? "");

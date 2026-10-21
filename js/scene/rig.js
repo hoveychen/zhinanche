@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { ClutchDisplay } from "./clutchPhase.js";
 import { LEFT_NODES, PART_NODES, RIGHT_NODES, ownerOf } from "./parts.js";
-import { OUTLINES, SpinArc, TRAIN, WIRE_OPACITY, makeHull, makeWire, setGhostOpacity } from "./gearviz.js";
+import { OUTLINES, SpinArc, TRAIN, WIRE_OPACITY, ghostFade, makeBoxLines, makeHull, makeWire, setBoxLineOpacity, setGhostOpacity } from "./gearviz.js";
 import { TRAIN_SHADES } from "./materials.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
@@ -30,6 +30,7 @@ import { TRAIN_SHADES } from "./materials.js";
  * @property {string} group
  * @property {string} owner node name the mesh belongs to (marker teeth → their gear)
  * @property {boolean} wire drawn as a glass ghost in x-ray (the body and the frame round the gears)
+ * @property {boolean} keep part of the body that stays solid in x-ray (the railing and its trim round the top deck)
  * @property {boolean} [dim] faded back because other parts are highlighted
  * @property {THREE.Mesh} mesh
  * @property {THREE.Mesh | null} lines its x-ray ghost
@@ -45,6 +46,21 @@ import { TRAIN_SHADES } from "./materials.js";
  * @property {number} k how far it has moved, 0..1, eased
  */
 
+/**
+ * A disc-like mesh (a wheel, a gear, a hub): its two biggest sizes about the
+ * same: what it sweeps out turning is its outline (gearviz.js sweptShape).
+ * @param {THREE.Mesh} mesh
+ */
+function round(mesh) {
+  const g = mesh.geometry;
+  if (!g.boundingBox) g.computeBoundingBox();
+  const s = /** @type {THREE.Box3} */ (g.boundingBox).getSize(new THREE.Vector3()).toArray().sort((a, b) => b - a);
+  return s[1] > s[0] * 0.85;
+}
+
+/** A gear or wheel mesh that is round: its halo goes round what it sweeps out. @param {Look} l */
+const turned = (l) => (l.group === "gear" || l.group === "wheel") && round(l.mesh);
+
 /** @param {THREE.Object3D} o @returns {string} */
 const nameOf = (o) => /** @type {string} */ (o.userData.name ?? o.name);
 
@@ -56,6 +72,12 @@ const SPIN_GLOW = 0.2;
 /** Angular speed (rad/s) at which a gear counts as fully "turning". */
 const SPIN_FULL = 0.35;
 const TMP = new THREE.Color();
+/**
+ * The ghost fades by each point's distance from the camera; the edges and
+ * the railing go by the box's nearest side, this much nearer than its middle
+ * (chi), so they come in about with the ghost's faces.
+ */
+const GHOST_FADE_FROM_BOX = 5;
 /** A turning part glows in its own shade of its train's colour (materials.js). */
 const GLOW_OF = new Map(Object.entries(TRAIN_SHADES).map(([k, v]) => [k, new THREE.Color(v)]));
 /** Groups whose parts fade back (highlights) or light up (turning). */
@@ -179,11 +201,14 @@ export class Rig {
       const src = /** @type {THREE.MeshStandardMaterial} */ (o.material);
       const mat = src.clone();
       o.material = mat;
-      const wire = group === "shell" || owner === "body.frame";
+      // the railing stays solid in x-ray: with the figure on the deck inside
+      // it, it says where the box's top is (the ghost alone read as red haze)
+      const keep = owner === "body.top" && mat.name !== "wood";
+      const wire = (group === "shell" && !keep) || owner === "body.frame";
       let place = null;
       for (let a = /** @type {THREE.Object3D | null} */ (o); a && !place; a = a.parent) place = this.placed.get(a) ?? null;
       /** @type {Look} */
-      const look = { mat, color: mat.color.clone(), group, owner, wire, mesh: o, lines: null, place };
+      const look = { mat, color: mat.color.clone(), group, owner, wire, keep, mesh: o, lines: null, place };
       this.looks.push(look);
       if (wire) {
         const lines = makeWire(o);
@@ -198,6 +223,23 @@ export class Rig {
     }
 
     root.updateMatrixWorld(true);
+    // x-ray: the box's edges, drawn in, so the ghost reads as a box
+    const inv = root.matrixWorld.clone().invert();
+    const lower = new THREE.Box3(), upper = new THREE.Box3(), b = new THREE.Box3();
+    for (const l of this.looks) {
+      const box = /^body\.(side|end)\./.test(l.owner) ? lower : l.owner === "body.tier" ? upper : null;
+      if (!box) continue;
+      const g = l.mesh.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      box.union(b.copy(/** @type {THREE.Box3} */ (g.boundingBox)).applyMatrix4(l.mesh.matrixWorld).applyMatrix4(inv));
+    }
+    this.boxLines = makeBoxLines([lower, upper].filter((x) => !x.isEmpty()));
+    /** the whole box, in the chariot's frame (and a spare, for it in the world) */
+    this.boxBounds = lower.clone().union(upper);
+    this.boxNear = new THREE.Box3();
+    root.add(this.boxLines);
+    /** how far the body has flown off (taken apart), 0..1 */
+    this.boxGone = 0;
     for (const m of this.motions) {
       if (m.motion !== "rotate" || m.name === "figure") continue;
       const color = LEFT_NODES.has(m.name) ? TRAIN.left : RIGHT_NODES.has(m.name) ? TRAIN.right : TRAIN.middle;
@@ -289,8 +331,14 @@ export class Rig {
    */
   #shell() {
     const see = this.xray;
+    let gone = 0;
     for (const l of this.looks) {
-      if (!l.wire) continue;
+      if (l.group === "shell" && l.place) gone = Math.max(gone, THREE.MathUtils.smoothstep(l.place.k, 0.25, 0.8));
+    }
+    this.boxLines.visible = see && gone < 0.999;
+    this.boxGone = gone;
+    for (const l of this.looks) {
+      if (!l.wire && !l.keep) continue;
       const gone = l.group === "shell" && l.place ? THREE.MathUtils.smoothstep(l.place.k, 0.25, 0.8) : 0;
       const m = l.mat;
       const transparent = gone > 0;
@@ -303,7 +351,7 @@ export class Rig {
       // x-ray: the body itself is not drawn at all (its ghost, a child
       // of it, still is); a draw that writes nothing would only cost the GPU
       // a pipeline of its own the first time (~100 ms)
-      m.visible = !see;
+      m.visible = !see || l.keep;
       l.mesh.visible = gone < 0.999;
       if (l.lines) {
         l.lines.visible = see;
@@ -331,18 +379,58 @@ export class Rig {
     return box;
   }
 
+  /**
+   * The box's edges in x-ray, faded as the ghost is: out with the camera
+   * close to the box (a close view of the gears is clean), in from further
+   * off; the railing, solid, shows only from far enough off for the edges
+   * to be half in (close on the gears from above, it crossed the picture).
+   * @param {THREE.Camera} camera
+   */
+  fadeBoxLines(camera) {
+    if (!this.xray) return;
+    const near = this.boxNear.copy(this.boxBounds).applyMatrix4(this.root.matrixWorld).distanceToPoint(camera.position);
+    const k = ghostFade(near + GHOST_FADE_FROM_BOX);
+    if (this.boxLines.visible) setBoxLineOpacity(this.boxLines, WIRE_OPACITY * (1 - this.boxGone) * k);
+    for (const l of this.looks) if (l.keep) l.mat.visible = k > 0.5;
+  }
+
   /** Looking at the works: x-ray on, or taken apart. */
   get inside() {
     return this.xray || this.explode > 0.001;
   }
 
-  /** Outlines on the gears while looking inside; bright on the highlighted ones. */
+  /** Outlines on the gears while looking inside (the highlighted ones glow as well: glowParts). */
   #outline() {
     const on = this.inside;
     for (const { hull, owner } of this.hulls) {
       hull.visible = on;
-      hull.material = this.lit.has(owner) ? OUTLINES.lit : this.dimming ? OUTLINES.faded : OUTLINES.ink;
+      hull.material = this.dimming && !this.lit.has(owner) ? OUTLINES.faded : OUTLINES.ink;
     }
+  }
+
+  /**
+   * The highlighted part meshes to draw a glow round (gearviz.js
+   * HighlightGlow), while looking inside: the gears and wheels by what they
+   * sweep out turning (a disc, not every spoke and tooth), anything else as
+   * it is (the Song clutch's cord and weight are not round).
+   * @returns {{mesh: THREE.Mesh, turned: boolean}[]}
+   */
+  glowParts() {
+    /** @type {{mesh: THREE.Mesh, turned: boolean}[]} */
+    const out = [];
+    if (!this.inside || !this.lit.size) return out;
+    for (const l of this.looks) {
+      if (l.wire || !this.lit.has(l.owner) || !l.mat.visible) continue;
+      let shown = true;
+      for (let a = /** @type {THREE.Object3D | null} */ (l.mesh); a && shown; a = a.parent) shown = a.visible;
+      if (shown) out.push({ mesh: l.mesh, turned: turned(l) });
+    }
+    return out;
+  }
+
+  /** The meshes drawn by what they sweep out, for making their shapes ahead. */
+  turnedMeshes() {
+    return this.looks.filter((l) => !l.wire && turned(l)).map((l) => l.mesh);
   }
 
   /** Start the clutch display afresh (after a reset). */
@@ -448,7 +536,7 @@ export class Rig {
    * @returns {{node: THREE.Object3D, point: THREE.Vector3} | null}
    */
   pick(ray) {
-    const targets = this.meshes.filter((m, i) => m.visible && !(this.xray && this.looks[i].wire));
+    const targets = this.meshes.filter((m, i) => m.visible && this.looks[i].mat.visible && !(this.xray && this.looks[i].wire));
     const hit = ray.intersectObjects(targets, false)[0];
     if (!hit) return null;
     let n = /** @type {THREE.Object3D | null} */ (hit.object.userData.partNode);
