@@ -34,6 +34,11 @@ const INTRO_BRIEF = { hold: 0.5, out: 2.2 };
 
 /** The figure's middle, arm included (chariot local, big figure: js/scene/rig.js), and its height with the arm. */
 const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
+/**
+ * Where the figure is seen from (it faces south, world +z): 45° round from
+ * south to west, a little above.
+ */
+const FIGURE_DIR = new THREE.Vector3(-Math.sin(Math.PI / 4), 0.35, Math.cos(Math.PI / 4)).normalize();
 
 /**
  * The follow view looks along a fixed bearing in the world: from the north
@@ -92,7 +97,7 @@ const CLOSE = new Set(["gears", "works", "pair", "diff", "wheels", "figure", "he
 const GEARS_DIR = /** @type {const} */ ([-1, 1.35, 0.75]);
 
 /** Views that swing round with the chariot. */
-const TURNING = new Set(["gears", "works", "pair", "diff", "wheels", "figure"]);
+const TURNING = new Set(["gears", "works", "pair", "diff", "wheels"]);
 
 export class CameraRig {
   /**
@@ -409,8 +414,12 @@ export class CameraRig {
       }
       case "figure": {
         // the figure is drawn big here (js/scene/rig.js FIGURE_SCALE)
+        // The figure faces south whichever way the chariot goes, so this view is
+        // set in the world: from the south-west, the sunlit side, its face,
+        // beard and pointing arm three-quarters on (from the chariot's side it
+        // was seen from behind as often as not).
         const target = local(f.figureX, 13.4, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(0.4, 0.35, 1), this.fit(4.2)) };
+        return { target, pos: target.clone().addScaledVector(FIGURE_DIR, this.fit(4.2)) };
       }
       case "overview":
       default: {
@@ -549,6 +558,12 @@ export class CameraRig {
           cam.position.sub(c).applyAxisAngle(up, dh).add(c);
           ctl.target.sub(c).applyAxisAngle(up, dh).add(c);
         }
+      } else if (this.view === "figure") {
+        // Not turning (the figure doesn't), but following the figure's shaft
+        // round the chariot's centre as it turns.
+        const X = f.figureX, ex = X * (Math.cos(f.heading) - Math.cos(this.last.heading)), ez = -X * (Math.sin(f.heading) - Math.sin(this.last.heading));
+        cam.position.x += ex; cam.position.z += ez;
+        ctl.target.x += ex; ctl.target.z += ez;
       }
     }
     if (this.reframe > 0 && this.parts && !this.glide && this.view !== "top") this.#frameParts(dt, this.parts, this.partsInset, f);
