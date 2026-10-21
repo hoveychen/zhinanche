@@ -205,7 +205,10 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .home-kicker { margin: 2px 0 var(--sp-1); font-size: var(--fs-s); font-weight: 700; letter-spacing: 0.12em; color: var(--umber); }
 .home-title { margin: 0 0 var(--sp-3); font: 400 var(--fs-2xl)/1.1 var(--kai); color: var(--ink); letter-spacing: 0.12em; text-wrap: balance; }
 .home-hook { margin: 0 0 var(--sp-5); font-size: var(--fs-l); line-height: 1.65; color: var(--ink); text-wrap: pretty; }
-.home-cta { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+/* the two ways in, side by side and the same width in either language (in
+   English, a narrow panel breaks each button's words over two lines) */
+.home-cta { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.home-cta > .primary.big, .home-cta > .plain.big { padding: 6px 12px; text-align: center; text-wrap: balance; }
 .list-head { margin: var(--sp-6) 0 var(--sp-2); font-size: var(--fs-s); font-weight: 700; letter-spacing: 0.08em; color: var(--ink-2); }
 .asks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .ask {
