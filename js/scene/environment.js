@@ -8,6 +8,7 @@
 // courtyard (SetShadow), which never moves relative to the sun.
 
 import * as THREE from "three";
+import { GRADED } from "./grade.js";
 import { placeholder } from "./photo.js";
 
 /** @import { Textures } from "./materials.js" */
@@ -390,7 +391,9 @@ export class Environment {
   constructor(renderer, scene, opts) {
     this.renderer = renderer;
     this.scene = scene;
-    renderer.toneMapping = THREE.NeutralToneMapping;
+    // Neutral plus a photographic grade (grade.js; ?debug=nograde: Neutral alone)
+    const graded = GRADED && new URLSearchParams(location.search).get("debug") !== "nograde";
+    renderer.toneMapping = graded ? THREE.CustomToneMapping : THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;

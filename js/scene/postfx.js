@@ -12,6 +12,40 @@ import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { BokehPass } from "three/addons/postprocessing/BokehPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+
+/**
+ * What a lens and a sensor add: the corners fall off, a fine grain moves over
+ * the picture and the edges fringe faintly. Grain and fringe go in close-ups
+ * (depth of field on), where they would sit on the gears' outlines.
+ */
+const LensShader = {
+  uniforms: { tDiffuse: { value: null }, seed: { value: 0 }, grain: { value: 1 }, aspect: { value: 1 } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float seed;
+    uniform float grain;
+    uniform float aspect;
+    varying vec2 vUv;
+    void main() {
+      vec2 d = vUv - 0.5;
+      d.x *= aspect;
+      float r2 = dot(d, d);
+      vec4 c = texture2D(tDiffuse, vUv);
+      // lateral fringe, only towards the edges
+      vec2 off = (vUv - 0.5) * r2 * 0.006 * grain;
+      c.r = texture2D(tDiffuse, vUv + off).r;
+      c.b = texture2D(tDiffuse, vUv - off).b;
+      // natural fall-off of the lens
+      c.rgb *= 1.0 - 0.32 * smoothstep(0.08, 0.75, r2);
+      float n = fract(sin(dot(vUv * 1000.0 + seed, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+      c.rgb *= 1.0 + n * 0.045 * grain;
+      gl_FragColor = c;
+    }`,
+};
 
 /** Camera-to-target distance (chi) below which depth of field fades in. */
 const DOF_NEAR = 24;
@@ -88,11 +122,16 @@ export class PostFX {
     dof.enabled = false;
     composer.addPass(dof);
 
+    const lens = new ShaderPass(LensShader);
+    if (debug === "nolens") lens.enabled = false;
+    composer.addPass(lens);
+
     composer.addPass(new OutputPass());
     this.composer = composer;
     this.ao = ao;
     this.bloom = bloom;
     this.dof = dof;
+    this.lens = lens;
     this.dofOn = true;
     this.setSize(size.x, size.y);
   }
@@ -101,6 +140,7 @@ export class PostFX {
   setSize(w, h) {
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(w, h);
+    this.lens.uniforms.aspect.value = w / Math.max(1, h);
   }
 
   render() {
@@ -113,6 +153,9 @@ export class PostFX {
       u.focus.value = dist;
       u.aperture.value = 0.0022 * (1 - dist / DOF_NEAR) + 0.0004;
     }
+    const lu = this.lens.uniforms;
+    lu.grain.value = close ? 0 : 1;
+    lu.seed.value = (lu.seed.value + 0.6180339) % 1;
     this.composer.render();
   }
 
@@ -129,5 +172,6 @@ export class PostFX {
     this.ao.dispose();
     this.bloom.dispose();
     this.dof.dispose();
+    this.lens.dispose();
   }
 }
