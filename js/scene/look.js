@@ -115,7 +115,7 @@ export class Look {
    * download and parse a turn, and the programs are all compiled in one go.
    */
   async #buildYard() {
-    const { scene, renderer, camera } = this.host;
+    const { scene, renderer } = this.host;
     let t0 = performance.now();
     const slice = () => {
       if (performance.now() - t0 < 12) return Promise.resolve();
@@ -133,7 +133,7 @@ export class Look {
       if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) this.setShadow.patch(o.material);
     });
     yard.group.position.set(this.rider.x, 0, this.rider.y);
-    await Promise.all([yard.group, this.ground, ...(gate ? [gate] : [])].map((o) => renderer.compileAsync(o, camera, scene).catch(() => {})));
+    await Promise.all([yard.group, this.ground, ...(gate ? [gate] : [])].map((o) => this.compile(o)));
     this.yard = yard;
     yard.group.position.set(this.rider.x, 0, this.rider.y);
     scene.add(yard.group);
@@ -194,15 +194,31 @@ export class Look {
    */
   async warm() {
     const { renderer, scene, camera } = this.host;
-    await renderer.compileAsync(scene, camera).catch(() => {});
+    await this.compile(scene);
     if (this.postfx) this.postfx.render();
     else renderer.render(scene, camera);
   }
 
   /** Compile a model that is not on show yet (the other chariot). @param {THREE.Object3D} o */
   precompile(o) {
+    return this.compile(o);
+  }
+
+  /**
+   * Compile the programs `o` is drawn with, as it is really drawn: with
+   * post-processing that is into the passes' buffer, not the screen (tone
+   * mapping and colour space are part of a program, so compiling for the
+   * screen made programs the frames never used). The programs are made at
+   * once; the promise waits for them to finish.
+   * @param {THREE.Object3D} o
+   */
+  compile(o) {
     const { renderer, scene, camera } = this.host;
-    return renderer.compileAsync(o, camera, scene).catch(() => {});
+    const was = renderer.getRenderTarget();
+    if (this.postfx) renderer.setRenderTarget(this.postfx.composer.readBuffer);
+    const done = renderer.compileAsync(o, camera, scene).catch(() => {});
+    renderer.setRenderTarget(was);
+    return done;
   }
 
   /** @param {number} w CSS px @param {number} h */

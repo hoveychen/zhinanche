@@ -15,7 +15,7 @@ import { CameraRig } from "./cameraRig.js";
 import { partCaption } from "./parts.js";
 import { bind } from "../i18n.js";
 import { Look } from "./look.js";
-import { updateOutlines } from "./gearviz.js";
+import { OUTLINES, updateOutlines } from "./gearviz.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { MechanismId } from "../sim/params.js" */
@@ -46,6 +46,11 @@ export class World {
     host.appendChild(r.domElement);
     bind(r.domElement, (s) => s.stage.sceneLabel, "aria-label");
     this.renderer = r;
+    // Asking the driver whether a program linked waits for it to finish: the
+    // first frame drawn with a new program stalls on it (~150 ms for x-ray's
+    // wireframe on a laptop, compiled in the background or not). The
+    // self-test still checks.
+    r.debug.checkShaderErrors = /[?&]selftest\b/.test(location.search);
 
     const scene = new THREE.Scene();
     this.scene = scene;
@@ -144,13 +149,79 @@ export class World {
   prefetchOther() {
     /** @type {MechanismId} */
     const other = this.mechanism === "song" ? "differential" : "song";
+    // x-ray warmed up first (the chariot on show), then the other chariot:
     // a failure shows when it is picked; compiled now, so showing it doesn't stall
-    const go = () => this.ensure(other).then((rig) => this.look.precompile(rig.root), () => {});
+    const go = () => this.warmXray()
+      .then(() => this.ensure(other))
+      .then((rig) => Promise.all([this.look.precompile(rig.root), this.#xrayPrograms(rig)]), () => {});
     // after the first frames
     setTimeout(() => {
       if (typeof requestIdleCallback === "function") requestIdleCallback(go, { timeout: 3000 });
       else go();
     }, 1500);
+  }
+
+  /**
+   * Compile what x-ray shows on a chariot without showing it: the outlines,
+   * the body's wireframe, its see-through materials and the spin arcs are
+   * hidden until then, so the first compile skipped them. The look is put
+   * back before anything is drawn (the programs are made when compiling
+   * starts; the wait is for them to finish).
+   * @param {Rig} rig
+   */
+  #xrayPrograms(rig) {
+    const st = this.#lookState;
+    this.#xrayLook(rig, true);
+    const done = this.look.compile(rig.root);
+    this.#xrayLook(rig, false);
+    rig.setLook(st.xray, st.highlight);
+    return done;
+  }
+
+  /** @param {Rig} rig @param {boolean} on */
+  #xrayLook(rig, on) {
+    // one part lit, so the lit and the faded outlines are made too
+    if (on) rig.setLook(true, rig.mechanism === "song" ? ["smallL"] : ["sideA"]);
+    for (const sp of rig.spinners) if (sp.arc) sp.arc.group.visible = on;
+  }
+
+  /**
+   * Once the page is idle: make the first press on x-ray as smooth as the
+   * rest (it stalled ~125 ms compiling and uploading). Its programs are
+   * compiled in the background, then one frame is drawn in x-ray and drawn
+   * over at once with the real look, in the same task, so only the real one
+   * is ever shown; that uploads the outlines and wireframes.
+   */
+  async warmXray() {
+    const rig = this.rig;
+    if (!rig || this.#lookState.xray || this.explode > 0) return;
+    await this.#xrayPrograms(rig);
+    // what x-ray adds, a kind at a time (the first draw of each sets up its
+    // pipeline on the GPU, a few ms each): one kind per frame, not one long stall
+    /** @type {((o: THREE.Object3D) => boolean)[]} */
+    const kinds = [
+      () => false, // the gears and wheels in x-ray colours
+      (o) => o instanceof THREE.LineSegments,
+      (o) => o instanceof THREE.Mesh && o.material === OUTLINES.ink,
+      (o) => o instanceof THREE.Mesh && (o.material === OUTLINES.lit || o.material === OUTLINES.faded),
+      (o) => o.name === "spinArc",
+    ];
+    const extras = [
+      ...rig.hulls.map((h) => h.hull),
+      ...rig.looks.flatMap((l) => (l.lines ? [l.lines] : [])),
+      ...rig.spinners.flatMap((sp) => (sp.arc ? [sp.arc.group] : [])),
+    ];
+    for (const kind of kinds) {
+      await new Promise((ok) => requestAnimationFrame(ok));
+      if (this.rig !== rig || this.#lookState.xray || this.explode > 0) return;
+      const st = this.#lookState;
+      this.#xrayLook(rig, true);
+      for (const o of extras) if (!kind(o)) o.visible = false;
+      this.render();
+      this.#xrayLook(rig, false);
+      rig.setLook(st.xray, st.highlight);
+      this.render();
+    }
   }
 
   /** Load a chariot model (once). @param {MechanismId} m @returns {Promise<Rig>} */

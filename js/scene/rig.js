@@ -299,14 +299,17 @@ export class Rig {
       if (!l.wire) continue;
       const gone = l.group === "shell" && l.place ? THREE.MathUtils.smoothstep(l.place.k, 0.25, 0.8) : 0;
       const m = l.mat;
-      const transparent = see || gone > 0;
+      const transparent = gone > 0;
       if (m.transparent !== transparent) {
         m.transparent = transparent;
         m.needsUpdate = true;
       }
-      m.opacity = see ? 0 : 1 - gone;
-      m.depthWrite = !see && gone < 0.5;
-      m.colorWrite = !see;
+      m.opacity = 1 - gone;
+      m.depthWrite = gone < 0.5;
+      // x-ray: the body itself is not drawn at all (its wireframe, a child
+      // of it, still is); a draw that writes nothing would only cost the GPU
+      // a pipeline of its own the first time (~100 ms)
+      m.visible = !see;
       l.mesh.visible = gone < 0.999;
       if (l.lines) {
         l.lines.visible = see;
