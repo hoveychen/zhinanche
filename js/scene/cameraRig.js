@@ -26,6 +26,12 @@ import * as THREE from "three";
 
 const GLIDE = 0.8;
 
+/** The home page's opening: how long the close view of the figure holds, and how long the pull back to the chase view takes (s). */
+const INTRO = { hold: 1.8, out: 3.2 };
+
+/** The figure's middle, arm included (chariot local, big figure: js/scene/rig.js), and its height with the arm. */
+const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
+
 /**
  * The follow view looks along a fixed bearing in the world: from the north
  * and a little west, south past the chariot at the gate (js/scene/landmark.js).
@@ -45,7 +51,7 @@ const ROOM = { x: 56, north: -100, south: 84 };
 const BULK = { y: 5, r: 9 };
 
 /** Views close in on the works on purpose: they may look from inside the body. */
-const CLOSE = new Set(["gears", "works", "wheels", "figure"]);
+const CLOSE = new Set(["gears", "works", "wheels", "figure", "hero", "intro"]);
 
 /** Views that swing round with the chariot. */
 const TURNING = new Set(["gears", "works", "wheels", "figure"]);
@@ -60,8 +66,10 @@ export class CameraRig {
     this.controls = controls;
     /** @type {ViewId} */
     this.view = "overview";
-    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number} | null} */
+    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number, dur?: number} | null} */
     this.glide = null;
+    /** the home page's opening (view "intro"): seconds into it, and whether it has pulled back yet */
+    this.intro = { t: 0, out: false };
     /** fixed framing for the top view (route playback), else null */
     /** @type {{cx: number, cz: number, h: number} | null} */
     this.box = null;
@@ -86,6 +94,8 @@ export class CameraRig {
     this.atPreset = false;
     controls.addEventListener("start", () => {
       this.atPreset = false;
+      // a drag in the opening: the child has taken the view, no pull back later
+      this.intro.out = true;
     });
   }
 
@@ -157,7 +167,25 @@ export class CameraRig {
       const c = Math.cos(f.heading), s = Math.sin(f.heading);
       return new THREE.Vector3(lx * c + lz * s, ly, -lx * s + lz * c).normalize();
     };
+    if (view === "intro") view = this.intro.out ? "follow" : "hero";
     switch (view) {
+      case "hero": {
+        // Close on the figure from behind it and to one side, the arm side-on
+        // enough to read, the South Gate it points at in the same picture.
+        // Figure and arm take about a third of the height; the wider the view,
+        // the further round to the side it can go and still have the gate in.
+        const v = THREE.MathUtils.degToRad(this.camera.fov);
+        const hf = 2 * Math.atan(Math.tan(v / 2) * this.camera.aspect);
+        const side = THREE.MathUtils.clamp(hf * 0.72, THREE.MathUtils.degToRad(14), THREE.MathUtils.degToRad(36));
+        const fig = new THREE.Vector3(f.x + FIGURE_MID.x, FIGURE_MID.y, f.z + FIGURE_MID.z);
+        const d = (FIGURE_MID.h * 2.05) / Math.tan(v / 2);
+        // from the north and a little west (the sunlit side, as the chase view)
+        const pos = fig.clone().addScaledVector(new THREE.Vector3(-Math.sin(side), 0.2, -Math.cos(side)).normalize(), d);
+        // aim between the figure and the gate (js/scene/landmark.js), so both are in
+        const gate = new THREE.Vector3(f.x, 12.5, f.z + 105);
+        const aim = fig.clone().sub(pos).normalize().add(gate.sub(pos).normalize()).normalize();
+        return { pos, target: pos.clone().addScaledVector(aim, d) };
+      }
       case "top": {
         if (this.box) {
           return { target: new THREE.Vector3(this.box.cx, 0, this.box.cz), pos: new THREE.Vector3(this.box.cx, this.box.h, this.box.cz + 0.01) };
@@ -243,6 +271,9 @@ export class CameraRig {
    * @param {boolean} [instant]
    */
   setView(view, f, instant = false) {
+    // the opening plays once: a reset while it runs (the home page's demo
+    // drive starting over) keeps going where it got to
+    if (view === "intro" && this.view !== "intro") this.intro = { t: 0, out: false };
     this.view = view;
     this.atPreset = true;
     // zooming in stops short of the chariot, except in the views that look inside it
@@ -298,6 +329,14 @@ export class CameraRig {
    */
   update(dt, f) {
     const cam = this.camera, ctl = this.controls;
+    if (this.view === "intro" && !this.intro.out) {
+      this.intro.t += dt;
+      if (this.intro.t >= INTRO.hold && !this.glide) {
+        // slowly back out to the whole scene
+        this.intro.out = true;
+        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: INTRO.out };
+      }
+    }
     // put back the distance taken off last frame, so the camera eases out
     // again once the way is clear (a glide or a jump places it afresh)
     if (this.wantDist && !this.glide) {
@@ -307,7 +346,7 @@ export class CameraRig {
     this.wantDist = 0;
     if (this.glide) {
       const g = this.glide;
-      g.t = Math.min(1, g.t + dt / GLIDE);
+      g.t = Math.min(1, g.t + dt / (g.dur ?? GLIDE));
       const k = g.t * g.t * (3 - 2 * g.t);
       const d = this.desired(this.view, f);
       cam.position.lerpVectors(g.fromPos, d.pos, k);

@@ -82,8 +82,8 @@ export class Course {
     this.mode = "home";
     this.#renderHome();
     this.app.idleLoop = true;
-    this.app.direct({ reset: true, view: "follow", play: "sCurve" }, {
-      jump: { ...this.app.state, mechanism: "differential", view: "follow", xray: false, explode: 0, highlight: [], trails: true, odometer: false, assist: true, faults: {}, slip: {}, speed: 1, demo: null, controls: [] },
+    this.app.direct({ reset: true, view: "intro", play: "sCurve" }, {
+      jump: { ...this.app.state, mechanism: "differential", view: "intro", xray: false, explode: 0, highlight: [], trails: true, odometer: false, assist: true, faults: {}, slip: {}, speed: 1, demo: null, controls: [] },
     });
     this.app.idleLoop = true;
     this.cb.onMode("home");

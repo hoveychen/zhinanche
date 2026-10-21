@@ -7,8 +7,11 @@
 /**
  * Camera presets the scene provides. "works": the gears with the figure on
  * its shaft above them, turning with the chariot; "above": close over the
- * chariot from the north side, following it (north stays up).
- * @typedef {"overview" | "top" | "follow" | "gears" | "works" | "wheels" | "figure" | "above"} ViewId
+ * chariot from the north side, following it (north stays up); "hero": close
+ * on the figure from behind and to one side, the gate it points at beyond;
+ * "intro": the hero view for a moment, then slowly out to "follow" (the home
+ * page's opening).
+ * @typedef {"overview" | "top" | "follow" | "gears" | "works" | "wheels" | "figure" | "above" | "hero" | "intro"} ViewId
  */
 
 /**
