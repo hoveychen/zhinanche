@@ -66,6 +66,8 @@
  * @property {number} answer index into options
  * @property {string} right feedback when right
  * @property {string} wrong feedback when wrong (a hint, never a scolding)
+ * @property {boolean} [guess] guess first, then watch: the step's auto-play (and the walking
+ *   demo) waits until an option is picked, so the answer is not on the screen while asking
  */
 
 /**

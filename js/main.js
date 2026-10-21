@@ -12,6 +12,7 @@ import { S, bind, onLang, applyDocument, langSwitch, lessons } from "./i18n.js";
 import { decodeShare, setupOf } from "./app/share.js";
 import { placeCallout as placeCalloutBox } from "./app/callout.js";
 import { ShareButton } from "./app/sharelink.js";
+import { SceneLabels } from "./app/labels.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -32,15 +33,42 @@ world.onLoading = (on, err) => {
     loading.classList.add("error");
   }
 };
+/** the view before "draw a road" went up above the ground, to go back to after */
+/** @type {import("./app/directive.js").SceneState["view"] | null} */
+let viewBeforeDraw = null;
+/** set while leaving the drawing for another view, which then is not undone */
+let keepView = false;
 const input = new DriveInput({
   onDraw: (on) => {
     world.controls.enabled = !on;
     stage.classList.toggle("drawing", on);
     syncHint();
-    if (on && app.state.view !== "top") app.direct({ view: "top" });
+    if (on) {
+      viewBeforeDraw = app.state.view;
+      if (app.state.view !== "top") app.direct({ view: "top" });
+      return;
+    }
+    const back = viewBeforeDraw;
+    viewBeforeDraw = null;
+    // a lesson step taking the draw button away sets its own view
+    if (!keepView && back && back !== "top" && app.state.view === "top" && app.state.controls.includes("draw")) app.direct({ view: back });
   },
-  onDrive: () => app.takeOver(),
+  onDrive: () => {
+    stopDrawing(false);
+    app.takeOver();
+  },
 });
+/**
+ * Leave "draw a road": the chariot set off on the road, or the child moved on
+ * to something else (driving by hand, X-ray, the gears).
+ * @param {boolean} restore go back to the view from before the drawing
+ */
+function stopDrawing(restore) {
+  if (!input.drawOn) return;
+  keepView = !restore;
+  input.setDraw(false);
+  keepView = false;
+}
 const app = new App(world, input);
 app.onPause((on) => {
   pauseBtn.classList.toggle("on", on);
@@ -59,7 +87,16 @@ window.addEventListener("keydown", (e) => {
   e.preventDefault();
   app.setPaused(!app.paused);
 });
-const tools = new Tools({ direct: (d) => app.direct(d), resetChariot: () => app.resetChariot() });
+const tools = new Tools({
+  direct: (d) => {
+    stopDrawing(d.view === undefined);
+    app.direct(d);
+  },
+  resetChariot: () => {
+    stopDrawing(true);
+    app.resetChariot();
+  },
+});
 const dial = new Dial();
 const odo = new Odometer();
 const hint = bind(h("p", { class: "stage-hint", hidden: true }), (s) => s.stage.drawHint);
@@ -69,6 +106,7 @@ let xrayBeforeGears = false;
 const gearsBtn = h("button", {
   type: "button", class: "draw-btn gears-btn", "data-control": "gearsView", "aria-pressed": "false",
   onclick: () => {
+    stopDrawing(false);
     const st = app.state;
     if (st.view === "gears") app.direct({ view: "follow", xray: xrayBeforeGears });
     else {
@@ -209,7 +247,11 @@ const endDraw = () => {
   let len = 0;
   for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
   if (len < 4) world.route.clear();
-  else app.followRoute(pts);
+  else {
+    app.followRoute(pts);
+    // the road is down: back to following the chariot along it
+    stopDrawing(true);
+  }
   syncHint();
 };
 canvas.addEventListener("pointerup", (e) => {
@@ -250,17 +292,34 @@ function placeCallout() {
   if (performance.now() > pinned.until) return hideCallout();
   const p = world.project(pinned.node.localToWorld(pinned.local.clone()));
   if (p.behind) return hideCallout();
-  const o = overlay.getBoundingClientRect();
-  const controls = [];
-  // the dial's words can run wider than the dial on a phone
-  for (const el of [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote]) {
-    const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0) controls.push({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
-  }
-  const at = placeCalloutBox(p, { w: callout.offsetWidth, h: callout.offsetHeight }, { w: overlay.clientWidth, h: overlay.clientHeight }, controls);
+  const at = placeCalloutBox(p, { w: callout.offsetWidth, h: callout.offsetHeight }, { w: overlay.clientWidth, h: overlay.clientHeight }, hudBoxes(true));
   callout.style.left = `${at.x}px`;
   callout.style.top = `${at.y}px`;
 }
+
+/**
+ * What sits on the 3D view and must stay uncovered, px within the overlay.
+ * @param {boolean} [labels] the scene labels too (for the part callout)
+ */
+function hudBoxes(labels = false) {
+  const o = overlay.getBoundingClientRect();
+  const boxes = [];
+  // the dial's words can run wider than the dial on a phone
+  /** @type {HTMLElement[]} */
+  const els = [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote];
+  if (labels) els.push(.../** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(".scene-label")));
+  else els.push(callout);
+  for (const el of els) {
+    if (el.hidden) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) boxes.push({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
+  }
+  return boxes;
+}
+
+// ---------- words over the scene (the compass, the inside and outside circles) ----------
+
+const labels = new SceneLabels(overlay, [...world.holdHands.labels, ...world.compass.labels], (p) => world.project(p), () => hudBoxes());
 
 // ---------- frame loop ----------
 
@@ -275,6 +334,7 @@ function frame(/** @type {number} */ now) {
     world.animate(0);
     world.cam.update(dt, world.camFocus());
   } else world.animate(dt);
+  labels.update();
   hudClock += dt;
   if (hudClock > 1 / 30) {
     hudClock = 0;
@@ -310,18 +370,29 @@ try {
   const shared = decodeShare(location.hash);
   // load the shared chariot first, not the default one
   if (shared) world.mechanism = shared.mechanism;
-  await world.load();
-  loading.hidden = true;
   // ?free opens free driving; ?lesson=N&step=K (1-based) opens a lesson step.
   const q = new URLSearchParams(location.search);
   const LESSONS = lessons();
   const li = Number(q.get("lesson")) - 1;
+  const k = Number.isInteger(li) && li >= 0 && li < LESSONS.length ? Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1))) : 0;
+  // the panel's words need no model: put them up while it loads, in a gap
+  // while the model is fetched and compiled, so they do not hold it up
+  const loaded = world.load();
+  let up = false;
+  const early = () => {
+    if (up) return;
+    up = true;
+    course.preview(shared || q.has("free") ? { mode: "free" } : k ? { mode: "lesson", lesson: li, step: k - 1 } : { mode: "home" });
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(early);
+  else setTimeout(early, 0);
+  await loaded;
+  up = true;
+  loading.hidden = true;
+  course.panel.inert = false;
   if (shared) openShared(shared);
   else if (q.has("free")) course.free();
-  else if (Number.isInteger(li) && li >= 0 && li < LESSONS.length) {
-    const k = Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1)));
-    course.open(li, k - 1);
-  }
+  else if (k) course.open(li, k - 1);
   else course.home();
   requestAnimationFrame(frame);
   world.prefetchOther();

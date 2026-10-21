@@ -95,6 +95,7 @@ export const STR_EN = {
     askGo: (i) => `Lesson ${i + 1} →`,
     stepsLabel: (k, n) => `Step ${k} of ${n}`,
     replay: "Watch again",
+    guessNote: "Make a guess. Then you'll see it happen.",
     walk: "Walk them round",
     navLabel: "Steps",
     back: "Back",
@@ -105,7 +106,7 @@ export const STR_EN = {
 
   drive: {
     up: "Go",
-    down: "Back",
+    down: "Reverse",
     left: "Left",
     right: "Right",
     padLabel: "Drive: hold an arrow button, or use the arrow keys",
@@ -164,7 +165,7 @@ export const STR_EN = {
     normal: "Normal",
     fast: "Fast",
     resetBlock: "Start over",
-    reset: "Back to the start",
+    reset: "Reset the chariot",
   },
 
   scene: {
