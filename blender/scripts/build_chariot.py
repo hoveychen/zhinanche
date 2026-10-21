@@ -20,6 +20,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
+from mathutils import Vector  # noqa: E402
 from lib import layout as lay  # noqa: E402
 from lib.mesh import MB, V, empty, set_lift, set_rotate, set_teach  # noqa: E402
 
@@ -65,9 +66,12 @@ def tooth_block(mb, g, k, mat):
     p0, p1 = g.teeth()[k]
     ang = g.phase + k * g.pitch
     if g.kind == "radial":
-        # straight through the rim, then tapered beyond it
+        # straight through the rim, then tapered beyond it; the tenon in the rim
+        # a little smaller than the tooth, so its faces lie inside the rim (the
+        # same thickness as the rim, they shared its faces and flickered: the
+        # Song small flat wheels' tops showed as rays, the big one's a band)
         pr = g.point(ang, g.rim_outer)
-        mb.bar(p0, (t.root_w, t.thick), pr, (t.root_w, t.thick), mat, up=g.axis)
+        mb.bar(p0, (t.root_w * 0.8, t.thick * 0.8), pr, (t.root_w * 0.8, t.thick * 0.8), mat, up=g.axis)
         if not (t.roof or t.chamfer):
             mb.bar(pr, (t.root_w, t.thick), p1, (t.tip_w, t.thick * 0.85), mat, up=g.axis)
             return
@@ -173,6 +177,52 @@ def cord(mb, pts, r=0.014, mat="rope"):
         mb.cyl(a, b, r, mat, n=6)
     for p in pts[1:-1]:
         mb.ellipsoid(p, (r * 1.15, r * 1.15, r * 1.15), mat, n=6, m=4)
+
+
+def twisted_cord(mb, pts, r=0.022, mat="rope", pitch=0.12, step=0.025):
+    """A cord of two strands laid round each other (a bamboo cord is twisted from
+    split strips) along the path pts: each strand a tube swept along a helix
+    round the path, `pitch` chi a turn. Close up a single straight round bar
+    read as a rod."""
+    pts = [V(p) for p in pts]
+    path = [pts[0]]
+    for a, b in zip(pts, pts[1:]):
+        n = max(1, math.ceil((b - a).length / step))
+        path += [a + (b - a) * (i / n) for i in range(1, n + 1)]
+    tans = []
+    for i in range(len(path)):
+        a, b = path[max(0, i - 1)], path[min(len(path) - 1, i + 1)]
+        tans.append((b - a).normalized())
+    # frames carried along the path without twisting of their own
+    n0 = tans[0].cross(Vector((0, 0, 1)) if abs(tans[0].z) < 0.9 else Vector((1, 0, 0))).normalized()
+    frames, s_along = [], [0.0]
+    for i, t in enumerate(tans):
+        if i:
+            n0 = (n0 - t * n0.dot(t)).normalized()
+            s_along.append(s_along[-1] + (path[i] - path[i - 1]).length)
+        frames.append((n0.copy(), t.cross(n0).normalized()))
+    rs, off, k = r * 0.55, r * 0.48, 6
+    for strand in (0, math.pi):
+        rings = []
+        for p, t, (u, w), s in zip(path, tans, frames, s_along):
+            th = strand + 2 * math.pi * s / pitch
+            c = p + (u * math.cos(th) + w * math.sin(th)) * off
+            rings.append([c + (u * math.cos(2 * math.pi * j / k) + w * math.sin(2 * math.pi * j / k)) * rs for j in range(k)])
+        mb.loft(rings, mat)
+
+
+def pulley(mb, c, axis, R, mat="wood_dark"):
+    """A small pulley block: a grooved wooden sheave (rim R) on an iron pin
+    between two iron cheek straps, which meet above it in a hook."""
+    a = V(axis).normalized()
+    up = Vector((0, 0, 1))
+    mb.disc(c, a, R * 0.72, 0.034, mat, n=14)            # the groove
+    for sgn in (1, -1):
+        mb.disc(V(c) + a * (sgn * 0.024), a, R, 0.014, mat, n=14)
+        lo, hi = V(c) + a * (sgn * 0.04), V(c) + a * (sgn * 0.016) + up * (R + 0.05)
+        mb.beam(lo, hi, 0.03, 0.01, "iron", up=a)
+    mb.cyl(V(c) - a * 0.05, V(c) + a * 0.05, 0.012, "iron", n=6)
+    mb.cyl(V(c) + up * (R + 0.04), V(c) + up * (R + 0.08), 0.014, "iron", n=6)
 
 
 # --------------------------------------------------------------------------- wheels and axle
@@ -761,10 +811,17 @@ def build_song(L, root):
         lift.cyl(lay.add(sm.center, (0, 0, -0.2)), lay.add(sm.center, (0, 0, 0.8)), 0.05, "iron", n=6)
         top = lay.add(sm.center, (0, 0, 0.8))
         drop = (4.55, sy * 1.35, top[2])  # clear of the big flat wheel (2.72 from its axis)
-        # a thin bamboo cord (竹索): tied round the axle's head, sagging a little over the
-        # big flat wheel, then hanging straight under its iron weight
+        # a bamboo cord (竹索) of two strands: tied round the axle's head, sagging
+        # a little over the big flat wheel, over a small pulley, then hanging
+        # straight under its iron weight
         lift.ellipsoid(lay.add(top, (0, 0, -0.03)), (0.07, 0.07, 0.05), "rope", n=8, m=4)
-        cord(lift, [top, *sag(top, drop, 0.09, 8)[1:], (4.55, sy * 1.35, 4.15)])
+        d = Vector((drop[0] - top[0], drop[1] - top[1], 0)).normalized()
+        Rp = 0.055                  # the sheave's rim; the cord's middle runs round it at Rc
+        Rc = Rp * 0.72 + 0.022
+        pc = Vector(drop) - d * Rc - Vector((0, 0, Rc))
+        over = [tuple(pc + d * (Rc * math.cos(a)) + Vector((0, 0, Rc * math.sin(a)))) for a in (math.pi / 2 * (1 - i / 6) for i in range(7))]
+        twisted_cord(lift, [top, *sag(top, over[0], 0.09, 10)[1:], *over[1:], (drop[0], drop[1], 4.15)])
+        pulley(lift, tuple(pc), (-d.y, d.x, 0), Rp)
         lift.box((4.5, sy * 1.35 - 0.055, 3.98), (4.6, sy * 1.35 + 0.055, 4.15), "iron")
         lo = lift.build(f"song.smallLift.{side}", sm.center, root)
         set_lift(lo, f"clutch{side}", L.lift)
