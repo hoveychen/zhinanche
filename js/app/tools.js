@@ -46,7 +46,12 @@ function segmented(label, choices, pick) {
   // the buttons' words never wrap (a word broken over two lines in one
   // button and not the next reads as three different kinds of button)
   if (typeof ResizeObserver === "function") {
-    const ro = new ResizeObserver(() => fitSeg(el, buttons));
+    // laid out on the next frame, not in the observer's callback: the
+    // buttons it watches change size when laid out ("ResizeObserver loop")
+    let queued = 0;
+    const ro = new ResizeObserver(() => {
+      if (!queued) queued = requestAnimationFrame(() => { queued = 0; fitSeg(el, buttons); });
+    });
     ro.observe(el);
     for (const b of buttons) ro.observe(b);
   }
