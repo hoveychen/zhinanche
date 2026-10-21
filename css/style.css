@@ -841,8 +841,16 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .pad { gap: 2px; }
   .pad-btn { background: color-mix(in srgb, var(--paper-2) 80%, transparent); }
   .pad-btn .icon { width: 22px; height: 22px; }
-  /* beside the keys, as on a tablet, words and all */
-  .bar-btns .bar-btn { padding: 0 12px 0 10px; gap: 6px; font-size: var(--fs-xs); }
+  /* the two buttons over the keys, icon over word, as on a phone held upright:
+     the bar stays as narrow as the keys, clear of the sheet's handle at the bottom middle */
+  .stage-bar { flex-direction: column; align-items: flex-end; }
+  .bar-btns { flex-direction: row; }
+  .stage-bar > .bar-btns + .pad { padding: 4px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .stage-bar > .bar-btns { align-self: stretch; width: 0; min-width: 100%; }
+  .bar-btns .bar-btn {
+    flex: 1 1 0; min-width: 0; min-height: var(--pad-key); flex-direction: column; justify-content: center; gap: 2px; padding: 3px 4px;
+    font-size: var(--fs-xs); line-height: 1.15; white-space: normal; text-align: center;
+  }
   .bar-btns .bar-btn .icon { width: 20px; height: 20px; }
 
   /* the sheet's handle is a pill at the bottom middle, between the HUD panels;
