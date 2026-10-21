@@ -495,6 +495,23 @@ export class CameraRig {
     return this.view === "gears" || !CLOSE.has(this.view);
   }
 
+  /**
+   * End a glide where it was going, at once: a finger put down to draw while
+   * the view is still swinging round to the top view would draw on ground
+   * that moves under it (the stroke comes out bent and kinked).
+   * @param {Focus} f
+   */
+  land(f) {
+    if (!this.glide) return;
+    const d = this.desired(this.view, f);
+    this.camera.position.copy(d.pos);
+    this.controls.target.copy(d.target);
+    this.glide = null;
+    this.controls.update();
+    // picked from at once (world.groundAt), before the next frame draws
+    this.camera.updateMatrixWorld();
+  }
+
   /** Back to following the chariot in the top view. */
   unframe() {
     this.box = null;
