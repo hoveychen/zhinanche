@@ -69,7 +69,7 @@ def tooth_block(mb, g, k, mat):
         mb.bar(p0, (t.root_w, t.thick), pr, (t.root_w, t.thick), mat, up=g.axis)
         mb.bar(pr, (t.root_w, t.thick), p1, (t.tip_w, t.thick * 0.85), mat, up=g.axis)
     else:
-        if abs(abs(g.h0) - t.add) < 1e-9:   # the tip is at h0: taper the other way
+        if abs(g.h0 + t.add) < 1e-9:   # the tip is at h0 (teeth pointing to -axis): taper the other way
             p0, p1 = p1, p0
         mb.bar(p0, (t.root_w, t.thick), p1, (t.tip_w, t.thick * 0.8), mat, up=g.dir(ang))
 

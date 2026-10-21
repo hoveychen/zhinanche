@@ -480,7 +480,7 @@ const STAGE_SPAN = 0.45;
  * @type {[RegExp, number][]}
  */
 const STAGES = [
-  [/^body\.roof/, 0], [/^body\.tier/, 0.04], [/^body\.deck/, 0.08], [/^body\./, 0.12],
+  [/^body\.top/, 0], [/^body\.tier/, 0.04], [/^body\.deck/, 0.08], [/^body\./, 0.12],
   [/^wheel\./, 0.28], [/crown\.L|foot\./, 0.36], [/crown\.R|sideB/, 0.42], [/bigFlat/, 0.4],
   [/^figure$/, 0.44], [/carrier|smallLift|roller/, 0.48], [/figure\.shaft/, 0.5],
 ];

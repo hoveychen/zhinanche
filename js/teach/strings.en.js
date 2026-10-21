@@ -187,8 +187,9 @@ export const STR_EN = {
       // both chariots
       "差动式：现代人猜的": "Differential chariot: a modern guess",
       "宋史式：燕肃的车": "Song dynasty chariot: Yan Su's design",
-      "下层平台和栏杆": "Lower deck and railing",
-      "上层平台": "Upper deck",
+      "齿轮室的顶板": "Gear room's ceiling",
+      "重台（上层箱体和镂拱）": "Upper tier (the second box and its bracket band)",
+      "顶上的平台和勾阑（仙人站在这里）": "Top platform and railing (the immortal stands here)",
       "前车厢板": "Front panel",
       "后车厢板": "Back panel",
       "左侧车厢板": "Left side panel",

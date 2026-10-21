@@ -111,8 +111,139 @@ def in_phase(mech, side, g):
     return abs(a) < TOL and abs(b) < TOL
 
 
+def radial_axial(p, c, axis):
+    d = p - c
+    h = d.dot(axis)
+    return (d - axis * h).length, h
+
+
+def tooth_points(objs, name):
+    """World-space vertices of a gear's teeth (faces with the tooth materials), marker included."""
+    pts = []
+    for n in (name, name + ".marker"):
+        o = objs.get(n)
+        if o is None or o.type != "MESH":
+            continue
+        me = o.data
+        mw = o.matrix_world
+        tooth_slots = {i for i, m in enumerate(me.materials) if m and m.name.split(".")[0] in ("peg", "marker")}
+        seen = set()
+        for p in me.polygons:
+            if p.material_index in tooth_slots:
+                seen.update(p.vertices)
+        pts += [mw @ me.vertices[i].co for i in seen]
+    return pts
+
+
+def meshing_report(mech, objs):
+    """Do the teeth really engage? At rest (every pair in phase) each meshing pair must:
+    touch at the pitch circles (the contact point is one pitch radius from both axes, so
+    for parallel axes the centre distance is r1 + r2); have each gear's teeth reach into
+    the other's gaps by at least half a tooth's height above the rim; keep its tooth tips
+    clear of the other's rim (top clearance); and leave a gap between tooth flanks. The
+    sweep then proves the gaps hold over every in-phase pose."""
+    L = lay.layout(mech)
+    gears = L.gears_by_name
+    ok = True
+    for (a, b), contact in L.contacts.items():
+        ga, gb = gears[a], gears[b]
+        node_a = objs.get(a) or objs.get(a.rsplit(".ring", 1)[0])   # the differential's rings are part of their side gear
+        node_b = objs.get(b)
+        # 1. pitch contact (from the layout: the same numbers the model is built from)
+        ra = math.sqrt(lay.dot(lay.sub(contact, ga.center), lay.sub(contact, ga.center)) - lay.dot(lay.sub(contact, ga.center), ga.axis) ** 2)
+        rb = math.sqrt(lay.dot(lay.sub(contact, gb.center), lay.sub(contact, gb.center)) - lay.dot(lay.sub(contact, gb.center), gb.axis) ** 2)
+        pitch_ok = abs(ra - ga.r) < 1e-6 and abs(rb - gb.r) < 1e-6
+        parallel = abs(lay.dot(ga.axis, gb.axis)) > 0.999
+        centre = lay.dist(ga.center, gb.center) if parallel else None
+        if parallel:
+            pitch_ok = pitch_ok and abs(centre - (ga.r + gb.r)) < 1e-6
+        # 2–3. engagement depth and top clearance, measured on the shipped teeth
+        ca, cb = Vector(ga.center), Vector(gb.center)
+        axa, axb = Vector(ga.axis), Vector(gb.axis)
+        pa, pb = tooth_points(objs, node_a.name), tooth_points(objs, node_b.name)
+        assert pa and pb, (a, b)
+        def tip(pts, c, ax):
+            return max(radial_axial(p, c, ax)[0] for p in pts)
+        # the shipped teeth must reach where the layout says (radial gears; the rings' reach is axial)
+        for g, pts, c, ax in ((ga, pa, ca, axa), (gb, pb, cb, axb)):
+            if g.kind == "radial":
+                assert abs(tip(pts, c, ax) - g.tip_r) < 0.03, f"{g.name}: teeth reach {tip(pts, c, ax):.3f}, layout says {g.tip_r:.3f}"
+        near = Vector(contact)
+
+        def reach(pts_other, c, ax, g):
+            """How far the other gear's teeth (near the contact) come in past this gear's tooth tips."""
+            close = [p for p in pts_other if (p - near).length < 0.6]
+            if g.kind == "axial":
+                sgn = 1.0 if abs(g.h1 - g.tooth.add) < 1e-9 else -1.0     # which way this ring's teeth point (the tip is `add` from the pitch plane)
+                return g.tooth.add - min(sgn * radial_axial(p, c, ax)[1] for p in close)
+            return g.tip_r - min(radial_axial(p, c, ax)[0] for p in close)
+
+        depth_into_a = reach(pb, ca, axa, ga)   # b's teeth reach this far inside a's tip circle
+        depth_into_b = reach(pa, cb, axb, gb)
+        height_a = ga.tooth.add + ga.tooth.ded   # a tooth's height above the rim
+        height_b = gb.tooth.add + gb.tooth.ded
+        depth_ok = depth_into_a >= height_a / 2 - 1e-6 and depth_into_b >= height_b / 2 - 1e-6
+
+        def top_clear(pts_other, c, ax, g, band):
+            """Smallest gap between the other's teeth (within this gear's rim band) and this rim."""
+            best = math.inf
+            for p in pts_other:
+                r, h = radial_axial(p, c, ax)
+                if abs(h) <= band and (p - near).length < 0.8:
+                    best = min(best, r - g.rim_outer)
+            return best
+
+        if ga.kind == "radial":
+            tc_a = top_clear(pb, ca, axa, ga, ga.tooth.thick / 2 + 0.08)
+        else:
+            tc_a = math.inf
+        if gb.kind == "radial":
+            tc_b = top_clear(pa, cb, axb, gb, gb.tooth.thick / 2 + 0.08)
+        else:
+            tc_b = math.inf
+        top_ok = tc_a > 0.02 and tc_b > 0.02
+        # 4. flank gap: nearest distance between the two gears' tooth meshes at rest
+        gap = math.inf
+        pb_near = [p for p in pb if (p - near).length < 0.5]
+        pa_near = [p for p in pa if (p - near).length < 0.5]
+        tree_a = tree_of(objs, node_a.name, ("peg", "marker"))
+        tree_b = tree_of(objs, node_b.name, ("peg", "marker"))
+        for p in pb_near:
+            hit = tree_a.find_nearest(p)
+            if hit[0] is not None:
+                gap = min(gap, hit[3])
+        for p in pa_near:
+            hit = tree_b.find_nearest(p)
+            if hit[0] is not None:
+                gap = min(gap, hit[3])
+        gap_ok = gap > 0.01
+        line_ok = pitch_ok and depth_ok and top_ok and gap_ok
+        ok = ok and line_ok
+        cd = f"centre {centre:.4f} = {ga.r:.4f}+{gb.r:.4f}" if parallel else f"contact at r {ra:.4f}/{rb:.4f} (axes crossed)"
+        print(f"GEAR {a:18s} <-> {b:18s} {'OK  ' if line_ok else 'FAIL'} {cd}; depth {depth_into_a:.3f}/{height_a:.3f}, {depth_into_b:.3f}/{height_b:.3f}; "
+              f"top clearance {min(tc_a, tc_b):.3f}; flank gap {gap:.3f}")
+    return ok
+
+
+def tree_of(objs, name, mats):
+    """BVH of the world-space faces of node `name` (and its marker) with the given materials."""
+    verts, faces = [], []
+    for n in (name, name + ".marker"):
+        o = objs.get(n)
+        if o is None or o.type != "MESH":
+            continue
+        me = o.data
+        mw = o.matrix_world
+        slots = {i for i, m in enumerate(me.materials) if m and m.name.split(".")[0] in mats}
+        base = len(verts)
+        verts += [tuple(mw @ v.co) for v in me.vertices]
+        faces += [[base + i for i in p.vertices] for p in me.polygons if p.material_index in slots]
+    return BVHTree.FromPolygons(verts, faces, all_triangles=False)
+
+
 def sweep(mech, poses, all_phases=False):
     objs = import_glb(mech)
+    geared = meshing_report(mech, objs)
     meshes = {n: o for n, o in objs.items() if o.type == "MESH"}
     movers = {n: o for n, o in objs.items() if "motion" in o}
     for o in movers.values():
@@ -211,7 +342,9 @@ def sweep(mech, poses, all_phases=False):
     for k2, n in sorted(skipped.items()):
         print(f"WARN {mech}: {k2} lowered out of meshing phase in {n} poses (sim lowers the small wheel without aligning its pegs; not tested)")
     print(f"{mech}: {len(pairs)} pairs x {len(poses)} poses, {tested} distinct pair tests, {time.time() - t0:.0f} s")
-    return not fails
+    if not geared:
+        print(f"{mech}: GEAR MESHING FAIL (see GEAR lines)")
+    return geared and not fails
 
 
 def main():

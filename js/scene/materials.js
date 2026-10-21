@@ -100,11 +100,13 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   wood_dark: { color: 0x5e3a24, map: "wood", roughness: 0.6, clearcoat: 0.15, clearcoatRoughness: 0.45, normal: 0.5, scale: 1 },
   // Pegs (the gear teeth): pale boxwood, smooth from wear.
   peg: { color: 0xe6c690, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
-  // Railings, pillars: cinnabar lacquer.
+  // The red box, railings, pillars: cinnabar lacquer (赤質).
   lacquer: { color: 0xa82a1d, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
-  // Roof: dark glazed tiles.
-  roof: { color: 0x354044, map: "tiles", roughness: 0.68, normal: 0.9, scale: 0.55, project: "roof" },
+  // The wheels: red lacquer worn thinner than the box's, the grain showing more.
+  wheel: { color: 0x962c1e, map: "woodSoft", roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.4, scale: 0.8 },
+  // The wheels' marker spoke: yellow lacquer.
+  mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8 },
   // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
   blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },
   orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },

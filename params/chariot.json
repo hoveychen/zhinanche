@@ -39,8 +39,8 @@
   },
   "gear": {
     "$comment": "木齿轮的齿形和轮体（blender/scripts 读取，不影响仿真）。所有齿轮的齿距都取宋史齿轮推出的 π×2.4/24≈0.314 尺（「齒間相去三寸」）。齿是径向方截面硬木块，根部穿透轮辋、内侧打楔（Hommel 1937 浙江水车大盘；王祯农书「周圍木齒」；天工开物牛转翻车图；Moule 1924 方齿）。",
-    "toothRootWidth":      { "v": 0.12, "unit": "chi", "conf": "eyeballed", "src": "hommel1937", "note": "齿根的切向宽 0.38 齿距。Hommel 图 75 的大盘约半个齿距（0.15），但 12 齿的小平轮齿槽向根部收窄很快，0.15 的齿会顶住对面齿顶（干涉检查 FAIL），所以收到 0.12" },
-    "toothTipWidth":       { "v": 0.07, "unit": "chi", "conf": "design", "src": "this-project", "note": "齿顶的切向宽：方块齿四边倒角收窄，这样两轮转动时齿角不顶齿" },
+    "toothRootWidth":      { "v": 0.11, "unit": "chi", "conf": "eyeballed", "src": "hommel1937", "note": "齿根的切向宽 0.35 齿距。Hommel 图 75 的大盘约半个齿距（0.15），但 12 齿的小平轮齿槽向根部收窄很快，0.15 的齿顶住对面齿顶（干涉检查 FAIL），0.12 时齿侧间隙只剩 0.001，所以收到 0.11" },
+    "toothTipWidth":       { "v": 0.06, "unit": "chi", "conf": "design", "src": "this-project", "note": "齿顶的切向宽：方块齿四边倒角收窄，这样两轮转动时齿角不顶齿" },
     "toothThick":          { "v": 0.15, "unit": "chi", "conf": "est", "src": "cad-report", "note": "齿的轴向厚，不小于切向宽（§6.3）" },
     "toothThickSmall":     { "v": 0.2, "unit": "chi", "conf": "est", "src": "cad-report", "note": "小平轮的齿更厚：它要同时咬立子轮和大平轮（§6.3）" },
     "toothAddendum":       { "v": 0.15, "unit": "chi", "conf": "est", "src": "cad-report", "note": "齿顶超出节圆的长度：齿伸出轮辋约一个齿距 0.3，节圆在齿高中部（§6.3）" },
