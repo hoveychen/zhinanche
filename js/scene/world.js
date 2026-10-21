@@ -108,7 +108,7 @@ export class World {
     this.time = 0;
     this.focus = { x: 0, z: 0, heading: Math.PI / 2 };
     /** the HUD's margins over the view, for framing routes (set by the page) */
-    /** @type {() => Insets} */
+    /** @type {(low?: boolean) => Insets} low: only what sits in the lower part of the view */
     this.hudInsets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
     /** the HUD's margins cleared at the sides, or above and below (framing the parts; set by the page) */
     /** @type {() => Insets[]} */
@@ -119,6 +119,7 @@ export class World {
     /** the picture is moved up this far (CSS px) to sit in what the panel leaves showing */
     this.lift = 0;
     this.cam.bands = () => this.hudBands();
+    this.cam.lowInsets = () => this.hudInsets(true);
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);

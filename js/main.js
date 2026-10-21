@@ -180,13 +180,15 @@ onLang(() => {
   course.relabel();
 });
 // Routes are framed beside the HUD: each panel on the view takes its side.
-world.hudInsets = () => {
+world.hudInsets = (low = false) => {
   const r = stage.getBoundingClientRect();
   const ins = { left: 0, right: 0, top: 0, bottom: 0 };
   if (!r.width || !r.height) return ins;
   for (const el of [dial.el, odo.el, input.pad, input.drawBtn, gearsBtn]) {
     if (el.hidden || el.offsetParent === null) continue;
     const b = el.getBoundingClientRect();
+    // low: only what reaches down beside the chariot in the chase view (not the dial up top)
+    if (low && b.bottom < r.top + r.height * 0.45) continue;
     if ((b.left + b.right) / 2 < r.left + r.width / 2) ins.left = Math.max(ins.left, (b.right - r.left + 8) / r.width);
     else ins.right = Math.max(ins.right, (r.right - b.left + 8) / r.width);
   }

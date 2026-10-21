@@ -94,6 +94,9 @@ export class CameraRig {
     /** the HUD's margins over the view (set by the world) */
     /** @type {() => Insets} */
     this.insets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+    /** the HUD's margins over the lower part of the view, where the chase view has the chariot (set by the world) */
+    /** @type {() => Insets} */
+    this.lowInsets = () => this.insets();
     /** the ways to keep clear of the HUD: beside it, or above and below it (set by the world) */
     /** @type {() => Insets[]} */
     this.bands = () => [this.insets()];
@@ -217,7 +220,14 @@ export class CameraRig {
         // A short stage (a tablet held upright, the lesson panel below it)
         // leaves it small too.
         const r = this.camera.aspect < 0.8 ? 15.5 : this.short ? 16 : 19;
-        return { target, pos: target.clone().addScaledVector(CHASE_DIR, this.fit(r)) };
+        const d = this.fit(r);
+        // in the middle of what the HUD leaves free across the view (the
+        // drive pad on a phone would sit on the chariot)
+        const ins = this.lowInsets();
+        const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
+        const right = new THREE.Vector3(0, 1, 0).cross(CHASE_DIR).normalize();
+        target.addScaledVector(right, ((ins.right - ins.left) / 2) * d * th);
+        return { target, pos: target.clone().addScaledVector(CHASE_DIR, d) };
       }
       case "gears": {
         const song = f.mechanism === "song";
