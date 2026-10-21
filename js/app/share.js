@@ -125,7 +125,9 @@ export function encodeShare(s) {
     ["sl", s.slip.slipL, 0], ["sr", s.slip.slipR, 0], ["sp", s.speed, 1], ["e", s.explode, 0],
   ];
   for (const [k, v, def] of nums) if (v !== undefined && v !== def) kv.push([k, num(v)]);
+  // the gears view sees through the body unless the link says not to (decodeShare)
   if (s.xray) kv.push(["x", "1"]);
+  else if (s.view === "gears") kv.push(["x", "0"]);
   if (s.view !== d.view) kv.push(["v", s.view]);
   if (s.route && s.route.pts.length > 0) kv.push(["p", encodeRoute(s.route)]);
   return kv.map(([k, v]) => `${k}=${v}`).join("&");
@@ -161,9 +163,12 @@ export function decodeShare(hash) {
   const sp = read("sp", 0.1, 4);
   if (sp !== undefined && sp > 0) s.speed = sp;
   s.explode = read("e", 0, 1) ?? 0;
-  s.xray = q.get("x") === "1";
   const v = q.get("v");
   if (v && VIEWS.includes(/** @type {ViewId} */ (v))) s.view = /** @type {ViewId} */ (v);
+  // a link to the gears view without x: see through the body, as the page's
+  // "see the gears" button does (the closed box hides every gear)
+  const x = q.get("x");
+  s.xray = x === "1" || (x === null && s.view === "gears");
   const p = q.get("p");
   if (p) s.route = decodeRoute(p);
   return s;
