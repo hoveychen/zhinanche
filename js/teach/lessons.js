@@ -243,7 +243,7 @@ export const LESSONS = [
         },
       },
       {
-        text: "车直着走，两个小平轮都抬着，木人不动。\n\n一拐弯，车辕一偏，外边的小平轮就落下去。外边的车轮就和大平轮连上了。",
+        text: "车直着走，两个小平轮都抬着，木人不动。\n\n一拐弯，车辕（车前面套牲口的长杆）一偏，外边的小平轮就落下去。外边的车轮就和大平轮连上了。",
         scene: { reset: true, assist: true, highlight: ["footR", "smallR", "bigFlat"], play: "pivotLeft" },
       },
       {

@@ -105,7 +105,7 @@ export const STR_EN = {
 
   drive: {
     up: "Go",
-    down: "Back",
+    down: "Reverse",
     left: "Left",
     right: "Right",
     padLabel: "Drive: hold an arrow button, or use the arrow keys",
@@ -164,7 +164,7 @@ export const STR_EN = {
     normal: "Normal",
     fast: "Fast",
     resetBlock: "Start over",
-    reset: "Back to the start",
+    reset: "Reset the chariot",
   },
 
   scene: {
