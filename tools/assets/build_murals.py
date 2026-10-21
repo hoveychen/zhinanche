@@ -3,12 +3,14 @@
 # generated for this project (an image model, prompted for Song court painting
 # in mineral colours and gold line on red lacquer); this lays them out on the
 # box's grid of squares (blender/scripts/build_chariot.py lattice(), printed as
-# MURAL lines by pnpm build:model): one atlas, three bands, top to bottom
-#   the left box   12 x 4 squares, the dragon in the middle 6 x 2
-#   the right box  12 x 4 squares, the tiger in the middle 6 x 2
-#   front and back 11 x 4 squares
-# a flower or bird in every other square. materials.js maps each band onto its
+# MURAL lines by pnpm build:model): three pictures, each 3 : 1
+#   dragon   the left box, 12 x 4 squares, the dragon in the middle 6 x 2
+#   tiger    the right box, 12 x 4 squares, the tiger in the middle 6 x 2
+#   flowers  front and back, 11 x 4 squares
+# a flower or bird in every other square. materials.js maps each onto its
 # panel (u to the right as seen from outside, so both beasts face the front).
+# Three files, not one atlas: a 2048² going up with its mipmaps took a 60-75 ms
+# frame; the page uploads these 0.4 s apart (js/scene/photo.js murals()).
 #
 #   uv run --with pillow tools/assets/build_murals.py
 import os
@@ -61,13 +63,11 @@ def band(spec, heart, beast, shift):
 
 
 def main():
-    atlas = Image.new("RGB", (SIZE, SIZE), (184, 56, 44))
-    for n, b in enumerate((band(SIDE, HEART, "dragon", 0), band(SIDE, HEART, "tiger", 5), band(ENDS, None, None, 11))):
-        atlas.paste(b, (0, round(SIZE * n / 3)))
-    for s in (2048, 1024):
-        path = os.path.join(OUT, f"chariot-murals-{s}.webp")
-        atlas.resize((s, s), Image.Resampling.LANCZOS).save(path, quality=80, method=6)
-        print(path, os.path.getsize(path))
+    for name, b in (("dragon", band(SIDE, HEART, "dragon", 0)), ("tiger", band(SIDE, HEART, "tiger", 5)), ("flowers", band(ENDS, None, None, 11))):
+        for s in (2048, 1024):
+            path = os.path.join(OUT, f"chariot-murals-{name}-{s}.webp")
+            b.resize((s, s // 3), Image.Resampling.LANCZOS).save(path, quality=80, method=6)
+            print(path, os.path.getsize(path))
 
 
 if __name__ == "__main__":

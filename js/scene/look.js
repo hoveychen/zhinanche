@@ -115,7 +115,7 @@ export class Look {
     this.woodPhoto = null;
     /** @type {import("./photo.js").PhotoSet | null} the photographed rusty iron, once it is up */
     this.ironPhoto = null;
-    /** @type {THREE.Texture | null} the box's paintings, once they are up */
+    /** @type {Record<string, THREE.Texture> | null} the box's paintings, once they are up */
     this.muralTex = null;
     /** @type {Map<string, Promise<THREE.Texture | null>>} each chariot's baked occlusion atlas, by mechanism */
     this.atlases = new Map();
@@ -184,6 +184,7 @@ export class Look {
       return null;
     });
     const sky = safe("sky", this.photos.sky());
+    const since = performance.now();
     // sizes [albedo, normal, arm] for the full and lite tiers (tools/assets/build_photo.py makes these)
     const sets = {
       ground: safe("ground", this.photos.surface("ground", { full: [1024, 1024, 1024], lite: [1024, 1024, 512] })),
@@ -193,7 +194,10 @@ export class Look {
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
       iron: safe("iron", this.photos.surface("iron", { full: [512, 512, 512], lite: [512, 512, 512] })),
       trees: safe("trees", this.photos.trees()),
-      murals: safe("murals", this.photos.murals()),
+      // the paintings (2048 × 682 each) going up with their mipmaps came a
+      // second in, while driving: like the occlusion atlas (#atlas), they
+      // wait till the chariot has stood still a moment, or 8 s
+      murals: safe("murals", this.photos.murals(() => this.stillFrames > 20 || performance.now() - since > 8000)),
     };
     // A sky decoded before the textures are made (the usual case) goes up at
     // once and is in the environment map's first bake; one that comes later
