@@ -69,13 +69,14 @@ export function meanOf(tex) {
  * Fetch and decode an image here, on the main thread, flipped as three.js
  * flips an <img> (so normal maps keep their sense): where there's no worker.
  * @param {URL} url
+ * @param {boolean} flip false: a glTF atlas, read top row first (no flip)
  * @returns {Promise<Decoded>}
  */
-async function decodeHere(url) {
+async function decodeHere(url, flip) {
   if (typeof createImageBitmap === "function") {
     try {
       const blob = await (await fetch(url)).blob();
-      const image = await createImageBitmap(blob, { imageOrientation: "flipY", premultiplyAlpha: "none", colorSpaceConversion: "none" });
+      const image = await createImageBitmap(blob, { imageOrientation: flip ? "flipY" : "none", premultiplyAlpha: "none", colorSpaceConversion: "none" });
       return { image, flipY: false };
     } catch {
       // older Safari: no options; fall through to <img>
@@ -84,7 +85,7 @@ async function decodeHere(url) {
   const img = new Image();
   img.src = url.href;
   await img.decode();
-  return { image: img, flipY: true };
+  return { image: img, flipY: flip };
 }
 
 /** Decodes in photo.worker.js; an image it can't do is done here instead. */
@@ -110,20 +111,21 @@ class Decoder {
   /**
    * @param {URL} url
    * @param {"high" | "auto"} [priority]
+   * @param {boolean} [flip] false: a glTF atlas (top row first); default as three.js flips an <img>
    * @returns {Promise<Decoded>}
    */
-  async decode(url, priority = "auto") {
+  async decode(url, priority = "auto", flip = true) {
     const w = this.worker;
     if (w) {
       const id = this.next++;
       /** @type {ImageBitmap | undefined} */
       const image = await new Promise((done) => {
         this.waiting.set(id, done);
-        w.postMessage({ id, url: url.href, priority });
+        w.postMessage({ id, url: url.href, priority, flip });
       });
       if (image) return { image, flipY: false };
     }
-    return decodeHere(url);
+    return decodeHere(url, flip);
   }
 
   /** No more images: the worker goes (any still waiting are done here). */
@@ -189,7 +191,7 @@ export class Photos {
   /**
    * A decoded image as a texture, its upload queued (tick).
    * @param {Decoded} d
-   * @param {{colour: boolean, repeat: boolean, mips: boolean}} o
+   * @param {{colour: boolean, repeat: boolean, mips: boolean, gltf?: boolean}} o
    * @returns {{tex: THREE.Texture, up: Promise<void>}}
    */
   #texture({ image, flipY }, o) {
@@ -209,10 +211,10 @@ export class Photos {
   /**
    * One texture, fetched, decoded and uploaded.
    * @param {string} file
-   * @param {{colour: boolean, repeat: boolean, mips: boolean}} o
+   * @param {{colour: boolean, repeat: boolean, mips: boolean, gltf?: boolean}} o
    */
   async #load(file, o) {
-    const { tex, up } = this.#texture(await this.decoder.decode(new URL(file, ROOT)), o);
+    const { tex, up } = this.#texture(await this.decoder.decode(new URL(file, ROOT), "auto", !o.gltf), o);
     await up;
     return tex;
   }
@@ -260,6 +262,6 @@ export class Photos {
    */
   async atlas(mechanism) {
     await this.skyDone;
-    return this.#load(`chariot-${mechanism}-ao-${this.level === "lite" ? 512 : 1024}.webp`, { colour: false, repeat: false, mips: true });
+    return this.#load(`chariot-${mechanism}-ao-${this.level === "lite" ? 512 : 1024}.webp`, { colour: false, repeat: false, mips: true, gltf: true });
   }
 }

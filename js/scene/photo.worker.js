@@ -3,17 +3,18 @@
 // step (fetch, blob, decode) waited its turn behind that work: the sky took
 // ~0.5 s to come though its files were in after 2 ms. Here the only wait is
 // for the finished picture's message.
-// Message in: {id, url, priority}; out: {id, image} (an ImageBitmap,
-// transferred, flipped as three.js flips an <img>) or {id} if it failed.
+// Message in: {id, url, priority, flip}; out: {id, image} (an ImageBitmap,
+// transferred, flipped as three.js flips an <img> unless flip is false: a
+// glTF atlas is read the glTF way, top row first) or {id} if it failed.
 
 const scope = /** @type {{onmessage: ((e: MessageEvent) => void) | null, postMessage: (m: unknown, t?: Transferable[]) => void}} */ (
   /** @type {unknown} */ (self)
 );
 scope.onmessage = async (e) => {
-  const { id, url, priority } = e.data;
+  const { id, url, priority, flip } = e.data;
   try {
     const blob = await (await fetch(url, { priority })).blob();
-    const image = await createImageBitmap(blob, { imageOrientation: "flipY", premultiplyAlpha: "none", colorSpaceConversion: "none" });
+    const image = await createImageBitmap(blob, { imageOrientation: flip === false ? "none" : "flipY", premultiplyAlpha: "none", colorSpaceConversion: "none" });
     scope.postMessage({ id, image }, [image]);
   } catch {
     scope.postMessage({ id });
