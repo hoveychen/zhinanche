@@ -18,6 +18,7 @@
     "render:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/render_previews.py --"
   },
   "devDependencies": {
+    "@tabler/icons": "3.49.0",
     "@types/node": "^26.6.5",
     "@types/three": "^0.186.0",
     "three": "0.186.1",
