@@ -45,9 +45,9 @@
   "roof": {
    "id": "clay_roof_tiles_02",
    "mean": [
-    0.5001,
-    0.5001,
-    0.5001
+    0.5,
+    0.5,
+    0.5
    ],
    "albedo": {
     "1024": "roof-albedo-1024.webp",
@@ -59,6 +59,11 @@
    "arm": {
     "512": "roof-arm-512.webp",
     "256": "roof-arm-256.webp"
+   },
+   "tile": {
+    "span": 10.0,
+    "rows": 8,
+    "radius": 0.3
    }
   },
   "wood": {
@@ -77,6 +82,30 @@
     "512": "wood-normal-512.webp"
    },
    "arm": {}
+  },
+  "dougong": {
+   "id": "baked: build_photo.py dougong_band",
+   "mean": [
+    0.0724,
+    0.0817,
+    0.0776
+   ],
+   "module": [
+    3.0,
+    2.4
+   ],
+   "albedo": {
+    "320": "dougong-albedo-320.webp",
+    "160": "dougong-albedo-160.webp"
+   },
+   "normal": {
+    "320": "dougong-normal-320.webp",
+    "160": "dougong-normal-160.webp"
+   },
+   "arm": {
+    "320": "dougong-arm-320.webp",
+    "160": "dougong-arm-160.webp"
+   }
   }
  },
  "sky": {

@@ -167,6 +167,7 @@ export class Look {
       ground: safe("ground", this.photos.surface("ground", { full: [1024, 1024, 1024], lite: [1024, 1024, 512] })),
       plaster: safe("plaster", this.photos.surface("plaster", { full: [1024, 1024, 512], lite: [512, 512, 256] })),
       roof: safe("roof", this.photos.surface("roof", { full: [1024, 512, 512], lite: [512, 512, 256] })),
+      dougong: safe("dougong", this.photos.surface("dougong", { full: [320, 320, 320], lite: [160, 160, 160] })),
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
       trees: safe("trees", this.photos.trees()),
     };
@@ -212,6 +213,7 @@ export class Look {
       this.yardReady.then(() => Promise.all([
         put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
         put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
+        put("dougong", sets.dougong, (s) => this.yard?.photo("dougong", s)),
         put("trees", sets.trees, (s) => this.yard?.trees?.set(s.cards, s.atlases)),
       ])),
     ]);
