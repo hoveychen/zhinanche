@@ -215,6 +215,7 @@ function letterTexture(pick, seal) {
 }
 
 const toCam = new THREE.Vector3();
+const ghostAt = new THREE.Vector3();
 
 /**
  * Keep a ground label upright for whoever is looking: its top turns to the
@@ -292,6 +293,14 @@ export class CompassRing {
     gm.opacity = 0.55;
     ghost.renderOrder = 5;
     ghost.userData.noAO = true;
+    // Only for low views: looking down, what hides the seal is the chariot's top, and the
+    // ghost sat on its roof. Gone between 30° and 45° above the ground.
+    ghost.onBeforeRender = (_r, _s, cam) => {
+      faceCamera(ghost, cam);
+      toCam.setFromMatrixPosition(cam.matrixWorld).sub(ghost.getWorldPosition(ghostAt));
+      const up = Math.asin(Math.min(1, toCam.y / Math.max(1e-6, toCam.length()))) * 180 / Math.PI;
+      gm.opacity = 0.55 * this.labelsOn * Math.min(1, Math.max(0, (45 - up) / 15));
+    };
     this.group.add(seal, ghost);
     /** the letters round the ring, faded out close in on the works (they'd float big in the picture) */
     this.labels = this.group.children.filter((o) => o !== ring).map((o) => {
