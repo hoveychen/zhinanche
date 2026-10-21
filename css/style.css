@@ -13,6 +13,7 @@
   --glass: rgba(255, 253, 249, 0.9); /* cards over the 3D view (blurred behind) */
   --ink: #2b2620;            /* text */
   --ink-2: #6a5d4f;          /* secondary text, labels */
+  --umber: #7a4a36;          /* ink with some red in it: small headings, lesson numbers, links (not a control) */
   --line: #e4d9c6;           /* hairlines, card edges */
   --line-2: #cdbc9e;         /* button edges, control tracks */
   --accent: #c8361f;         /* vermilion: the button to press, a control that is on */
@@ -167,7 +168,7 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 
 .site-foot { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: var(--sp-5); padding-top: var(--sp-3); border-top: 1px solid var(--line); font-size: 15px; }
 .site-foot a { color: var(--ink-2); }
-.site-foot a:hover { color: var(--accent-ink); }
+.site-foot a:hover { color: var(--ink); }
 
 .loading {
   position: absolute; inset: 0; display: grid; place-items: center; margin: 0;
@@ -195,7 +196,7 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .primary.big, .plain.big { min-height: 56px; padding: 0 26px; font-size: var(--fs-l); }
 
 /* ---------- home ---------- */
-.home-kicker { margin: 2px 0 var(--sp-1); font-size: 15px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent-ink); }
+.home-kicker { margin: 2px 0 var(--sp-1); font-size: 15px; font-weight: 700; letter-spacing: 0.12em; color: var(--umber); }
 .home-title { margin: 0 0 var(--sp-3); font: 400 var(--fs-2xl)/1.1 var(--kai); color: var(--ink); letter-spacing: 0.12em; text-wrap: balance; }
 .home-hook { margin: 0 0 var(--sp-5); font-size: var(--fs-l); line-height: 1.65; color: var(--ink); text-wrap: pretty; }
 .home-cta { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
@@ -210,17 +211,17 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .ask:hover { background: var(--paper-2); border-color: var(--line-2); }
 .ask-q { font-size: 19px; font-weight: 700; line-height: 1.35; color: var(--ink); }
 .ask-a { grid-column: 1; font-size: var(--fs-s); line-height: 1.5; color: var(--ink-2); }
-.ask-go { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 15px; font-weight: 700; color: var(--accent-ink); white-space: nowrap; }
+.ask-go { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 15px; font-weight: 700; color: var(--umber); white-space: nowrap; }
 .lesson-list { list-style: none; margin: 0; padding: 0; }
 .lesson-list li + li { border-top: 1px solid var(--line); }
 .lesson-item {
   display: flex; align-items: center; gap: 14px; width: 100%;
   min-height: 68px; padding: 10px 4px; border: 0; background: none; text-align: left; cursor: pointer;
 }
-.lesson-item:hover .lesson-title { color: var(--accent-ink); }
+.lesson-item:hover .lesson-title { color: var(--umber); }
 .lesson-num {
   flex: none; display: grid; place-items: center; width: 40px; height: 40px;
-  border-radius: var(--r-s); background: var(--accent-soft); color: var(--accent-ink);
+  border-radius: var(--r-s); background: var(--paper-2); border: 1px solid var(--line); color: var(--umber);
   font-size: 19px; font-weight: 700; line-height: 1;
 }
 .lesson-words { display: flex; flex-direction: column; }
@@ -230,14 +231,14 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 /* ---------- lesson ---------- */
 .panel-title { margin: 0; font-size: var(--fs-xl); font-weight: 700; line-height: 1.3; color: var(--ink); outline: none; text-wrap: balance; }
 .lesson-head { margin-bottom: var(--sp-4); }
-.lesson-kicker { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: var(--accent-ink); }
-/* the steps: a thin bar in segments */
+.lesson-kicker { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: var(--umber); }
+/* the steps: a thin bar in segments, the one you are on in the accent */
 .dots { display: flex; gap: 4px; list-style: none; padding: 0; margin: var(--sp-3) 0 0; }
 .dots li { flex: 1 1 0; max-width: 44px; height: 5px; border-radius: var(--r-full); background: var(--paper-3); }
-.dots li.done { background: color-mix(in srgb, var(--accent) 40%, var(--paper-3)); }
+.dots li.done { background: color-mix(in srgb, var(--ink-2) 45%, var(--paper-3)); }
 .dots li.now { background: var(--accent); }
 .lesson-text p { margin: 0 0 14px; font-size: var(--fs-l); line-height: 1.7; }
-.lesson-text b { color: var(--accent-ink); }
+.lesson-text b { color: var(--ink); }
 .l { color: var(--left); font-weight: 700; }
 .r { color: var(--right-ink); font-weight: 700; }
 .pic { margin: 6px 0 18px; }
@@ -251,10 +252,10 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .pic figcaption { margin-top: 6px; font-size: var(--fs-xs); line-height: 1.5; color: var(--ink-2); }
 .replay, .walk { margin: 4px 0 16px; }
 
-/* a task: a card edged in the accent (your turn); green once done */
+/* a task: a card with a firmer edge than the others; green once done */
 .task {
   margin: 8px 0 18px; padding: 16px 18px;
-  background: var(--surface); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: var(--r-l);
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-l);
 }
 .task-prompt { margin: 0 0 10px; font-weight: 700; font-size: 19px; line-height: 1.5; }
 /* a question asked before the scene plays: say it will play once answered */
@@ -318,7 +319,7 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
   margin-top: var(--sp-4); padding: 14px 16px 16px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l);
 }
-.trouble-head { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-m); font-weight: 700; line-height: 1.4; color: var(--accent-ink); }
+.trouble-head { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-m); font-weight: 700; line-height: 1.4; color: var(--umber); }
 .trouble-head .icon { width: 20px; height: 20px; }
 .trouble-note { margin: 2px 0 0; font-size: var(--fs-s); line-height: 1.5; color: var(--ink-2); }
 .trouble .tool { margin-top: var(--sp-3); }
