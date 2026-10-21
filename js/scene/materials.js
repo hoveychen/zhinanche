@@ -113,8 +113,10 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   mural_tiger: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "tiger" },
   mural_flowers: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "flowers" },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
-  // The wheels: red lacquer worn thinner than the box's, the grain showing more.
-  wheel: { color: 0x962c1e, map: "woodSoft", roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.4, scale: 0.8 },
+  // The wheels: red lacquer worn thinner than the box's and dulled by the road.
+  // (0x962c1e under a 0.6 coat went a glowing orange in the low sun, and the
+  // bevelled shoulders of the spokes caught it as white triangles.)
+  wheel: { color: 0x7e2a1e, map: "woodSoft", roughness: 0.62, clearcoat: 0.3, clearcoatRoughness: 0.4, normal: 0.2, scale: 0.8 },
   // The wheels' marker spoke: yellow lacquer.
   mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8 },
   // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
