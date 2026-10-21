@@ -120,8 +120,10 @@ export function dressGround(mesh, tex) {
  */
 export function photoGround(mesh, set, was) {
   const mat = /** @type {THREE.MeshStandardMaterial} */ (mesh.material);
-  // a touch cooler than the old paving: the scan is warm grey
-  const target = mat.color.clone().multiply(was).multiply(new THREE.Color(0.98, 1, 1.04));
+  // a touch cooler than the old paving: the scan is warm grey (from the
+  // colour before any photo: the small set goes down first, then the full one)
+  const before = /** @type {THREE.Color} */ (mat.userData.pavingColor ??= mat.color.clone());
+  const target = before.clone().multiply(was).multiply(new THREE.Color(0.98, 1, 1.04));
   mat.color.copy(target).multiply(new THREE.Color(1 / set.mean.r, 1 / set.mean.g, 1 / set.mean.b));
   mat.map = set.albedo;
   mat.normalMap = set.normal;

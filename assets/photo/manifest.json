@@ -9,14 +9,17 @@
     0.1808
    ],
    "albedo": {
-    "1024": "ground-albedo-1024.webp"
+    "1024": "ground-albedo-1024.webp",
+    "256": "ground-albedo-256.webp"
    },
    "normal": {
-    "1024": "ground-normal-1024.webp"
+    "1024": "ground-normal-1024.webp",
+    "256": "ground-normal-256.webp"
    },
    "arm": {
     "1024": "ground-arm-1024.webp",
-    "512": "ground-arm-512.webp"
+    "512": "ground-arm-512.webp",
+    "256": "ground-arm-256.webp"
    }
   },
   "plaster": {

@@ -160,6 +160,10 @@ export class Photos {
     this.skyFiles = Promise.all([`sky-bg-${level === "lite" ? 2048 : 4096}.webp`, "sky-env-1024.webp"].map((f) => this.decoder.decode(new URL(f, ROOT), "high")));
     /** @type {Promise<unknown>} */
     this.skyDone = this.skyFiles.catch(() => null);
+    // The paving at 256 (~30 KB) comes with the sky, so the first picture is
+    // already the photographed floor; the full-size set sharpens it later.
+    /** @type {Promise<Decoded[]>} */
+    this.groundFiles = Promise.all(["albedo", "normal", "arm"].map((k) => this.decoder.decode(new URL(`ground-${k}-256.webp`, ROOT), "high")));
   }
 
   /**
@@ -229,6 +233,26 @@ export class Photos {
     const opts = { colour: true, repeat: true, mips: false };
     const [bgTex, envTex] = (await this.skyFiles).map((d) => this.#texture(d, opts).tex);
     return { ...m.sky, bgTex, envTex };
+  }
+
+  /**
+   * The paving's small set, decoded early (no upload queued: it goes up with
+   * the first frame that draws it, ~1 ms for the three).
+   * @returns {Promise<PhotoSet | null>}
+   */
+  async firstGround() {
+    const t = (await this.manifest)?.textures.ground;
+    if (!t) return null;
+    const [albedo, normal, arm] = (await this.groundFiles).map(({ image, flipY }, i) => {
+      const tex = new THREE.Texture(/** @type {any} */ (image));
+      tex.flipY = flipY;
+      tex.colorSpace = i === 0 ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.anisotropy = this.aniso;
+      tex.needsUpdate = true;
+      return tex;
+    });
+    return { albedo, normal, arm, mean: new THREE.Color(t.mean[0], t.mean[1], t.mean[2]) };
   }
 
   /**

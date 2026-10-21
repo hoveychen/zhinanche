@@ -57,7 +57,8 @@ SKY_MEDIAN = 0.32
 #               it multiplies the chariot's role colours as the procedural wood did,
 #               so materials.js and the rig's highlight colours stay as they are
 TEXTURES = {
-    "ground": ((1024,), (1024,), (1024, 512), "colour"),
+    # ground also at 256: fetched with the sky, so the very first picture already has it
+    "ground": ((1024, 256), (1024, 256), (1024, 512, 256), "colour"),
     "plaster": ((1024, 512), (1024, 512), (512, 256), "colour"),
     "roof": ((1024, 512), (512,), (512, 256), "grey"),
     "wood": ((1024, 512), (1024, 512), (), "multiplier"),

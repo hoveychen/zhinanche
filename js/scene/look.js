@@ -118,6 +118,9 @@ export class Look {
     const tex = loadTextures(renderer, s.textures);
     /** the photographed sky and surfaces, coming in after the first picture */
     this.photos = new Photos(renderer, s.textures);
+    /** every photographed set asked for is in (or failed) */
+    this.photosIn = false;
+    document.body.dataset.photoState = "loading";
     /** @type {Promise<Textures>} */
     this.chariotTex = tex.chariot;
     /** @type {Promise<Textures>} */
@@ -132,8 +135,22 @@ export class Look {
     void this.#loadPhotos();
   }
 
-  /** Swap each photographed set in as it is uploaded (sky first: it is the smallest). */
+  /**
+   * Swap the photographed sets in, then mark the picture final: body
+   * [data-photo-state=in], and the still-picture average may say settled
+   * (postfx.js). A set that fails counts as in (it stays procedural).
+   */
   async #loadPhotos() {
+    try {
+      await this.#swapPhotos();
+    } finally {
+      this.photosIn = true;
+      document.body.dataset.photoState = "in";
+    }
+  }
+
+  /** Swap each photographed set in as it is uploaded (sky first: it is the smallest). */
+  async #swapPhotos() {
     const done = (/** @type {string} */ part) => {
       const now = (document.body.dataset.photo ?? "").split(" ").filter(Boolean);
       now.push(part);
@@ -163,7 +180,16 @@ export class Look {
       }
       return false;
     });
+    const first = safe("ground (small)", this.photos.firstGround());
     const tex = await this.texReady;
+    const stone = meanOf(tex.stone);
+    // The small paving goes down at once, normally before the first picture
+    // (World.load waits for the courtyard too), so the floor never jumps from
+    // the procedural slabs to the photo: the full set only sharpens it.
+    let groundFull = false;
+    void first.then((s) => {
+      if (s && !groundFull) photoGround(this.ground, s, stone);
+    });
     /** @param {string} name @param {Promise<any>} p @param {(s: any) => unknown} on */
     const put = async (name, p, on) => {
       const got = await p;
@@ -174,7 +200,10 @@ export class Look {
     };
     await Promise.all([
       early.then((was) => (was ? undefined : put("sky", sky, (s) => this.env.setPhoto(s)))),
-      put("ground", sets.ground, (s) => photoGround(this.ground, s, meanOf(tex.stone))),
+      put("ground", sets.ground, (s) => {
+        groundFull = true;
+        photoGround(this.ground, s, stone);
+      }),
       put("wood", sets.wood, async (s) => {
         this.woodPhoto = s;
         photoWood(this.chariotMeshes, s, await this.chariotTex);
@@ -418,6 +447,7 @@ export class Look {
         this.postfx = new PostFX(renderer, scene, camera, () => controls.target, {
           signature: () => this.#signature(),
           jitter: (k) => this.#jitterSun(k),
+          ready: () => this.photosIn,
         });
       } catch (err) {
         console.warn("post-processing unavailable", err);
