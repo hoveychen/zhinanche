@@ -2,7 +2,7 @@
 // driving. The player shows a step's text, picture and task, applies its scene
 // directive, and ticks the task off when its check passes.
 
-import { h } from "./dom.js";
+import { h, touchOnly } from "./dom.js";
 import { icon } from "./icons.js";
 import { S, bind, lessons } from "../i18n.js";
 import { stateAt } from "./directive.js";
@@ -176,7 +176,7 @@ export class Course {
     const t = S().free;
     const body = h("div", { class: "free" }, [
       h("h2", { class: "panel-title", text: t.title }),
-      h("p", { text: t.howDrive }),
+      h("p", { text: touchOnly() ? t.howDriveTouch : t.howDrive }),
       h("p", { text: t.howDraw }),
     ]);
     this.#show(body, null, this.sheetBtn);

@@ -2,7 +2,7 @@
 // the keyboard (arrow keys or WASD), the "draw a route" button, and how fast
 // the chariot gets going and stops (ease, used by js/app/app.js).
 
-import { h } from "./dom.js";
+import { h, touchOnly } from "./dom.js";
 import { bind } from "../i18n.js";
 import { icon } from "./icons.js";
 
@@ -77,7 +77,7 @@ export class DriveInput {
     };
     this.pad = bind(h("div", { class: "pad", "data-control": "drive", role: "group" }, [
       btn("up"), btn("left"), btn("right"), btn("down"),
-    ]), (s) => s.drive.padLabel, "aria-label");
+    ]), (s) => (touchOnly() ? s.drive.padLabelTouch : s.drive.padLabel), "aria-label");
     this.drawBtn = bind(h("button", { type: "button", class: "bar-btn draw-btn", "data-control": "draw", "aria-pressed": "false", onclick: () => this.setDraw(!this.drawOn) }, [
       icon("pencil"),
       bind(h("span"), (s) => s.drive.draw),

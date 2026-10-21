@@ -42,3 +42,11 @@ export function s(tag, attrs = {}, children = []) {
   for (const c of children) el.append(c);
   return el;
 }
+
+/**
+ * A touch screen with no mouse or trackpad (a tablet, a phone): no keyboard
+ * to speak of either, so the words don't send a child looking for arrow keys.
+ */
+export function touchOnly() {
+  return typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
+}

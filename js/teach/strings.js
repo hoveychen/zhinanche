@@ -97,6 +97,8 @@ export const STR = {
   free: {
     title: "自己开",
     howDrive: "按住方向按钮开车，或者用键盘的方向键。",
+    /** the same on a touch screen, which has no keyboard to speak of */
+    howDriveTouch: "按住方向按钮开车。",
     howDraw: "按「画路线」，在地上画一条路，车会沿着它走。点一点齿轮，看看它叫什么。",
     breakHead: "让它出错试试",
     breakNote: "给车调一个毛病，再开一圈，看木人还指不指南门。",
@@ -134,6 +136,7 @@ export const STR = {
     left: "左拐",
     right: "右拐",
     padLabel: "开车：按住方向按钮，也可以用键盘方向键",
+    padLabelTouch: "开车：按住方向按钮",
     draw: "画路线",
   },
 

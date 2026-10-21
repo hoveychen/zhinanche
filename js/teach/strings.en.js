@@ -82,6 +82,7 @@ export const STR_EN = {
   free: {
     title: "Free drive",
     howDrive: "Hold an arrow button to drive, or use the arrow keys.",
+    howDriveTouch: "Hold an arrow button to drive.",
     howDraw: "Press “Draw a road” and sketch one on the ground — the chariot will follow it. Tap a gear to find out what it's called.",
     breakHead: "Try to break it",
     breakNote: "Give the chariot a flaw, drive a lap, and see if the man still points at the South Gate.",
@@ -111,6 +112,7 @@ export const STR_EN = {
     left: "Left",
     right: "Right",
     padLabel: "Drive: hold an arrow button, or use the arrow keys",
+    padLabelTouch: "Drive: hold an arrow button",
     draw: "Draw a road",
   },
 
