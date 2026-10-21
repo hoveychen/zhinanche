@@ -45,6 +45,21 @@ import { TRAIN_SHADES } from "./materials.js";
  * @property {number} k how far it has moved, 0..1, eased
  */
 
+/**
+ * A disc-like mesh (a wheel, a gear, a hub): its two biggest sizes about the
+ * same: what it sweeps out turning is its outline (gearviz.js sweptShape).
+ * @param {THREE.Mesh} mesh
+ */
+function round(mesh) {
+  const g = mesh.geometry;
+  if (!g.boundingBox) g.computeBoundingBox();
+  const s = /** @type {THREE.Box3} */ (g.boundingBox).getSize(new THREE.Vector3()).toArray().sort((a, b) => b - a);
+  return s[1] > s[0] * 0.85;
+}
+
+/** A gear or wheel mesh that is round: its halo goes round what it sweeps out. @param {Look} l */
+const turned = (l) => (l.group === "gear" || l.group === "wheel") && round(l.mesh);
+
 /** @param {THREE.Object3D} o @returns {string} */
 const nameOf = (o) => /** @type {string} */ (o.userData.name ?? o.name);
 
@@ -336,13 +351,38 @@ export class Rig {
     return this.xray || this.explode > 0.001;
   }
 
-  /** Outlines on the gears while looking inside; bright on the highlighted ones. */
+  /** Outlines on the gears while looking inside (the highlighted ones glow as well: glowParts). */
   #outline() {
     const on = this.inside;
     for (const { hull, owner } of this.hulls) {
       hull.visible = on;
-      hull.material = this.lit.has(owner) ? OUTLINES.lit : this.dimming ? OUTLINES.faded : OUTLINES.ink;
+      hull.material = this.dimming && !this.lit.has(owner) ? OUTLINES.faded : OUTLINES.ink;
     }
+  }
+
+  /**
+   * The highlighted part meshes to draw a glow round (gearviz.js
+   * HighlightGlow), while looking inside: the gears and wheels by what they
+   * sweep out turning (a disc, not every spoke and tooth), anything else as
+   * it is (the Song clutch's cord and weight are not round).
+   * @returns {{mesh: THREE.Mesh, turned: boolean}[]}
+   */
+  glowParts() {
+    /** @type {{mesh: THREE.Mesh, turned: boolean}[]} */
+    const out = [];
+    if (!this.inside || !this.lit.size) return out;
+    for (const l of this.looks) {
+      if (l.wire || !this.lit.has(l.owner) || !l.mat.visible) continue;
+      let shown = true;
+      for (let a = /** @type {THREE.Object3D | null} */ (l.mesh); a && shown; a = a.parent) shown = a.visible;
+      if (shown) out.push({ mesh: l.mesh, turned: turned(l) });
+    }
+    return out;
+  }
+
+  /** The meshes drawn by what they sweep out, for making their shapes ahead. */
+  turnedMeshes() {
+    return this.looks.filter((l) => !l.wire && turned(l)).map((l) => l.mesh);
   }
 
   /** Start the clutch display afresh (after a reset). */

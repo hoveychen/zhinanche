@@ -16,7 +16,7 @@ import { partCaption } from "./parts.js";
 import { Ice } from "./ice.js";
 import { bind } from "../i18n.js";
 import { Look } from "./look.js";
-import { OUTLINES, updateOutlines } from "./gearviz.js";
+import { HighlightGlow, OUTLINES, updateOutlines } from "./gearviz.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { MechanismId } from "../sim/params.js" */
@@ -88,6 +88,8 @@ export class World {
     this.trackR = new Ribbon(COLORS.right, 0.32);
     scene.add(this.trackL.mesh, this.trackR.mesh);
     /** a sheet of ice under the chariot while a wheel slips */
+    /** the halo round the parts a step names */
+    this.glow = new HighlightGlow();
     this.ice = new Ice();
     scene.add(this.ice.mesh);
     this.route = new RouteLine(COLORS.off);
@@ -238,7 +240,7 @@ export class World {
       () => false, // the gears and wheels in x-ray colours
       (o) => o.name.endsWith(".ghost"),
       (o) => o instanceof THREE.Mesh && o.material === OUTLINES.ink,
-      (o) => o instanceof THREE.Mesh && (o.material === OUTLINES.lit || o.material === OUTLINES.faded),
+      (o) => o instanceof THREE.Mesh && o.material === OUTLINES.faded,
       (o) => o.name === "spinArc",
     ];
     const extras = [
@@ -257,6 +259,19 @@ export class World {
       this.#xrayLook(rig, false);
       rig.setLook(st.xray, st.highlight);
       this.render();
+    }
+    // the highlight's halo: its programs (drawn with nothing in it), then
+    // (not holding up what comes next) the shapes of the gears and wheels
+    this.glow.warm(this.renderer, this.camera);
+    void this.#hulls(rig);
+  }
+
+  /** The shapes the halo is drawn round, a few at a time while idle (a wheel's takes a few ms). @param {Rig} rig */
+  async #hulls(rig) {
+    const round = rig.turnedMeshes();
+    for (let i = 0; i < round.length; i++) {
+      if (i % 4 === 0) await this.#idle();
+      this.glow.proxy(round[i], true);
     }
   }
 
@@ -492,10 +507,13 @@ export class World {
   }
 
   render() {
-    updateOutlines(this.renderer, this.time);
+    updateOutlines(this.renderer);
     // looking at the works is a diagram: every gear sharp, near or far
     if (this.look.postfx) this.look.postfx.dofOn = !this.rig?.inside;
     this.look.render();
+    // the highlighted parts' halo, over the finished picture
+    const lit = this.rig?.glowParts();
+    if (lit?.length) this.glow.render(this.renderer, this.camera, lit, this.time);
   }
 
   resize() {

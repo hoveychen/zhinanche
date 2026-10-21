@@ -6,7 +6,8 @@
 // turns, fading in only while that gear is turning.
 
 import * as THREE from "three";
-import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 
 /** Left train blue, right train orange, the middle (carrier, shaft, big flat wheel) brass. sRGB. */
 export const TRAIN = {
@@ -63,24 +64,223 @@ function outlineMaterial(color, width, opacity) {
   });
 }
 
-/** Ink round every gear; a lighter one for parts faded back; bright for the highlighted. */
+/** Ink round every gear; a lighter one for parts faded back. (The highlighted ones glow: HighlightGlow.) */
 export const OUTLINES = {
   ink: outlineMaterial(0x1d140c, 1.6, 1),
   faded: outlineMaterial(0x4a3d30, 1.2, 0.55),
-  lit: outlineMaterial(0xfff6c8, 2, 1),
 };
 const BASE_WIDTH = new Map(Object.values(OUTLINES).map((m) => [m, m.uniforms.width.value]));
 
 /**
  * Size the outlines for the canvas: call every frame (cheap).
  * @param {THREE.WebGLRenderer} renderer
- * @param {number} t seconds, for the highlight pulse
  */
-export function updateOutlines(renderer, t) {
+export function updateOutlines(renderer) {
   renderer.getDrawingBufferSize(RES.value);
   const pr = renderer.getPixelRatio();
   for (const [m, w] of BASE_WIDTH) m.uniforms.width.value = w * pr;
-  OUTLINES.lit.uniforms.width.value = (1.6 + 1.2 * (0.5 + 0.5 * Math.sin(t * 4))) * pr;
+}
+
+// The highlight: a soft glow round the outside of the parts a step names.
+// A bright shell round each piece (as the ink outlines are drawn) traced
+// every spoke and every tooth, and a wheel became a net of yellow lines.
+// Here a part is drawn as one shape, what it sweeps out as it turns (a wheel
+// a disc with its hub, a gear a disc to its tooth tips), white into a mask;
+// the mask is blurred (at half size), and the blur is added to the picture
+// only outside the shapes: a halo round the part's outline, nothing on its face.
+const QUAD_VERT = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position.xy, 0.0, 1.0);
+}`;
+
+const BLUR_FRAG = /* glsl */ `
+uniform sampler2D map;
+uniform vec2 step;
+varying vec2 vUv;
+void main() {
+  // a Gaussian of 9 taps, sigma 2 steps
+  float w[5];
+  w[0] = 0.2042; w[1] = 0.1802; w[2] = 0.1238; w[3] = 0.0663; w[4] = 0.0276;
+  float s = texture2D(map, vUv).r * w[0];
+  for (int i = 1; i < 5; i++) {
+    s += texture2D(map, vUv + step * float(i)).r * w[i];
+    s += texture2D(map, vUv - step * float(i)).r * w[i];
+  }
+  gl_FragColor = vec4(s, s, s, 1.0);
+}`;
+
+const GLOW_FRAG = /* glsl */ `
+uniform sampler2D mask;
+uniform sampler2D blur;
+uniform vec3 color;
+uniform float strength;
+varying vec2 vUv;
+void main() {
+  float m = texture2D(mask, vUv).r;
+  float g = min(1.0, texture2D(blur, vUv).r * 1.9) * (1.0 - m);
+  gl_FragColor = vec4(color, g * strength);
+}`;
+
+/** Halo colour (display sRGB, added over the finished picture). */
+const GLOW_COLOR = new THREE.Color().setRGB(1, 0.9, 0.55, THREE.LinearSRGBColorSpace);
+/** How far the halo reaches, in CSS px per blur step (two passes of 9 taps). */
+const GLOW_STEP = 2.6;
+
+/** Slices along the axis for a swept shape. */
+const SWEEP_SLICES = 8;
+
+/**
+ * What a disc-like mesh sweeps out turning about its axis (its thinnest
+ * size, through the middle of its box): a stack of short cylinders, each as
+ * wide as the furthest of the triangles that cross its slice of the axis.
+ * A wheel comes out a disc with its hub standing out of it, a gear a disc to
+ * its tooth tips (a single convex hull ran from the rim to the hub's end).
+ * @param {THREE.BufferGeometry} geo
+ */
+export function sweptShape(geo) {
+  if (!geo.boundingBox) geo.computeBoundingBox();
+  const box = /** @type {THREE.Box3} */ (geo.boundingBox);
+  const size = box.getSize(new THREE.Vector3()).toArray();
+  const c = box.getCenter(new THREE.Vector3()).toArray();
+  const ax = size.indexOf(Math.min(...size));
+  const [u, v] = [0, 1, 2].filter((i) => i !== ax);
+  const lo = box.min.getComponent(ax), span = Math.max(1e-4, size[ax]);
+  const r = new Float32Array(SWEEP_SLICES);
+  const pos = geo.getAttribute("position");
+  const idx = geo.index;
+  const tris = (idx ? idx.count : pos.count) / 3;
+  for (let t = 0; t < tris; t++) {
+    let a0 = Infinity, a1 = -Infinity, rr = 0;
+    for (let k = 0; k < 3; k++) {
+      const i = idx ? idx.getX(t * 3 + k) : t * 3 + k;
+      const a = pos.getComponent(i, ax), du = pos.getComponent(i, u) - c[u], dv = pos.getComponent(i, v) - c[v];
+      a0 = Math.min(a0, a); a1 = Math.max(a1, a);
+      rr = Math.max(rr, Math.hypot(du, dv));
+    }
+    const s0 = Math.max(0, Math.floor(((a0 - lo) / span) * SWEEP_SLICES));
+    const s1 = Math.min(SWEEP_SLICES - 1, Math.floor(((a1 - lo) / span) * SWEEP_SLICES));
+    for (let sl = s0; sl <= s1; sl++) r[sl] = Math.max(r[sl], rr);
+  }
+  /** @type {THREE.BufferGeometry[]} */
+  const parts = [];
+  const h = span / SWEEP_SLICES;
+  const turn = new THREE.Matrix4();
+  if (ax === 0) turn.makeRotationZ(-Math.PI / 2);
+  else if (ax === 2) turn.makeRotationX(Math.PI / 2);
+  for (let sl = 0; sl < SWEEP_SLICES; sl++) {
+    if (r[sl] <= 0) continue;
+    const g = new THREE.CylinderGeometry(r[sl], r[sl], h, 48, 1);
+    g.translate(0, lo + (sl + 0.5) * h - c[ax], 0);
+    g.applyMatrix4(turn);
+    g.translate(c[0], c[1], c[2]);
+    parts.push(g);
+  }
+  return parts.length ? mergeGeometries(parts) : geo;
+}
+
+export class HighlightGlow {
+  constructor() {
+    this.scene = new THREE.Scene();
+    // the stand-ins take their placing from the parts (copied each frame)
+    this.scene.matrixWorldAutoUpdate = false;
+    this.white = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    /** @type {Map<THREE.Mesh, THREE.Mesh>} part mesh → its stand-in */
+    this.proxies = new Map();
+    const rt = () => new THREE.WebGLRenderTarget(1, 1, { depthBuffer: false, type: THREE.UnsignedByteType });
+    this.mask = rt();
+    this.ping = rt();
+    this.pong = rt();
+    this.blur = new THREE.ShaderMaterial({
+      uniforms: { map: { value: null }, step: { value: new THREE.Vector2() } },
+      vertexShader: QUAD_VERT, fragmentShader: BLUR_FRAG, depthTest: false, depthWrite: false,
+    });
+    this.glow = new THREE.ShaderMaterial({
+      uniforms: {
+        mask: { value: this.mask.texture }, blur: { value: this.pong.texture },
+        color: { value: GLOW_COLOR }, strength: { value: 1 },
+      },
+      vertexShader: QUAD_VERT, fragmentShader: GLOW_FRAG,
+      transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
+    });
+    this.quad = new FullScreenQuad(this.blur);
+    this.size = new THREE.Vector2();
+    // a stand-in with no area, for warming up
+    const none = new THREE.BufferGeometry();
+    none.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+    this.dummy = new THREE.Mesh(none, this.white);
+    this.dummy.matrixAutoUpdate = false;
+    this.dummy.frustumCulled = false;
+  }
+
+  /**
+   * The stand-in for one part mesh, made on first use: the solid it sweeps
+   * out turning (`turned`), or the mesh itself (the figure, the clutch's cord).
+   * @param {THREE.Mesh} mesh @param {boolean} turned
+   */
+  proxy(mesh, turned) {
+    let p = this.proxies.get(mesh);
+    if (p) return p;
+    p = new THREE.Mesh(turned ? sweptShape(mesh.geometry) : mesh.geometry, this.white);
+    p.matrixAutoUpdate = false;
+    p.frustumCulled = false;
+    this.proxies.set(mesh, p);
+    return p;
+  }
+
+  /**
+   * Draw the halo over what is on the canvas already.
+   * @param {THREE.WebGLRenderer} renderer
+   * @param {THREE.Camera} camera
+   * @param {{mesh: THREE.Mesh, turned: boolean}[]} parts the highlighted part meshes that show
+   * @param {number} t seconds, for the pulse
+   * @param {boolean} [warm] draw it all with nothing in it (compiles the programs)
+   */
+  render(renderer, camera, parts, t, warm = false) {
+    if (!parts.length && !warm) return;
+    const buf = renderer.getDrawingBufferSize(this.size);
+    // the mask at full size (its edge is the halo's inner edge), the blur at half
+    if (this.mask.width !== buf.x || this.mask.height !== buf.y) this.mask.setSize(buf.x, buf.y);
+    const w = Math.max(1, Math.round(buf.x / 2)), h = Math.max(1, Math.round(buf.y / 2));
+    for (const r of [this.ping, this.pong]) if (r.width !== w || r.height !== h) r.setSize(w, h);
+    this.scene.children.length = 0;
+    for (const { mesh, turned } of parts) {
+      const p = this.proxy(mesh, turned);
+      p.matrixWorld.copy(mesh.matrixWorld);
+      this.scene.children.push(p);
+    }
+    if (warm) this.scene.children.push(this.dummy);
+    const was = { target: renderer.getRenderTarget(), auto: renderer.autoClear, alpha: renderer.getClearAlpha(), color: renderer.getClearColor(new THREE.Color()) };
+    renderer.autoClear = false;
+    renderer.setClearColor(0x000000, 0);
+    renderer.setRenderTarget(this.mask);
+    renderer.clear(true, false, false);
+    renderer.render(this.scene, camera);
+    // blur across, then down: steps in the half-size target's own texels
+    const pr = renderer.getPixelRatio() / 2;
+    const u = this.blur.uniforms;
+    this.quad.material = this.blur;
+    u.map.value = this.mask.texture;
+    u.step.value.set((GLOW_STEP * pr) / w, 0);
+    renderer.setRenderTarget(this.ping);
+    this.quad.render(renderer);
+    u.map.value = this.ping.texture;
+    u.step.value.set(0, (GLOW_STEP * pr) / h);
+    renderer.setRenderTarget(this.pong);
+    this.quad.render(renderer);
+    this.glow.uniforms.strength.value = warm ? 0 : 0.8 + 0.2 * Math.sin(t * 4);
+    this.quad.material = this.glow;
+    renderer.setRenderTarget(was.target);
+    this.quad.render(renderer);
+    renderer.setClearColor(was.color, was.alpha);
+    renderer.autoClear = was.auto;
+  }
+
+  /** Compile the programs and make the targets: a frame of it that adds nothing. @param {THREE.WebGLRenderer} renderer @param {THREE.Camera} camera */
+  warm(renderer, camera) {
+    this.render(renderer, camera, [], 0, true);
+  }
 }
 
 /**
