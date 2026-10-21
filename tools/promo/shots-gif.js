@@ -11,8 +11,8 @@
       P.app.state.speed = (2 * Math.PI) / LAP / 0.9;
     }
     st.cmd = { fwd: 0, turn: -1 };
-    st.fov = 35;
-    st.cam = { pos: [25, 10.7, -26.5], target: [3.2, 6.6, 8.6] };
+    st.fov = 38;
+    st.cam = { pos: [20, 9.5, -20], target: [0.5, 6.4, 8.6] };
     st.dof = false;
   };
 })();

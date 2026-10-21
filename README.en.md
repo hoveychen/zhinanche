@@ -2,7 +2,7 @@
 
 [中文](README.md) · **English**
 
-![A wooden cart turning in a palace courtyard; the little wooden man on top keeps his arm pointed at the gate marked South](images/readme-hero.en.jpg)
+![A wooden cart in a palace courtyard; the little wooden man on top points his arm at the gate marked South](images/readme-hero.en.jpg)
 
 <p align="center"><img src="images/readme-lap.en.gif" width="560" alt="The cart spins a full turn on the spot while the wooden man's arm stays pointed at the south gate on the left; the compass dial in the corner reads Pointing due south all the way round"><br><sub>A full turn on the spot. The man never stops pointing south.</sub></p>
 
