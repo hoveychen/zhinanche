@@ -164,6 +164,11 @@ export async function selftest({ app, course, world, input }) {
           if (walk instanceof HTMLButtonElement && walk.disabled) problems.push("walk button still off after the guess");
         }
         if (step.scene?.play) {
+          // a step opening close on the figure holds its route till the camera is out
+          if (app.waiting) {
+            if (!world.cam.opening) problems.push("play waits with no opening to wait for");
+            app.play(app.waiting);
+          }
           if (!app.player) problems.push("play did not start");
           app.finishPlayback();
           if (app.player && !app.player.done) problems.push("play did not finish");
