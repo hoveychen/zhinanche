@@ -38,6 +38,9 @@ import { SUN_DIR } from "./environment.js";
 
 export const KINDS = /** @type {const} */ (["pine", "fir", "firb"]);
 
+/** Brightness over the baked frames' (see set). */
+const LIFT = 1.3;
+
 const VERT_PARS = /* glsl */ `
 uniform vec4 treeCard; // card width, height, centre height, crown radius: × the tree's height
 uniform vec2 treeFrames; // frames, columns
@@ -120,6 +123,10 @@ const FRAG_MAP = /* glsl */ `
     vec4 b = texture2D(map, vTreeB);
     float wa = a.a * (1.0 - vTreeW), wb = b.a * vTreeW;
     diffuseColor.rgb = (a.rgb * wa + b.rgb * wb) / max(wa + wb, 1e-4) * treeGain;
+    // the thin edges carry colour bled in from the foliage's mean (lighter
+    // than the needles at the rim): darkened by how little they cover, they
+    // stop drawing a pale outline round the crown
+    diffuseColor.rgb *= mix(0.75, 1.0, smoothstep(0.15, 0.75, wa + wb));
     #ifndef TREE_BAKE
     diffuseColor.rgb *= treeShade();
     #endif
@@ -241,7 +248,9 @@ export class Trees {
       const u = k.uniforms;
       u.treeCard.value.set(t.card[0] / t.tree, t.card[1] / t.tree, t.card[2] / t.tree, t.reach / t.tree);
       u.treeFrames.value.set(t.frames, t.cols);
-      u.treeGain.value = t.gain;
+      // the scanned needles are darker than a palace's old pines photograph:
+      // lifted a third, so a tree is not the darkest thing in a sunny view
+      u.treeGain.value = t.gain * LIFT;
       u.map.value = tex;
       for (const mat of [/** @type {THREE.MeshBasicMaterial} */ (k.mesh.material), k.mesh.userData.bakeMaterial]) mat.map = tex;
       k.mesh.count = k.n;

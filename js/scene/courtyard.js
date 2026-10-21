@@ -701,11 +701,18 @@ function* layout(b, lite) {
     vat(b, s * 52, -120);
   }
   yield;
-  // pines in the corners of the court
+  // a clump of three in each corner of the court: the photographed trees are
+  // tall and bare low down, and one alone read thin close up; the two
+  // smaller ones stand further into the corner, crowns overlapping
   const r = rand(5);
   /** @type {[number, number, number, import("./trees.js").TreeKind][]} */
   const court = [[-50, 196, 40, "fir"], [52, 190, 44, "fir"], [-52, -112, 38, "pine"], [50, -108, 36, "fir"]];
-  for (const [x, z, h, kind] of court) tree(b, x, z, h, Math.floor(r() * 1e6), kind);
+  for (const [x, z, h, kind] of court) {
+    const sx = Math.sign(x), sz = Math.sign(z);
+    tree(b, x, z, h, Math.floor(r() * 1e6), kind);
+    tree(b, x + sx * 7, z + sz * 5, h * 0.82, Math.floor(r() * 1e6), kind === "pine" ? "firb" : "pine");
+    tree(b, x - sx * 2, z + sz * 10, h * 0.7, Math.floor(r() * 1e6), "firb");
+  }
   // beyond the walls: groves of one to three trees (the photographed trees
   // are slimmer than the old crowns were, and a card costs next to nothing)
   const outer = lite ? 18 : 40;
