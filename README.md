@@ -2,7 +2,7 @@
 
 **中文** · [English](README.en.md)
 
-![傍晚的庭院里，木车在转弯，车上的木人伸手指着南门](images/readme-hero.jpg)
+![庭院里的木车，车上的木人伸手指着南门](images/readme-hero.jpg)
 
 <p align="center"><img src="images/readme-lap.gif" width="560" alt="车原地绕了一整圈，木人的手始终指着南门；左上角的罗盘一直写着「木人指着正南」"><br><sub>车绕一整圈，木人一直指着南门（镜头朝向固定，只跟着车走）</sub></p>
 
