@@ -779,7 +779,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .odo-bar .fill { top: 0; bottom: 0; right: auto; height: auto; left: calc(var(--from, 0) * 100%); width: calc(var(--len, 0) * 100%); }
   .odo-bar .zero { top: -2px; bottom: -2px; left: 50%; right: auto; width: 2px; height: auto; }
   .odo-diff { margin-top: 3px; font-size: var(--fs-xs); text-wrap: balance; }
-  .hud-odo.folded { min-height: 44px; padding: 6px 28px 6px 10px; }
+  .hud-odo.folded { min-height: var(--tap); padding: 6px 28px 6px 10px; }
   .odo-fold { top: 5px; right: 5px; width: 16px; height: 16px; }
   .hud-odo.folded .odo-fold { top: calc(50% - 8px); }
 }
