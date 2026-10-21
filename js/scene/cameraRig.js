@@ -75,8 +75,14 @@ const ABOVE = { x: 6, north: 7, south: 11.2 };
 const ABOVE_DIR = new THREE.Vector3(-1, 0.66, 0.2).normalize();
 const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
 
-/** The overview frames a sphere this big round the chariot (a demo on the ground: the demo's own, if bigger). */
+/**
+ * The overview frames a sphere this big round the chariot (a demo on the
+ * ground: the demo's own, if bigger), from the west and a little south, 30°
+ * up: the sunlit side (the sun is low in the west-north-west,
+ * js/scene/environment.js), the near wheel under the box, the south seal by it.
+ */
 const OVERVIEW_R = 12;
+const OVERVIEW_DIR = new THREE.Vector3(-0.9, 0.62, 0.5).normalize();
 
 /** Views close in on the works on purpose: they may look from inside the body. */
 const CLOSE = new Set(["gears", "works", "pair", "wheels", "figure", "hero", "intro"]);
@@ -389,7 +395,7 @@ export class CameraRig {
       case "overview":
       default: {
         const target = new THREE.Vector3(f.x, 6.2, f.z + 4.6);
-        return { target, pos: target.clone().addScaledVector(new THREE.Vector3(0.66, 0.62, 0.78).normalize(), this.fit(Math.max(OVERVIEW_R, this.extraRadius))) };
+        return { target, pos: target.clone().addScaledVector(OVERVIEW_DIR, this.fit(Math.max(OVERVIEW_R, this.extraRadius))) };
       }
     }
   }
