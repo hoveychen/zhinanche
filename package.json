@@ -15,7 +15,8 @@
     "serve": "node tools/serve.mjs",
     "build:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/build_chariot.py --",
     "check:model": "node tools/export-poses.mjs && \"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/check_clearance.py --",
-    "render:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/render_previews.py --"
+    "render:model": "\"${BLENDER:-blender}\" --background --factory-startup --python-exit-code 1 --python blender/scripts/render_previews.py --",
+    "assets": "UV_HTTP_TIMEOUT=300 uv run --with numpy --with pillow tools/assets/build_photo.py"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

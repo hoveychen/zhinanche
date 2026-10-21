@@ -1,0 +1,39 @@
+{
+  "about": "Photographed (scanned) sky and surfaces from Poly Haven, all CC0. tools/assets/build_photo.py downloads them and writes assets/photo/. Checked on https://polyhaven.com/license on 2026-10-21.",
+  "sky": {
+    "id": "kloofendal_48d_partly_cloudy_puresky",
+    "res": "4k",
+    "author": "Greg Zaal, Jarod Guest",
+    "page": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky"
+  },
+  "textures": {
+    "ground": {
+      "id": "large_grey_tiles",
+      "res": "2k",
+      "author": "Rob Tuytel",
+      "page": "https://polyhaven.com/a/large_grey_tiles",
+      "use": "courtyard paving (world-fixed, ground.js)"
+    },
+    "plaster": {
+      "id": "red_plaster_weathered",
+      "res": "2k",
+      "author": "Amal Kumar",
+      "page": "https://polyhaven.com/a/red_plaster_weathered",
+      "use": "the courtyard's red walls (courtyard.js wallRed)"
+    },
+    "roof": {
+      "id": "clay_roof_tiles_02",
+      "res": "2k",
+      "author": "Amal Kumar",
+      "page": "https://polyhaven.com/a/clay_roof_tiles_02",
+      "use": "glazed roof tiles, greyed and tinted per roof (courtyard.js)"
+    },
+    "wood": {
+      "id": "dark_wood",
+      "res": "2k",
+      "author": "Dimitrios Savva, Dario Barresi, Rico Cilliers",
+      "page": "https://polyhaven.com/a/dark_wood",
+      "use": "the chariot's wood (materials.js)"
+    }
+  }
+}
