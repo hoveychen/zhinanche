@@ -39,6 +39,8 @@ const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
  * south to west, a little above.
  */
 const FIGURE_DIR = new THREE.Vector3(-Math.sin(Math.PI / 4), 0.35, Math.cos(Math.PI / 4)).normalize();
+/** ...and in the opening close-up (view "hero"): 50° round, lower. */
+const HERO_DIR = new THREE.Vector3(-Math.sin(THREE.MathUtils.degToRad(50)), 0.14, Math.cos(THREE.MathUtils.degToRad(50))).normalize();
 
 /**
  * The follow view looks along a fixed bearing in the world: from the north
@@ -109,7 +111,7 @@ export class CameraRig {
     this.controls = controls;
     /** @type {ViewId} */
     this.view = "overview";
-    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number, dur?: number} | null} */
+    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number, dur?: number, arc?: boolean} | null} */
     this.glide = null;
     /** the home page's opening (view "intro"): seconds into it, and whether it has pulled back yet */
     this.intro = { t: 0, out: false };
@@ -260,21 +262,19 @@ export class CameraRig {
     if (view === "intro") view = this.intro.out ? "follow" : "hero";
     switch (view) {
       case "hero": {
-        // Close on the figure from behind it and to one side, the arm side-on
-        // enough to read, the South Gate it points at in the same picture.
-        // Figure and arm take about a third of the height; the wider the view,
-        // the further round to the side it can go and still have the gate in.
+        // Close on the figure from in front of it and to the west (the sunlit
+        // side), its face and beard three-quarters on, the arm and the green
+        // line it points along running off south across the picture. Figure
+        // and arm take about a third of the height. (From behind, the South
+        // Gate was in the picture too, but the first sight of the figure was
+        // its back; it faces the gate, so the two can't both be in.)
         const v = THREE.MathUtils.degToRad(this.camera.fov);
-        const hf = 2 * Math.atan(Math.tan(v / 2) * this.camera.aspect);
-        const side = THREE.MathUtils.clamp(hf * 0.72, THREE.MathUtils.degToRad(14), THREE.MathUtils.degToRad(36));
         const fig = new THREE.Vector3(f.x + FIGURE_MID.x, FIGURE_MID.y, f.z + FIGURE_MID.z);
-        const d = (FIGURE_MID.h * 2.05) / Math.tan(v / 2);
-        // from the north and a little west (the sunlit side, as the chase view)
-        const pos = fig.clone().addScaledVector(new THREE.Vector3(-Math.sin(side), 0.2, -Math.cos(side)).normalize(), d);
-        // aim between the figure and the gate (js/scene/landmark.js), so both are in
-        const gate = new THREE.Vector3(f.x, 12.5, f.z + 105);
-        const aim = fig.clone().sub(pos).normalize().add(gate.sub(pos).normalize()).normalize();
-        return { pos, target: pos.clone().addScaledVector(aim, d) };
+        const d = (FIGURE_MID.h * 1.3) / Math.tan(v / 2);
+        const pos = fig.clone().addScaledVector(HERO_DIR, d);
+        // aim a little down the line it points along, so the figure sits left of the middle
+        const along = fig.clone().add(new THREE.Vector3(0, 0.3, 0.7));
+        return { pos, target: pos.clone().addScaledVector(along.sub(pos).normalize(), d) };
       }
       case "top": {
         if (this.box) {
@@ -516,9 +516,10 @@ export class CameraRig {
       this.intro.t += dt;
       const o = this.brief ? INTRO_BRIEF : INTRO;
       if (this.intro.t >= o.hold && !this.glide) {
-        // slowly back out to the whole scene
+        // slowly back out to the whole scene, round the chariot (from in front
+        // of the figure to the chase view behind it: straight, it passed the figure close)
         this.intro.out = true;
-        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: o.out };
+        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: o.out, arc: true };
       }
     }
     // put back the distance taken off last frame, so the camera eases out
@@ -533,7 +534,13 @@ export class CameraRig {
       g.t = Math.min(1, g.t + dt / (g.dur ?? GLIDE));
       const k = g.t * g.t * (3 - 2 * g.t);
       const d = this.desired(this.view, f);
-      cam.position.lerpVectors(g.fromPos, d.pos, k);
+      if (g.arc) {
+        // bearing, distance and height round the chariot each eased on their own
+        const ax = g.fromPos.x - f.x, az = g.fromPos.z - f.z, bx = d.pos.x - f.x, bz = d.pos.z - f.z;
+        const a0 = Math.atan2(az, ax), da = Math.atan2(Math.sin(Math.atan2(bz, bx) - a0), Math.cos(Math.atan2(bz, bx) - a0));
+        const r = THREE.MathUtils.lerp(Math.hypot(ax, az), Math.hypot(bx, bz), k), a = a0 + da * k;
+        cam.position.set(f.x + r * Math.cos(a), THREE.MathUtils.lerp(g.fromPos.y, d.pos.y, k), f.z + r * Math.sin(a));
+      } else cam.position.lerpVectors(g.fromPos, d.pos, k);
       ctl.target.lerpVectors(g.fromTarget, d.target, k);
       if (g.t >= 1) this.glide = null;
     } else if (!(this.view === "top" && this.box)) {
