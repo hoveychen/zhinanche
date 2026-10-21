@@ -78,33 +78,59 @@ export class Ribbon {
   }
 }
 
-/** A thick screen-space line on the ground, for drawn routes. */
+/**
+ * A thick screen-space line on the ground, for drawn routes: the child's own
+ * line solid, the lead-in from the chariot onto it (js/sim/route.js
+ * joinParts) dashed and fainter, so it reads as the way onto the line.
+ */
 export class RouteLine {
   /** @param {number} color */
   constructor(color) {
     this.mat = new LineMaterial({ color, linewidth: 7, transparent: true, opacity: 0.85, depthWrite: false, dashed: false });
+    this.leadMat = new LineMaterial({ color, linewidth: 5, transparent: true, opacity: 0.7, depthWrite: false, dashed: true, dashSize: 0.9, gapSize: 0.7 });
     this.geo = new LineGeometry();
-    this.line = new Line2(this.geo, this.mat);
-    this.line.renderOrder = 5;
+    this.leadGeo = new LineGeometry();
+    this.line = new THREE.Group();
+    this.line.name = "route";
+    this.main = new Line2(this.geo, this.mat);
+    this.lead = new Line2(this.leadGeo, this.leadMat);
+    for (const l of [this.main, this.lead]) {
+      l.renderOrder = 5;
+      l.frustumCulled = false;
+      this.line.add(l);
+    }
     this.line.visible = false;
-    this.line.frustumCulled = false;
   }
 
-  /** @param {{x: number, z: number}[]} pts */
-  set(pts) {
+  /**
+   * @param {{x: number, z: number}[]} pts from the chariot on
+   * @param {number} [from] where the child's line starts: the points before it are the lead-in
+   */
+  set(pts, from = 1) {
+    from = Math.min(Math.max(0, from), pts.length - 1);
+    const own = pts.slice(from), lead = pts.slice(0, from + 1);
     if (pts.length < 2) {
       this.line.visible = false;
       return;
     }
+    this.geo = this.#put(this.main, this.geo, own);
+    this.leadGeo = this.#put(this.lead, this.leadGeo, lead);
+    this.line.visible = true;
+  }
+
+  /** @param {Line2} l @param {LineGeometry} geo @param {{x: number, z: number}[]} pts */
+  #put(l, geo, pts) {
+    geo.dispose();
+    l.visible = pts.length >= 2 && Math.hypot(pts[pts.length - 1].x - pts[0].x, pts[pts.length - 1].z - pts[0].z) > 0.05;
+    const next = new LineGeometry();
+    if (!l.visible) return next;
     /** @type {number[]} */
     const flat = [];
     for (const p of pts) flat.push(p.x, 0.06, p.z);
-    this.geo.dispose();
-    this.geo = new LineGeometry();
-    this.geo.setPositions(flat);
-    this.line.geometry = this.geo;
-    this.line.computeLineDistances();
-    this.line.visible = true;
+    next.setPositions(flat);
+    l.geometry = next;
+    l.computeLineDistances();
+    return next;
   }
 
   clear() {
@@ -114,5 +140,6 @@ export class RouteLine {
   /** @param {number} w @param {number} h */
   resize(w, h) {
     this.mat.resolution.set(w, h);
+    this.leadMat.resolution.set(w, h);
   }
 }

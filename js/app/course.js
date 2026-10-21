@@ -2,7 +2,7 @@
 // driving. The player shows a step's text, picture and task, applies its scene
 // directive, and ticks the task off when its check passes.
 
-import { h } from "./dom.js";
+import { h, touchOnly } from "./dom.js";
 import { icon } from "./icons.js";
 import { S, bind, lessons } from "../i18n.js";
 import { stateAt } from "./directive.js";
@@ -33,6 +33,11 @@ function keepAddress(at) {
     if (to !== location.href) history.replaceState(history.state, "", to);
   } catch {}
 }
+
+/** A tablet held upright: the lesson panel under the view (css/style.css). */
+const UPRIGHT_TABLET = typeof matchMedia === "function" ? matchMedia("(orientation: portrait) and (min-width: 601px)") : { matches: false };
+/** ...takes at most and at least this much of the height under the top bar, and a picture in it no less than this (px). */
+const PANEL = { most: 0.47, least: 0.36, picLeast: 110 };
 
 export class Course {
   /**
@@ -80,6 +85,10 @@ export class Course {
       h("span", { class: "sheet-grip", "aria-hidden": "true" }), this.sheetText,
     ]);
     new ResizeObserver(() => this.#updateCue()).observe(panel);
+    // a tablet turned upright: the step's words are measured again
+    addEventListener("resize", () => {
+      if (this.mode === "lesson") this.#fitPanel();
+    });
     app.onTick(() => this.#tick());
   }
 
@@ -176,7 +185,7 @@ export class Course {
     const t = S().free;
     const body = h("div", { class: "free" }, [
       h("h2", { class: "panel-title", text: t.title }),
-      h("p", { text: t.howDrive }),
+      h("p", { text: touchOnly() ? t.howDriveTouch : t.howDrive }),
       h("p", { text: t.howDraw }),
     ]);
     this.#show(body, null, this.sheetBtn);
@@ -404,10 +413,56 @@ export class Course {
     this.scroller = scroller;
     scroller.scrollTop = 0;
     this.tools.sync(this.app.state);
+    this.#fitPanel();
     if (keep) return;
     if (body.classList.contains("lesson")) this.#reveal(false);
     else this.target = null;
     this.#updateCue();
+  }
+
+  /**
+   * A tablet held upright: the view over the lesson panel keeps at least the
+   * half of the screen it always had, and takes what a step's words leave
+   * empty, up to 1 - PANEL.least of it (a step of two lines left a third of the
+   * screen blank). A step longer than the panel first gives up some of its
+   * picture's height, so the picture's credit line shows without scrolling.
+   * Set once as the step opens: an answer coming up under the question
+   * scrolls, it doesn't push the view about.
+   */
+  #fitPanel() {
+    const layout = this.panel.parentElement;
+    if (!layout) return;
+    layout.style.removeProperty("--panel-h");
+    this.panel.style.removeProperty("--pic-h");
+    if (this.mode !== "lesson" || !UPRIGHT_TABLET.matches || !this.scroller) return;
+    const total = layout.clientHeight;
+    const nav = this.panel.querySelector(".panel-nav");
+    const edge = this.panel.offsetHeight - this.panel.clientHeight;
+    const sc = this.scroller;
+    // the words' height, not the scroller's (it fills the panel)
+    const words = () => {
+      const top = sc.getBoundingClientRect().top - sc.scrollTop;
+      let bottom = top;
+      for (const c of sc.children) if (c instanceof HTMLElement && !c.hidden) bottom = Math.max(bottom, c.getBoundingClientRect().bottom);
+      return bottom - top + parseFloat(getComputedStyle(sc).paddingBottom);
+    };
+    const need = () => words() + (nav ? nav.getBoundingClientRect().height : 0) + edge;
+    const most = total * PANEL.most, least = total * PANEL.least;
+    let n = need();
+    const img = sc.querySelector(".pic img");
+    if (n > most && img) {
+      const h = img.getBoundingClientRect().height;
+      this.panel.style.setProperty("--pic-h", `${Math.round(Math.max(PANEL.picLeast, h - (n - most)))}px`);
+      n = need();
+    }
+    let ph = Math.round(Math.min(most, Math.max(least, n)));
+    layout.style.setProperty("--panel-h", `${ph}px`);
+    // what the boxes leave out (the last line's margin): the scroller says
+    const over = sc.scrollHeight - sc.clientHeight;
+    if (over > 0 && ph < most) {
+      ph = Math.round(Math.min(most, ph + over));
+      layout.style.setProperty("--panel-h", `${ph}px`);
+    }
   }
 
   /** How far the element's bottom is below the panel's visible part (px). @param {HTMLElement} el */

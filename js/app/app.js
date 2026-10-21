@@ -6,7 +6,7 @@ import { Chariot, wrap } from "../sim/chariot.js";
 import { pivotTwist, roll, twist } from "../sim/drive.js";
 import { applyDirective, freeBase, hasFaults, hasSlip, sameFaults } from "./directive.js";
 import { FollowPlayer, planPlayback } from "./playback.js";
-import { joinRoute } from "../sim/route.js";
+import { joinParts } from "../sim/route.js";
 import { Tracker } from "./checks.js";
 import { RAMP, ease } from "./drive.js";
 import { toSim, toWorld } from "../scene/world.js";
@@ -246,15 +246,28 @@ export class App {
     this.setPaused(false);
     const c = this.chariot;
     // joined onto the chariot: it sets off along the line, and the line shown is the one it drives
-    const joined = joinRoute(c, worldPts.map(toSim));
+    const joined = this.showRoute(worldPts);
     this.drawn = { x: c.x, y: c.y, heading: c.heading, pts: joined };
     const pts = [{ x: c.x, y: c.y }, ...joined];
-    this.world.route.set(pts.map(toWorld));
     const st = this.state;
     const style = st.mechanism === "song" && st.assist ? "pivot" : "smooth";
     this.follow = new FollowPlayer(pts, style, st.slip);
     // Keep the whole drawing (and the chariot on it) clear of the HUD.
     if (st.view === "top") this.world.frameRoute(pts);
+  }
+
+  /**
+   * Show a route (one being drawn too) joined onto the chariot as it will
+   * drive it: the lead-in onto the child's line dashed. Returns the joined
+   * route (sim, the chariot's own position not included).
+   * @param {{x: number, z: number}[]} worldPts
+   */
+  showRoute(worldPts) {
+    const c = this.chariot;
+    const { lead, stroke } = joinParts(c, worldPts.map(toSim));
+    const joined = [...lead, ...stroke];
+    this.world.route.set([{ x: c.x, y: c.y }, ...joined].map(toWorld), lead.length + 1);
+    return joined;
   }
 
   /** The child took the wheel: stop any auto-play. */
