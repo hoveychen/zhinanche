@@ -6,6 +6,7 @@
 import { h } from "./dom.js";
 import { hasFaults, hasSlip } from "./directive.js";
 import { S, bind } from "../i18n.js";
+import { icon } from "./icons.js";
 
 /** @import { SceneDirective, ControlId } from "../teach/types.js" */
 /** @import { SceneState } from "./directive.js" */
@@ -110,7 +111,7 @@ export class Tools {
       { label: "slipR", value: true },
     ], (v) => host.direct({ slip: v ? { slipR: 0.2 } : {} }));
     const xrayBtn = h("button", { type: "button", class: "toggle", "aria-pressed": "false", onclick: () => host.direct({ xray: !this.state?.xray }) }, [
-      h("span", { class: "toggle-icon", "aria-hidden": "true" }), bind(h("span"), w("xray")),
+      icon("eye"), bind(h("span"), w("xray")),
     ]);
     const explode = slider("explode", (v) => host.direct({ explode: v }));
     const speed = segmented("speed", [
@@ -118,7 +119,7 @@ export class Tools {
       { label: "normal", value: 1 },
       { label: "fast", value: 2 },
     ], (v) => host.direct({ speed: v }));
-    const resetBtn = bind(h("button", { type: "button", class: "plain", onclick: () => host.resetChariot() }), w("reset"));
+    const resetBtn = h("button", { type: "button", class: "plain", onclick: () => host.resetChariot() }, [icon("arrow-back-up"), bind(h("span"), w("reset"))]);
 
     this.parts = { mech, assistBtn, assistNote, faults, slip, xrayBtn, explode, speed };
     /** @type {Record<Exclude<ControlId, "drive" | "draw" | "gearsView">, HTMLElement>} */
@@ -135,7 +136,7 @@ export class Tools {
     // The faults first and set apart: "does it drift?" is what people ask.
     const b = this.blocks;
     this.trouble = bind(h("div", { class: "trouble", role: "group" }, [
-      bind(h("p", { class: "trouble-head" }), (s) => s.free.breakHead),
+      h("p", { class: "trouble-head" }, [icon("tool"), bind(h("span"), (s) => s.free.breakHead)]),
       bind(h("p", { class: "trouble-note" }), (s) => s.free.breakNote),
       b.faults, b.slip,
     ]), (s) => s.free.breakHead, "aria-label");

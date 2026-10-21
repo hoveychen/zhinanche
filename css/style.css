@@ -1,36 +1,77 @@
-/* 指南车 — page styles. Song wood, vermilion lacquer, azurite.
-   Left wheel / left gear train = blue, right = orange, everywhere. */
+/* 指南车 — page styles. One design language for the whole shell (design/decisions/0003-ui-tokens.md):
+   rice-paper surfaces and dark ink, one accent (vermilion) for "press this" and "this is on",
+   green only for "done / pointing south"; blue and orange are the two wheels (left / right)
+   everywhere, data colours, not the interface's. Every card, button and chip is built from
+   the tokens below; nothing else picks its own colour, radius, shadow or size. */
 
 :root {
-  --ink: #2b2620;
-  --ink-soft: #5d5247;
-  --paper: #fbf8f1;
-  --sky: #d5e4df;
-  --wood: #a8743f;
-  --wood-light: #f0dfbf;
-  --wood-mid: #dcbf8c;
-  --wood-dark: #6b4423;
-  --zhu: #c8361f;
-  --zhu-dark: #962612;
-  --shiqing: #1f4a5c;
-  --shiqing-light: #dbe7ea;
-  --ok: #2f8a57;
-  --left: #2e70d6;
-  --right: #f08a24;
+  /* ---- colour ---- */
+  --paper: #fbf8f1;          /* the page, the panel */
+  --paper-2: #f4eee3;        /* bars, the track under segmented buttons, the nav strip */
+  --paper-3: #e9dfcd;        /* pressed on paper-2, empty bars and tracks */
+  --surface: #fffdf9;        /* cards and buttons on the panel */
+  --glass: rgba(255, 253, 249, 0.9); /* cards over the 3D view (blurred behind) */
+  --ink: #2b2620;            /* text */
+  --ink-2: #6a5d4f;          /* secondary text, labels */
+  --umber: #7a4a36;          /* ink with some red in it: small headings, lesson numbers, links (not a control) */
+  --line: #e4d9c6;           /* hairlines, card edges */
+  --line-2: #cdbc9e;         /* button edges, control tracks */
+  --accent: #c8361f;         /* vermilion: the button to press, a control that is on */
+  --accent-hover: #b02e19;
+  --accent-ink: #a42914;     /* vermilion as text on paper */
+  --accent-soft: #fbe8e1;    /* a control that is on, quietly */
+  --ok: #2f8a57;             /* done, pointing south */
+  --ok-soft: #e3f1e7;
+  --ok-ink: #1f6b41;          /* green as text (on pale green or paper) */
+  --left: #2e70d6;           /* the left wheel (data) */
+  --right: #f08a24;          /* the right wheel (data) */
   --right-ink: #b9580a;
+  --sky: #d5e4df;            /* the view before the scene is drawn */
+
+  /* ---- shape ---- */
+  --r-s: 8px;                /* chips, labels, small badges */
+  --r-m: 12px;               /* buttons, inputs, pictures */
+  --r-l: 16px;               /* cards, the floating bars */
+  --r-full: 999px;
+  --sh-1: 0 1px 2px rgba(60, 40, 20, 0.1), 0 1px 3px rgba(60, 40, 20, 0.06);
+  --sh-2: 0 2px 6px rgba(60, 40, 20, 0.1), 0 8px 24px rgba(60, 40, 20, 0.14);
+  --sh-sheet: 0 -6px 24px rgba(60, 40, 20, 0.16); /* a sheet pulled up from the bottom: its shadow falls upward */
+  --blur: blur(8px);
+
+  /* ---- type: one sans for everything read; Kai only for the name (brand, home title) ---- */
+  --fs-xs: 14px;             /* units, captions */
+  --fs-s: 16px;              /* secondary text, chip and HUD words */
+  --fs-m: 18px;              /* buttons, UI text */
+  --fs-l: 20px;              /* lesson text */
+  --fs-lead: 24px;           /* the line over the view on the home page, the wheel distances' numbers */
+  --fs-xl: 28px;             /* panel titles */
+  --fs-2xl: 48px;            /* the home title */
   /* Chinese first; Linux / Android have no Kai or PingFang, so Noto CJK
      (Android, most Linux desktops), WenQuanYi and the old Droid fallback follow */
   --cjk-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", "Droid Sans Fallback";
   --cjk-kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "BiauKai", "AR PL UKai CN", "AR PL UKai TW", "Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC";
   --font: var(--cjk-sans), system-ui, sans-serif;
   --kai: var(--cjk-kai), var(--font);
+
+  /* ---- space ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* ---- sizes ---- */
+  --tap: 48px;               /* the smallest thing a finger presses */
+  --pad-key: 56px;           /* the drive keys */
+  --icon: 22px;
+  --hud-gap: 12px;           /* the HUD's distance from the view's edges */
   --panel-w: 400px;
   --bar-h: 60px;
 }
 
-/* English: the system UI face for reading, a book serif where the Chinese
-   pages use Kai (titles, the hook); Chinese characters still fall through to
-   the CJK lists (the 南 seals). */
+/* English: the system UI face; a book serif where the Chinese uses Kai (the
+   name); Chinese characters still fall through to the CJK lists (the 南 seals). */
 html[lang="en"] {
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, var(--cjk-sans), sans-serif;
   --kai: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", P052, Georgia, var(--cjk-kai), serif;
@@ -39,7 +80,7 @@ html[lang="en"] {
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
-  font: 20px/1.6 var(--font);
+  font: var(--fs-m)/1.6 var(--font);
   color: var(--ink);
   background: var(--paper);
   overflow: hidden;
@@ -48,55 +89,53 @@ body {
 }
 button { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
-:focus-visible { outline: 3px solid var(--zhu); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.icon { flex: none; display: block; width: var(--icon); height: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon.filled { fill: currentColor; stroke: none; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .app { display: grid; grid-template-rows: var(--bar-h) 1fr; height: 100vh; height: 100dvh; }
 
 /* ---------- top bar ---------- */
 .bar {
-  display: flex; align-items: center; gap: 24px;
-  padding: 0 20px;
-  background: var(--shiqing);
-  color: #f6f1e4;
-  border-bottom: 4px solid var(--wood-dark);
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 0 var(--sp-3) 0 var(--sp-4);
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--line);
 }
 .mark {
-  display: flex; align-items: center; gap: 12px; white-space: nowrap;
-  margin: 0; font: 400 32px/1 var(--kai); letter-spacing: 0.08em;
+  display: flex; align-items: center; gap: 10px; white-space: nowrap;
+  margin: 0; font: 400 26px/1 var(--kai); letter-spacing: 0.06em; color: var(--ink);
 }
 .seal {
   display: inline-grid; place-items: center;
-  width: 38px; height: 38px; border-radius: 4px;
-  background: var(--zhu); color: var(--paper);
-  font: 700 26px/1 var(--kai); letter-spacing: 0;
-  box-shadow: inset 0 0 0 2px rgba(251, 248, 241, 0.35);
+  width: 34px; height: 34px; border-radius: var(--r-s);
+  background: var(--accent); color: var(--paper);
+  font: 700 23px/1 var(--kai); letter-spacing: 0;
 }
-.tabs { display: flex; gap: 4px; margin-left: auto; height: 100%; }
-.tab {
-  min-height: 48px; min-width: 96px; padding: 0 18px; align-self: center; white-space: nowrap; touch-action: manipulation;
-  border: 0; border-radius: 6px; background: transparent; color: #e7efe9;
-  font-size: 20px; cursor: pointer;
+.tabs { display: flex; gap: var(--sp-1); margin-left: auto; }
+.tab, .lang-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--tap); padding: 0 var(--sp-4); white-space: nowrap; touch-action: manipulation; cursor: pointer;
+  border: 1px solid transparent; border-radius: var(--r-m); background: transparent; color: var(--ink-2);
+  font-size: var(--fs-m); font-weight: 600;
 }
-.tab:hover { background: rgba(255, 255, 255, 0.08); }
-.tab.on { background: var(--paper); color: var(--shiqing); font-weight: 600; }
-/* the language switch: names the other language, quiet until hovered */
-.lang-btn {
-  flex: none; min-height: 40px; min-width: 52px; padding: 0 12px; align-self: center; touch-action: manipulation;
-  border: 1.5px solid rgba(246, 241, 228, 0.5); border-radius: 999px; background: transparent; color: #f6f1e4;
-  font: 600 16px/1 var(--font); letter-spacing: 0.02em; cursor: pointer; white-space: nowrap;
-}
-.lang-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: #f6f1e4; }
+.tab { min-width: 88px; }
+.tab:hover, .lang-btn:hover { background: var(--paper-3); color: var(--ink); }
+.tab.on { background: var(--surface); border-color: var(--line); color: var(--accent-ink); box-shadow: var(--sh-1); }
+/* the language switch: names the other language */
+.lang-btn { flex: none; min-width: var(--tap); padding: 0 var(--sp-3); font-size: var(--fs-s); }
 .lang-btn:lang(zh-CN) { font-family: var(--cjk-sans), sans-serif; }
-.bar > .tabs + .lang-btn { margin-left: -12px; }
-/* English needs none of the spacing the Chinese titles are set with */
-html[lang="en"] .mark { letter-spacing: 0; font-size: 28px; }
+.bar > .tabs + .lang-btn { margin-left: var(--sp-1); }
+/* English needs none of the spacing the Chinese name is set with */
+html[lang="en"] .mark { letter-spacing: 0; font-size: 24px; }
 /* "The South-Pointing" on one line (its hyphen does not break) at any panel width:
    sized to the panel, never bigger than 44px */
 html[lang="en"] .home-title { letter-spacing: 0; font-size: min(44px, 10.6cqi); }
 @media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
   html[lang="en"] .mark [data-i18n] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
-html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase; font-size: 15px; }
+html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-title { letter-spacing: 0.06em; text-transform: uppercase; font-size: var(--fs-xs); }
 
 /* ---------- layout ---------- */
 .layout { display: grid; grid-template-columns: 1fr var(--panel-w); min-height: 0; }
@@ -109,194 +148,195 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 .panel {
   position: relative; display: flex; flex-direction: column; min-height: 0;
   background: var(--paper);
-  border-left: 10px solid var(--wood);
-  border-image: repeating-linear-gradient(180deg, var(--wood) 0 22px, #9b6a38 22px 26px, var(--wood) 26px 61px, #b37d46 61px 64px) 10;
+  border-left: 1px solid var(--line);
 }
-.panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 22px 24px 28px; container-type: inline-size; }
+.panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-5) var(--sp-5) var(--sp-6); container-type: inline-size; }
 
 @media (min-width: 1280px) { :root { --panel-w: 460px; } }
+/* Side panel (desktops, tablets on their side): a short step's back / next
+   follow its words, the panel's spare room goes under them; a long step's
+   words scroll and the buttons stay at the bottom. (Portrait screens and
+   phones keep the buttons at the bottom: their panel is short anyway.) */
+@media (orientation: landscape) and (min-width: 761px) and (min-height: 501px) {
+  .panel-body { flex: 0 1 auto; min-height: 0; }
+  /* on the panel's own paper, a hairline over it: it reads as the end of the step, not a bar */
+  .panel-body + .panel-nav { background: var(--paper); }
+}
 
 /* Portrait tablets and phones: 3D on top, lessons below. */
 @media (orientation: portrait), (max-width: 760px) {
   .layout { grid-template-columns: 1fr; grid-template-rows: 46% 54%; }
-  .panel { border-left: 0; border-top: 10px solid var(--wood); border-image: repeating-linear-gradient(90deg, var(--wood) 0 22px, #9b6a38 22px 26px, var(--wood) 26px 61px, #b37d46 61px 64px) 10; }
-  .panel-body { padding: 14px 22px 22px; }
-  /* the panel is short here: kicker, title and dots on one line, tighter text */
-  .lesson-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; margin-bottom: 8px; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); }
+  .panel-body { padding: var(--sp-4) 22px 22px; }
+  /* the panel is short here: kicker, title and progress on one line, tighter text */
+  .lesson-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; margin-bottom: var(--sp-2); }
   .lesson-kicker { margin: 0; }
-  .panel-title { font-size: 30px; }
-  .dots { margin: 0 0 0 auto; align-self: center; }
-  .lesson-text p { font-size: 21px; line-height: 1.6; margin-bottom: 10px; }
+  .panel-title { font-size: 26px; }
+  .dots { width: min(36%, 220px); margin: 0 0 0 auto; align-self: center; }
+  .lesson-text p { font-size: var(--fs-l); line-height: 1.6; margin-bottom: 10px; }
   .task { margin: 6px 0 14px; padding: 12px 16px; }
   .pic img { max-height: 200px; }
 }
 
-.site-foot { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--wood-mid); font-size: 15px; }
-.site-foot a { color: var(--shiqing); }
+.site-foot { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: var(--sp-5); padding-top: var(--sp-3); border-top: 1px solid var(--line); font-size: var(--fs-xs); }
+.site-foot a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-2); }
+.site-foot a:hover { color: var(--ink); }
 
 .loading {
   position: absolute; inset: 0; display: grid; place-items: center; margin: 0;
-  font: 400 30px var(--kai); color: var(--shiqing); background: var(--sky);
+  font-size: var(--fs-l); font-weight: 600; color: var(--ink-2); background: var(--sky);
 }
-.loading.error { color: var(--zhu); }
+.loading.error { color: var(--accent-ink); }
 .noscript { padding: 24px; }
 
-/* ---------- buttons ---------- */
-.primary, .plain, .seg-btn, .option, .toggle, .switch {
-  min-height: 52px; cursor: pointer; touch-action: manipulation;
+/* ---------- buttons: filled (the one to press), outlined (the others) ---------- */
+.primary, .plain, .option, .toggle, .switch {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: var(--tap); padding: 0 20px; border-radius: var(--r-m);
+  font-size: var(--fs-m); font-weight: 600; line-height: 1.3;
+  cursor: pointer; touch-action: manipulation; transition: background-color 0.12s, border-color 0.12s;
 }
-.primary {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 0 26px; border: 0; border-radius: 8px;
-  background: var(--zhu); color: #fff8ef; font-weight: 600;
-  box-shadow: inset 0 -4px 0 var(--zhu-dark);
-}
-.primary:hover:not(:disabled) { background: #d23f27; }
-.primary:active:not(:disabled) { box-shadow: inset 0 -1px 0 var(--zhu-dark); transform: translateY(2px); }
+.primary { border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.primary:active:not(:disabled) { background: #96260f; }
 /* held back (a guess comes first): greyed, still readable */
-.primary:disabled { background: var(--wood-mid); color: var(--ink); box-shadow: none; opacity: 0.75; cursor: default; }
-.primary.big { min-height: 64px; font-size: 24px; padding: 0 34px; }
-.plain {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 0 20px; border: 2px solid var(--wood-mid); border-radius: 8px;
-  background: var(--wood-light); color: var(--ink);
-  box-shadow: inset 0 -3px 0 var(--wood-mid);
-}
-.plain:hover { background: #f5e8cf; }
+.primary:disabled { background: var(--paper-3); border-color: var(--paper-3); color: var(--ink-2); cursor: default; }
+.plain { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); }
+.plain:hover:not(:disabled) { background: var(--paper-2); }
+.plain:active:not(:disabled) { background: var(--paper-3); }
 .plain:disabled { opacity: 0.45; cursor: default; }
-.plain:active:not(:disabled) { box-shadow: none; transform: translateY(2px); }
+.primary.big, .plain.big { min-height: 56px; padding: 0 26px; font-size: var(--fs-l); }
 
 /* ---------- home ---------- */
-.home-kicker { margin: 2px 0 0; font-size: 18px; font-weight: 700; letter-spacing: 0.12em; color: var(--zhu); }
-.home-title { margin: 0 0 8px; font: 400 54px/1.1 var(--kai); color: var(--shiqing); letter-spacing: 0.12em; text-wrap: balance; }
-.home-hook { margin: 0 0 20px; font: 400 27px/1.5 var(--kai); color: var(--ink); text-wrap: balance; }
-.home-cta { display: flex; flex-wrap: wrap; gap: 12px; }
-.plain.big { min-height: 64px; font-size: 22px; padding: 0 24px; }
-.list-head { margin: 28px 0 4px; font: 400 26px var(--kai); color: var(--wood-dark); }
-.asks { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.home-kicker { margin: 2px 0 var(--sp-1); font-size: var(--fs-s); font-weight: 700; letter-spacing: 0.12em; color: var(--umber); }
+.home-title { margin: 0 0 var(--sp-3); font: 400 var(--fs-2xl)/1.1 var(--kai); color: var(--ink); letter-spacing: 0.12em; text-wrap: balance; }
+.home-hook { margin: 0 0 var(--sp-5); font-size: var(--fs-l); line-height: 1.65; color: var(--ink); text-wrap: pretty; }
+.home-cta { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.list-head { margin: var(--sp-6) 0 var(--sp-2); font-size: var(--fs-s); font-weight: 700; letter-spacing: 0.08em; color: var(--ink-2); }
+.asks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .ask {
-  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; padding: 12px 16px;
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; padding: 14px 16px;
   text-align: left; cursor: pointer; touch-action: manipulation;
-  background: #fff9ee; border: 2px solid var(--wood-mid); border-left: 6px solid var(--zhu); border-radius: 0 10px 10px 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l);
+  transition: background-color 0.12s, border-color 0.12s;
 }
-.ask:hover { background: #fdf0dc; }
-.ask:hover .ask-q { color: var(--zhu); }
-.ask-q { font: 400 25px/1.3 var(--kai); color: var(--zhu-dark); }
-.ask-a { grid-column: 1; font-size: 17px; line-height: 1.5; color: var(--ink-soft); }
-.ask-go { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 17px; font-weight: 700; color: var(--zhu); white-space: nowrap; }
-.home .lesson-item { min-height: 64px; padding: 8px 6px; }
-.home .lesson-title { font-size: 23px; }
-.home .lesson-sum { font-size: 16px; }
-.home .lesson-num { width: 40px; height: 40px; font-size: 23px; }
+.ask:hover { background: var(--paper-2); border-color: var(--line-2); }
+.ask-q { font-size: var(--fs-m); font-weight: 700; line-height: 1.35; color: var(--ink); }
+.ask-a { grid-column: 1; font-size: var(--fs-s); line-height: 1.5; color: var(--ink-2); }
+.ask-go { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-s); font-weight: 700; color: var(--umber); white-space: nowrap; }
 .lesson-list { list-style: none; margin: 0; padding: 0; }
-.lesson-list li + li { border-top: 2px dotted var(--wood-mid); }
+.lesson-list li + li { border-top: 1px solid var(--line); }
 .lesson-item {
-  display: flex; align-items: center; gap: 16px; width: 100%;
-  min-height: 76px; padding: 12px 6px; border: 0; background: none; text-align: left; cursor: pointer;
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  min-height: 68px; padding: 10px 4px; border: 0; background: none; text-align: left; cursor: pointer;
 }
-.lesson-item:hover .lesson-title { color: var(--zhu); }
+.lesson-item:hover .lesson-title { color: var(--umber); }
 .lesson-num {
-  flex: none; display: grid; place-items: center; width: 46px; height: 46px;
-  border: 2.5px solid var(--zhu); border-radius: 5px; color: var(--zhu);
-  font: 700 26px/1 var(--kai);
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px;
+  border-radius: var(--r-s); background: var(--paper-2); border: 1px solid var(--line); color: var(--umber);
+  font-size: var(--fs-m); font-weight: 700; line-height: 1;
 }
 .lesson-words { display: flex; flex-direction: column; }
-.lesson-title { font: 400 26px/1.3 var(--kai); }
-.lesson-sum { font-size: 18px; color: var(--ink-soft); line-height: 1.5; }
+.lesson-title { font-size: var(--fs-m); font-weight: 700; line-height: 1.35; }
+.lesson-sum { font-size: var(--fs-s); color: var(--ink-2); line-height: 1.5; }
 
 /* ---------- lesson ---------- */
-.panel-title { margin: 0; font: 400 34px/1.25 var(--kai); color: var(--shiqing); outline: none; text-wrap: balance; }
-.lesson-head { margin-bottom: 14px; }
-.lesson-kicker { margin: 0 0 2px; font-size: 18px; color: var(--zhu); font-weight: 600; }
-.dots { display: flex; gap: 8px; list-style: none; padding: 0; margin: 12px 0 0; }
-.dots li { width: 26px; height: 8px; border-radius: 2px; background: var(--wood-mid); opacity: 0.5; }
-.dots li.done { opacity: 1; }
-.dots li.now { background: var(--zhu); opacity: 1; width: 38px; }
-.lesson-text p { margin: 0 0 14px; font-size: 22px; line-height: 1.75; }
-.lesson-text b { color: var(--zhu-dark); }
+.panel-title { margin: 0; font-size: var(--fs-xl); font-weight: 700; line-height: 1.3; color: var(--ink); outline: none; text-wrap: balance; }
+.lesson-head { margin-bottom: var(--sp-4); }
+.lesson-kicker { margin: 0 0 2px; font-size: var(--fs-s); font-weight: 700; color: var(--umber); }
+/* the steps: a thin bar in segments, the one you are on in the accent */
+.dots { display: flex; gap: 4px; list-style: none; padding: 0; margin: var(--sp-3) 0 0; }
+.dots li { flex: 1 1 0; max-width: 44px; height: 5px; border-radius: var(--r-full); background: var(--paper-3); }
+.dots li.done { background: color-mix(in srgb, var(--ink-2) 45%, var(--paper-3)); }
+.dots li.now { background: var(--accent); }
+.lesson-text p { margin: 0 0 14px; font-size: var(--fs-l); line-height: 1.7; }
+.lesson-text b { color: var(--ink); }
 .l { color: var(--left); font-weight: 700; }
 .r { color: var(--right-ink); font-weight: 700; }
 .pic { margin: 6px 0 18px; }
-.pic img { display: block; width: 100%; max-height: 260px; object-fit: contain; background: #efe7d6; border: 2px solid var(--wood-mid); border-radius: 4px; }
+.pic img { display: block; width: 100%; max-height: 260px; object-fit: contain; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-m); }
 /* the museum photo of the gears is shot in a dark case: lift it so the gears read in a thumbnail */
 .pic img[src$="taiwan-museum-gears.jpg"] {
   filter: brightness(1.6) contrast(0.92);
-  /* the filter lifts the frame too: these come out as the other pictures' #efe7d6 and --wood-mid */
-  background: #9b968a; border-color: #8f7b58;
+  /* the filter lifts the frame too: these come out as the other pictures' --paper-2 and --line */
+  background: #9f9b93; border-color: #948c80;
 }
-.pic figcaption { margin-top: 6px; font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
+.pic figcaption { margin-top: 6px; font-size: var(--fs-xs); line-height: 1.5; color: var(--ink-2); }
 .replay, .walk { margin: 4px 0 16px; }
 
+/* a task: a card with a firmer edge than the others; green once done */
 .task {
   margin: 8px 0 18px; padding: 16px 18px;
-  background: var(--shiqing-light); border-left: 6px solid var(--shiqing); border-radius: 0 8px 8px 0;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-l);
 }
-.task-prompt { margin: 0 0 10px; font-weight: 700; font-size: 21px; }
+.task-prompt { margin: 0 0 10px; font-weight: 700; font-size: var(--fs-m); line-height: 1.5; }
 /* a question asked before the scene plays: say it will play once answered */
-.guess-note { margin: -4px 0 10px; font-size: 17px; line-height: 1.4; color: var(--shiqing); }
+.guess-note { margin: -4px 0 10px; font-size: var(--fs-s); line-height: 1.45; color: var(--ink-2); }
 .options { display: flex; flex-wrap: wrap; gap: 10px; }
 .option {
-  flex: 1 1 auto; text-align: center; padding: 10px 18px; border: 2px solid var(--wood-mid); border-radius: 8px;
-  background: var(--paper); font-size: 21px;
+  flex: 1 1 auto; text-align: center; padding: 8px 18px;
+  border: 1px solid var(--line-2); background: var(--paper); font-size: var(--fs-m); font-weight: 500;
 }
-.option:hover:not(:disabled) { border-color: var(--wood); }
+.option:hover:not(:disabled) { border-color: var(--ink-2); background: var(--surface); }
 .option.right { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 700; }
-.option.wrong { border-style: dashed; border-color: var(--zhu); color: var(--zhu-dark); }
-.option:disabled:not(.right) { opacity: 0.5; }
-.feedback { margin: 10px 0 0; min-height: 0; font-weight: 600; }
+.option.wrong { border-style: dashed; border-color: var(--accent); color: var(--accent-ink); }
+.option:disabled:not(.right) { opacity: 0.5; cursor: default; }
+.feedback { margin: 10px 0 0; min-height: 0; font-size: var(--fs-m); font-weight: 600; line-height: 1.5; }
 .feedback:empty { display: none; }
 .feedback.yes { color: var(--ok); }
-.feedback.hint { color: var(--zhu-dark); }
-.task.passed { border-left-color: var(--ok); background: #e2f0e6; }
+.feedback.hint { color: var(--accent-ink); }
+.task.passed { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); }
 .task.do { display: flex; gap: 14px; align-items: flex-start; }
 .task.do .task-prompt { margin: 0; }
 .tick {
-  flex: none; width: 34px; height: 34px; margin-top: 1px; border-radius: 50%;
-  border: 3px solid var(--shiqing); background: var(--paper); position: relative;
+  flex: none; width: 28px; height: 28px; margin-top: 1px; border-radius: 50%;
+  border: 2px solid var(--line-2); background: var(--paper); position: relative;
 }
 .task.do.passed .tick { background: var(--ok); border-color: var(--ok); }
 .task.do.passed .tick::after {
-  content: ""; position: absolute; left: 9px; top: 3px; width: 9px; height: 17px;
-  border: solid #fff; border-width: 0 4px 4px 0; transform: rotate(45deg);
+  content: ""; position: absolute; left: 8px; top: 3px; width: 7px; height: 14px;
+  border: solid #fff; border-width: 0 3px 3px 0; transform: rotate(45deg);
 }
 
 /* "往下看" takes the step count's place in the nav bar, so it never covers the task */
 .more-cue {
-  display: inline-flex; align-items: center; gap: 4px; min-height: 48px; padding: 0 13px;
-  border: 2px solid var(--zhu); border-radius: 24px; background: #fff3ea; color: var(--zhu-dark);
-  font-weight: 700; font-size: 18px; white-space: nowrap; cursor: pointer; touch-action: manipulation;
+  display: inline-flex; align-items: center; gap: 4px; min-height: var(--tap); padding: 0 14px 0 10px;
+  border: 1px solid var(--accent); border-radius: var(--r-m); background: var(--accent-soft); color: var(--accent-ink);
+  font-weight: 700; font-size: var(--fs-s); white-space: nowrap; cursor: pointer; touch-action: manipulation;
   animation: bob 1.6s ease-in-out infinite;
 }
-.more-cue svg { width: 20px; height: 20px; fill: currentColor; }
+.more-cue .icon { width: 20px; height: 20px; }
 .panel-nav.cue-on .step-count { display: none; }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 
 .panel-nav {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
-  border-top: 2px solid var(--wood-mid); background: #f6efe0;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line); background: var(--paper-2);
 }
-.panel-nav .primary { min-width: 120px; padding: 0 20px; white-space: nowrap; }
-.panel-nav .plain { white-space: nowrap; }
+.panel-nav .primary { min-width: 120px; padding: 0 14px 0 20px; white-space: nowrap; }
+.panel-nav .plain { padding: 0 18px 0 12px; white-space: nowrap; }
+.panel-nav .primary, .panel-nav .plain { gap: 4px; }
+.panel-nav .icon { width: 20px; height: 20px; }
 .panel-nav > * { flex: none; }
 /* the cue is the one that gives way in a narrow bar ("Next lesson" in English):
    its words go before the arrow does, and the bar never runs off the panel */
 .panel-nav > .more-cue { flex: 0 1 auto; min-width: 48px; overflow: hidden; }
 .more-cue span { overflow: hidden; text-overflow: ellipsis; }
-.more-cue svg { flex: none; }
-.step-count { color: var(--ink-soft); font-size: 18px; }
+.step-count { color: var(--ink-2); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
 
 /* ---------- tools ---------- */
-.tools { margin-top: 18px; padding-top: 6px; border-top: 2px solid var(--wood-mid); }
+.tools { margin-top: var(--sp-5); padding-top: var(--sp-1); border-top: 1px solid var(--line); }
 .trouble {
-  margin-top: 14px; padding: 12px 14px 14px;
-  background: #fbeee6; border: 2px solid #ebc2b2; border-left: 6px solid var(--zhu); border-radius: 0 10px 10px 0;
+  margin-top: var(--sp-4); padding: 14px 16px 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l);
 }
-.trouble-head { margin: 0; font: 400 25px/1.3 var(--kai); color: var(--zhu-dark); }
-.trouble-note { margin: 2px 0 0; font-size: 17px; line-height: 1.5; color: var(--ink-soft); }
-.trouble .tool { margin-top: 10px; }
-.tool { margin-top: 14px; }
-.tool-title { font-size: 17px; color: var(--wood-dark); font-weight: 600; margin-bottom: 6px; }
+.trouble-head { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-m); font-weight: 700; line-height: 1.4; color: var(--umber); }
+.trouble-head .icon { width: 20px; height: 20px; }
+.trouble-note { margin: 2px 0 0; font-size: var(--fs-s); line-height: 1.5; color: var(--ink-2); }
+.trouble .tool { margin-top: var(--sp-3); }
+.tool { margin-top: var(--sp-4); }
+.tool-title { font-size: var(--fs-s); color: var(--ink-2); font-weight: 700; letter-spacing: 0.04em; margin-bottom: 6px; }
 /* phones: the control a task asks for sits tight under it, its heading left
    to the task's own words, so it is on screen without scrolling */
 @media (max-width: 600px) {
@@ -306,283 +346,289 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
   .tools.led > .trouble.lead { margin-top: 4px; padding-top: 4px; }
   .tools.led > .trouble.lead > .trouble-head, .tools.led > .trouble.lead > .trouble-note { display: none; }
 }
-.tool-note { margin: 6px 0 0; font-size: 17px; color: var(--ink-soft); line-height: 1.5; }
-.seg { display: flex; flex-wrap: wrap; gap: 0; }
+.tool-note { margin: 6px 0 0; font-size: var(--fs-s); color: var(--ink-2); line-height: 1.5; }
+/* a row of buttons, one pressed: a sunken track with the pressed one filled in
+   the accent, so a child sees at a glance which it is. Always one row (at most
+   three): a word too long for its share wraps inside its button. */
+.seg { display: flex; gap: 3px; padding: 3px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-m); }
 .seg-btn {
-  flex: 1 1 auto; padding: 0 14px; border: 2px solid var(--wood-mid); background: var(--wood-light);
-  margin-left: -2px; font-size: 19px;
+  flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 4px 14px; border: 1px solid transparent; border-radius: calc(var(--r-m) - 3px);
+  background: transparent; color: var(--ink-2); font-size: var(--fs-m); font-weight: 600; line-height: 1.25; text-wrap: balance;
+  cursor: pointer; touch-action: manipulation;
 }
-.seg-btn:first-child { margin-left: 0; border-radius: 8px 0 0 8px; }
-.seg-btn:last-child { border-radius: 0 8px 8px 0; }
-/* pressed reads bold without getting wider: real bold would rewrap the row
-   ("Wheels too wide" in English) and move the buttons under the finger */
-.seg-btn.on { background: var(--shiqing); border-color: var(--shiqing); color: #fff; text-shadow: 0.35px 0 0 currentColor, -0.35px 0 0 currentColor; position: relative; }
+.seg-btn:hover:not(.on) { background: var(--paper-3); color: var(--ink); }
+.seg-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--sh-1); }
 /* explode slider (js/app/tools.js): drag to take the chariot apart */
 .slider { display: flex; align-items: center; gap: 10px; }
-.slider-end { flex: none; min-height: 48px; padding: 0 10px; border: none; background: none; font-size: 18px; color: var(--wood-dark); }
+.slider-end { flex: none; min-height: var(--tap); padding: 0 10px; border: none; border-radius: var(--r-m); background: none; font-size: var(--fs-s); font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.slider-end:hover { background: var(--paper-2); color: var(--ink); }
 .slider-range {
-  flex: 1 1 auto; min-width: 0; height: 48px; margin: 0; background: none; cursor: pointer;
+  flex: 1 1 auto; min-width: 0; height: var(--tap); margin: 0; background: none; cursor: pointer;
   -webkit-appearance: none; appearance: none;
 }
 .slider-range::-webkit-slider-runnable-track {
-  height: 10px; border-radius: 5px;
-  background: linear-gradient(to right, var(--shiqing) var(--fill, 0%), var(--wood-light) var(--fill, 0%));
-  border: 2px solid var(--wood-mid);
+  height: 8px; border-radius: var(--r-full);
+  background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--paper-3) var(--fill, 0%));
 }
-.slider-range::-moz-range-track { height: 10px; border-radius: 5px; background: var(--wood-light); border: 2px solid var(--wood-mid); }
-.slider-range::-moz-range-progress { height: 10px; border-radius: 5px; background: var(--shiqing); }
+.slider-range::-moz-range-track { height: 8px; border-radius: var(--r-full); background: var(--paper-3); }
+.slider-range::-moz-range-progress { height: 8px; border-radius: var(--r-full); background: var(--accent); }
 .slider-range::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: 34px; height: 34px; margin-top: -14px; border-radius: 50%;
-  background: var(--paper); border: 3px solid var(--shiqing); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  -webkit-appearance: none; appearance: none; width: 30px; height: 30px; margin-top: -11px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent); box-shadow: var(--sh-1);
 }
-.slider-range::-moz-range-thumb {
-  width: 30px; height: 30px; border-radius: 50%; background: var(--paper); border: 3px solid var(--shiqing);
-}
-.slider-range:focus-visible { outline: 3px solid var(--zhu); outline-offset: 2px; border-radius: 8px; }
-.toggle {
-  display: inline-flex; align-items: center; gap: 10px; padding: 0 20px;
-  border: 2px solid var(--wood-mid); border-radius: 8px; background: var(--wood-light);
-}
-.toggle-icon { width: 26px; height: 18px; border: 2.5px solid currentColor; border-radius: 50% / 60%; position: relative; }
-.toggle-icon::after { content: ""; position: absolute; inset: 3px 7px; border-radius: 50%; background: currentColor; }
-.toggle.on { background: var(--shiqing); border-color: var(--shiqing); color: #fff; font-weight: 600; }
-.switch {
-  display: inline-flex; align-items: center; gap: 12px; padding: 0 18px 0 8px;
-  border: 2px solid var(--wood-mid); border-radius: 30px; background: var(--wood-light);
-}
-.switch .knob { width: 52px; height: 30px; border-radius: 15px; background: #c9b896; position: relative; transition: background 0.15s; }
-.switch .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
-.switch.on .knob { background: var(--ok); }
-.switch.on .knob::after { transform: translateX(22px); }
+.slider-range::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+.slider-range:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: var(--r-m); }
+.toggle { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); }
+.toggle:hover { background: var(--paper-2); }
+.toggle.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.switch { gap: var(--sp-3); padding: 0 18px 0 10px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); }
+.switch .knob { flex: none; width: 46px; height: 28px; border-radius: var(--r-full); background: var(--line-2); position: relative; transition: background 0.15s; }
+.switch .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: var(--sh-1); transition: transform 0.15s; }
+.switch.on .knob { background: var(--accent); }
+.switch.on .knob::after { transform: translateX(18px); }
 .switch:disabled { opacity: 0.5; cursor: default; }
 
-/* ---------- stage HUD ---------- */
-.hud-dial { position: absolute; top: 12px; left: 12px; width: 156px; text-align: center; pointer-events: none; }
-.hud-dial svg { display: block; width: 156px; height: 156px; filter: drop-shadow(0 2px 3px rgba(60, 40, 20, 0.25)); }
-.hud-dial .rim { fill: var(--wood-mid); stroke: var(--wood-dark); stroke-width: 4; }
-.hud-dial .face { fill: #fbf8f0; }
-.hud-dial .tick { stroke: #7a6a58; stroke-width: 2; }
+/* ---------- over the 3D view: cards ----------
+   The HUD (the dial, the wheel distances), the two floating bars (the corner
+   buttons, the drive bar) and every note on the view are the same card. */
+.hud-dial, .hud-odo, .stage-corner, .stage-bar, .paused-note, .stage-hint, .demo-count,
+.stage-hook-line, .callout, .drag-hint {
+  background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--line); border-radius: var(--r-l); box-shadow: var(--sh-2); color: var(--ink);
+}
+/* a button on a floating bar: no frame of its own, the bar is the frame */
+.bar-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-width: var(--tap); min-height: var(--tap); padding: 0 14px 0 12px;
+  border: 1px solid transparent; border-radius: var(--r-m); background: transparent; color: var(--ink);
+  font-size: var(--fs-s); font-weight: 700; white-space: nowrap; cursor: pointer; touch-action: manipulation;
+  transition: background-color 0.12s;
+}
+.bar-btn:hover { background: var(--paper-3); }
+.bar-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+
+/* the south dial, top left */
+.hud-dial {
+  position: absolute; top: var(--hud-gap); left: var(--hud-gap); width: max-content; padding: 8px 10px 10px;
+  display: flex; flex-direction: column; align-items: center; pointer-events: none;
+}
+.hud-dial svg { display: block; width: 136px; height: 136px; }
+.hud-dial .rim { fill: var(--surface); stroke: var(--line-2); stroke-width: 2; }
+.hud-dial .face { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.hud-dial .tick { stroke: var(--ink-2); stroke-width: 2; stroke-linecap: round; }
 .hud-dial .tick.major { stroke: var(--ink); stroke-width: 4; }
-.hud-dial .dir { font: 400 24px var(--kai); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
-.hud-dial .seal rect { fill: var(--zhu); }
-.hud-dial .seal text { font: 700 26px var(--kai); fill: #fbf8f1; text-anchor: middle; dominant-baseline: central; }
-.hud-dial .southline { stroke: var(--zhu); stroke-width: 3; stroke-dasharray: 6 5; opacity: 0.6; }
+.hud-dial .dir { font: 600 22px var(--font); fill: var(--ink-2); text-anchor: middle; dominant-baseline: central; }
+.hud-dial .seal rect { fill: var(--accent); }
+.hud-dial .seal text { font: 700 24px var(--kai); fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.hud-dial .southline { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 6 5; opacity: 0.55; }
 .hud-dial .arm path { fill: var(--ok); stroke: #fff; stroke-width: 2; }
-.hud-dial.off .arm path { fill: var(--zhu); }
-.hud-dial .cart rect { fill: var(--wood-dark); }
-.hud-dial .cart line { stroke: var(--wood-dark); stroke-width: 4; }
+.hud-dial.off .arm path { fill: var(--accent); }
+.hud-dial .cart rect { fill: var(--ink); }
+.hud-dial .cart line { stroke: var(--ink); stroke-width: 4; }
 .hud-dial .cart .wl { fill: var(--left); }
 .hud-dial .cart .wr { fill: var(--right); }
+/* where the figure points, under the dial: a chip, pale green with a green dot
+   on south; off south the whole chip turns solid vermilion and the card's edge
+   with it (lesson 6's "it went wrong" moment has to jump out) */
 .dial-text {
-  display: inline-block; margin: 6px 0 0; padding: 4px 12px; border-radius: 6px;
-  font-size: 18px; font-weight: 700; line-height: 1.35; color: #fff; background: var(--ok); white-space: nowrap;
+  display: flex; align-items: center; gap: 7px; margin: 6px 0 0; padding: 2px 10px 2px 8px; border-radius: var(--r-full);
+  font-size: var(--fs-s); font-weight: 700; line-height: 1.3; white-space: nowrap;
+  background: var(--ok-soft); color: var(--ok-ink);
 }
-.hud-dial.off .dial-text { background: var(--zhu); }
+.dial-text::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--ok); }
+.hud-dial.off { border-color: var(--accent); }
+.hud-dial.off .dial-text { background: var(--accent); color: #fff; }
+.hud-dial.off .dial-text::before { background: #fff; }
 
+/* the two wheels' distances, bottom left */
 .hud-odo {
-  position: absolute; left: 12px; bottom: 12px; width: 232px; padding: 10px 14px 10px;
-  background: rgba(251, 248, 241, 0.94); border: 2px solid var(--wood-mid); border-radius: 10px;
+  position: absolute; left: var(--hud-gap); bottom: var(--hud-gap); width: 232px; padding: 10px 14px;
   cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
-/* a small fold mark in the corner; folded, only the line under the bars is left */
-.odo-fold { position: absolute; top: 6px; right: 7px; width: 9px; height: 9px; border: solid var(--wood); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
-.hud-odo.folded { width: auto; min-height: 44px; padding: 8px 30px 8px 12px; display: flex; align-items: center; }
-.hud-odo.folded .odo-cols { display: none; }
-.hud-odo.folded .odo-diff { margin: 0; }
-.hud-odo.folded .odo-fold { top: 17px; transform: rotate(-135deg); }
+/* folds with a tap (free driving on tablets and phones starts folded); folded,
+   just the two wheels' numbers on one line: no empty bars */
+.odo-fold { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; color: var(--ink-2); }
+.hud-odo.folded { width: auto; min-height: var(--tap); padding: 8px 32px 8px 14px; display: flex; align-items: center; }
+.hud-odo.folded .odo-fold { top: calc(50% - 9px); transform: rotate(180deg); }
 .odo-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .odo-col { display: flex; flex-direction: column; align-items: center; }
 .odo-read { text-align: center; line-height: 1.15; }
-.odo-read .num { font-size: 26px; font-variant-numeric: tabular-nums; }
-.odo-read .unit { font-size: 16px; margin-left: 2px; }
-.odo-read .m { display: block; font-size: 14px; color: var(--ink-soft); }
+.odo-read .num { font-size: var(--fs-lead); font-weight: 700; font-variant-numeric: tabular-nums; }
+.odo-read .unit { font-size: var(--fs-s); margin-left: 2px; }
+.odo-read .m { display: block; font-size: var(--fs-xs); color: var(--ink-2); }
 .odo-col.l .num { color: var(--left); }
 .odo-col.r .num { color: var(--right-ink); }
-.odo-bar { position: relative; width: 44px; height: 96px; margin: 6px 0 2px; background: #ece4d3; border-radius: 4px; overflow: hidden; }
+/* a gauge, not an empty slot: quarter marks on the tube (the fill covers them as it rises) */
+.odo-bar {
+  position: relative; width: 40px; height: 92px; margin: 6px 0 4px; border-radius: var(--r-s); overflow: hidden;
+  background: repeating-linear-gradient(to top, transparent 0 calc(25% - 1px), var(--line-2) calc(25% - 1px) 25%) var(--paper-3);
+}
 .odo-bar .fill { position: absolute; left: 0; right: 0; bottom: calc(var(--from, 0) * 100%); height: calc(var(--len, 0) * 100%); }
 .odo-col.l .fill { background: var(--left); }
 .odo-col.r .fill { background: var(--right); }
 .odo-bar .fill.back { background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.45) 0 5px, transparent 5px 10px); }
 .odo-bar .zero { display: none; position: absolute; left: -2px; right: -2px; top: 50%; height: 2px; background: var(--ink); z-index: 1; }
 .hud-odo.signed .odo-bar .zero { display: block; }
-.odo-name { font-size: 17px; font-weight: 700; }
+.odo-name { font-size: var(--fs-s); font-weight: 700; }
 .odo-col.l .odo-name { color: var(--left); }
 .odo-col.r .odo-name { color: var(--right-ink); }
-.odo-diff { margin: 6px 0 0; text-align: center; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.odo-diff { margin: 6px 0 0; text-align: center; font-size: var(--fs-s); font-weight: 700; line-height: 1.35; }
 .odo-diff[data-side="l"] { color: var(--left); }
 .odo-diff[data-side="r"] { color: var(--right-ink); }
 
-.drive-dock { position: absolute; right: 14px; bottom: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none; }
-.drive-dock > * { pointer-events: auto; }
+/* The corner buttons, top right: pause in every mode, the copy link in free driving. */
+.stage-corner { position: absolute; top: var(--hud-gap); right: var(--hud-gap); display: flex; gap: 2px; padding: 4px; }
+.pause-btn .i-play, .pause-btn.on .i-pause { display: none; }
+.pause-btn.on .i-play { display: block; }
+.pause-btn .icon { width: 20px; height: 20px; }
+/* paused: "carry on" is the button to press */
+.pause-btn.on, .pause-btn.on:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.share-btn { display: none; }
+body[data-mode="free"] .share-btn { display: inline-flex; }
+.share-btn .i-done, .share-btn.done .i-link { display: none; }
+.share-btn.done .i-done { display: block; }
+.share-btn.done { color: var(--ok-ink); }
+.share-words { display: grid; }
+.share-words > * { grid-area: 1 / 1; }
+.share-words > .ghost { visibility: hidden; }
+
+/* The drive bar, bottom right: the gears view and "draw a road" by the arrow keys.
+   Two rows: the buttons stack beside the keys, which sit as on a keyboard. */
+.stage-bar { position: absolute; right: var(--hud-gap); bottom: var(--hud-gap); display: flex; align-items: stretch; gap: 6px; padding: 6px; }
+.bar-btns { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+.bar-btns .bar-btn { min-height: var(--pad-key); justify-content: flex-start; }
+.gears-btn .i-out, .gears-btn.on .i-in { display: none; }
+.gears-btn.on .i-out { display: block; }
+.stage-bar > .bar-btns + .pad { padding-left: 6px; border-left: 1px solid var(--line); }
 .pad {
-  display: grid; grid-template-columns: repeat(3, 70px); grid-template-rows: repeat(3, 70px);
-  grid-template-areas: ". up ." "left . right" ". down .";
+  display: grid; grid-template-columns: repeat(3, var(--pad-key)); grid-template-rows: repeat(2, var(--pad-key));
+  grid-template-areas: ". up ." "left down right";
   gap: 4px;
 }
 .pad-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
-  border: 2px solid var(--wood-dark); border-radius: 12px;
-  background: var(--wood-light); color: var(--wood-dark);
-  box-shadow: inset 0 -4px 0 var(--wood-mid), 0 2px 4px rgba(60, 40, 20, 0.2);
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: var(--r-m);
+  background: var(--paper-2); color: var(--ink);
   touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer;
 }
-.pad-btn svg { width: 34px; height: 34px; fill: currentColor; }
-.pad-btn span { font-size: 15px; font-weight: 700; line-height: 1.1; }
-.pad-btn.held { background: var(--wood-mid); box-shadow: none; transform: translateY(2px); }
+.pad-btn:hover { background: var(--paper-3); }
+.pad-btn .icon { width: 28px; height: 28px; }
+.pad-btn.held { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
 .pad-up { grid-area: up; } .pad-down { grid-area: down; } .pad-left { grid-area: left; } .pad-right { grid-area: right; }
-.draw-btn {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 18px;
-  border: 2px solid var(--wood-dark); border-radius: 10px; background: var(--paper); color: var(--ink);
-  font-weight: 700; cursor: pointer; box-shadow: 0 2px 4px rgba(60, 40, 20, 0.2);
-}
-.draw-btn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
-.draw-btn.on { background: var(--zhu); border-color: var(--zhu-dark); color: #fff; }
 
-/* The global pause, top right of the view in every mode. */
-.pause-btn {
-  position: absolute; top: 12px; right: 12px;
-  display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 18px 0 14px;
-  border: 2px solid var(--wood-dark); border-radius: 26px; background: rgba(251, 248, 241, 0.94); color: var(--ink);
-  font-weight: 700; cursor: pointer; touch-action: manipulation; box-shadow: 0 2px 4px rgba(60, 40, 20, 0.2);
-}
-.pause-btn svg { width: 24px; height: 24px; fill: currentColor; }
-.pause-btn .i-play, .pause-btn.on .i-pause { display: none; }
-.pause-btn.on .i-play { display: inline; }
-.pause-btn.on { background: var(--zhu); border-color: var(--zhu-dark); color: #fff; }
-/* The pause note and the drawing hint, stacked at the top middle of the view. */
+/* The pause note and the drawing hint, stacked under the corner buttons (the
+   pause note under "carry on"), clear of the dial on the left. */
 .stage-notes {
-  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  /* left: 50% leaves only half the stage for shrink-to-fit; size to the text instead */
-  width: max-content; max-width: calc(100% - 360px);
+  position: absolute; top: calc(var(--hud-gap) + 66px); right: var(--hud-gap);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  width: max-content; max-width: min(420px, calc(100% - 240px));
 }
 .stage-overlay > .stage-notes, .stage-notes > * { pointer-events: none; }
 .paused-note {
   display: flex; flex-direction: column; align-items: center;
-  margin: 0; padding: 6px 18px; text-align: center;
-  background: rgba(43, 38, 32, 0.82); color: #fbf8f1; border-radius: 10px;
+  margin: 0; padding: 8px 18px; text-align: center;
 }
-.paused-note b { font: 400 26px/1.3 var(--kai); }
-.paused-note span { font-size: 16px; line-height: 1.4; }
+.paused-note b { font-size: var(--fs-l); font-weight: 700; line-height: 1.35; }
+.paused-note span { font-size: var(--fs-s); line-height: 1.4; color: var(--ink-2); }
 .stage.paused .stage-gl { filter: saturate(0.7); }
-/* Free driving: copy a link to this chariot and route, under the pause. */
-.share-btn {
-  position: absolute; top: 74px; right: 12px; display: none; align-items: center; gap: 6px;
-  min-height: 44px; padding: 0 14px 0 12px; border: 2px solid var(--wood-dark); border-radius: 22px;
-  background: rgba(251, 248, 241, 0.94); color: var(--ink); font-weight: 700; font-size: 16px;
-  cursor: pointer; touch-action: manipulation; box-shadow: 0 2px 4px rgba(60, 40, 20, 0.2);
-}
-body[data-mode="free"] .share-btn { display: inline-flex; }
-.share-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.share-btn .i-done, .share-btn.done .i-link { display: none; }
-.share-btn.done .i-done { display: inline; }
-.share-btn.done { background: var(--ok); border-color: var(--ok); color: #fff; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Free driving's panel as a sheet over the view: phones and portrait screens. */
 .sheet-handle { display: none; }
 
 .stage-hint, .demo-count {
   margin: 0; padding: 8px 18px; text-align: center;
-  background: rgba(251, 248, 241, 0.95); border: 2px solid var(--wood-mid); border-radius: 8px;
-  font-weight: 700; font-size: 19px; line-height: 1.4; pointer-events: none;
+  font-weight: 700; font-size: var(--fs-m); line-height: 1.4; pointer-events: none;
 }
-.demo-count { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); }
+.demo-count { position: absolute; top: var(--hud-gap); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); font-variant-numeric: tabular-nums; }
 
 /* The home page's line over the 3D view, and the drag hint under it. */
 .stage-hook {
-  display: none; position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+  display: none; position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
   flex-direction: column; align-items: center; gap: 10px;
   width: max-content; max-width: calc(100% - 32px); pointer-events: none;
 }
 body[data-mode="home"] .stage-hook { display: flex; }
 .stage-hook-line {
   margin: 0; padding: 10px 22px; text-align: center;
-  font: 400 32px/1.35 var(--kai); color: var(--shiqing); text-wrap: balance;
-  background: rgba(251, 248, 241, 0.94); border: 2px solid var(--wood-mid); border-radius: 10px;
-  box-shadow: 0 3px 10px rgba(60, 40, 20, 0.18);
+  font-size: var(--fs-lead); font-weight: 700; line-height: 1.4; letter-spacing: 0.02em; text-wrap: balance;
 }
 .drag-hint {
-  display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 6px 16px 6px 12px; border-radius: 22px;
-  background: rgba(31, 74, 92, 0.88); color: #f6f1e4; font-size: 17px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 6px 16px 6px 12px; border-radius: var(--r-full);
+  font-size: var(--fs-s); font-weight: 700; color: var(--ink-2);
   animation: nudge 2.6s ease-in-out infinite; transition: opacity 0.5s;
 }
-.drag-hint svg { width: 24px; height: 24px; fill: currentColor; }
+.drag-hint .icon { width: 20px; height: 20px; }
 .stage.touched .drag-hint { opacity: 0; }
 @keyframes nudge { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-8px); } 60% { transform: translateX(8px); } }
 
-.callout {
-  position: absolute; max-width: 280px; padding: 10px 14px;
-  background: var(--paper); border: 2px solid var(--wood-dark); border-left-width: 8px; border-radius: 6px;
-  box-shadow: 0 4px 10px rgba(60, 40, 20, 0.25); pointer-events: none;
-}
-.callout.l { border-left-color: var(--left); }
-.callout.r { border-left-color: var(--right); }
-.callout b { display: block; font: 400 23px/1.3 var(--kai); }
-.callout span { font-size: 17px; color: var(--ink-soft); }
+/* a tapped part's name */
+.callout { position: absolute; max-width: 280px; padding: 10px 14px; pointer-events: none; }
+.callout b { display: block; font-size: var(--fs-m); font-weight: 700; line-height: 1.35; }
+.callout span { display: block; font-size: var(--fs-s); line-height: 1.45; color: var(--ink-2); }
+.callout.l b { color: var(--left); }
+.callout.r b { color: var(--right-ink); }
 
 /* Words over the scene (js/app/labels.js): placed by script over their
-   anchor, in the style of the HUD's chips; blue / orange for the inside and
-   outside circles, as the left and right wheels are everywhere. */
+   anchor; blue / orange for the inside and outside circles, as the left and
+   right wheels are everywhere. */
 .scene-label {
-  position: absolute; left: 0; top: 0; margin: 0; padding: 5px 12px; width: max-content; max-width: 300px;
-  background: rgba(251, 248, 241, 0.96); border: 2px solid var(--wood-mid); border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(60, 40, 20, 0.22);
-  font-weight: 700; font-size: 17px; line-height: 1.3; color: var(--ink);
+  position: absolute; left: 0; top: 0; margin: 0; padding: 4px 11px; width: max-content; max-width: 300px;
+  background: var(--glass); border: 1px solid var(--line-2); border-radius: var(--r-s);
+  box-shadow: var(--sh-1);
+  font-weight: 700; font-size: var(--fs-s); line-height: 1.35; color: var(--ink);
   pointer-events: none !important; will-change: transform;
 }
 .scene-label.l { border-color: var(--left); color: var(--left); }
 .scene-label.r { border-color: var(--right); color: var(--right-ink); }
 /* a small tail down to the anchor while the label sits right over it */
 .scene-label.tail::after {
-  content: ""; position: absolute; top: 100%; left: var(--tail-x, 50%); width: 10px; height: 10px; margin: -5px 0 0 -6px;
-  background: inherit; border: solid; border-color: inherit; border-width: 0 2px 2px 0; transform: rotate(45deg);
+  content: ""; position: absolute; top: 100%; left: var(--tail-x, 50%); width: 9px; height: 9px; margin: -5px 0 0 -5px;
+  background: #fffdf9; border: solid; border-color: inherit; border-width: 0 1px 1px 0; transform: rotate(45deg);
 }
 /* level with the anchor: the tail points sideways at it (tail-r: the label is on its left) */
 .scene-label.tail-r::after, .scene-label.tail-l::after {
-  content: ""; position: absolute; top: var(--tail-y, 50%); width: 10px; height: 10px; margin: -6px 0 0 0;
-  background: inherit; border: solid; border-color: inherit;
+  content: ""; position: absolute; top: var(--tail-y, 50%); width: 9px; height: 9px; margin: -5px 0 0 0;
+  background: #fffdf9; border: solid; border-color: inherit;
 }
-.scene-label.tail-r::after { left: 100%; margin-left: -5px; border-width: 2px 2px 0 0; transform: rotate(45deg); }
-.scene-label.tail-l::after { right: 100%; margin-right: -5px; border-width: 0 0 2px 2px; transform: rotate(45deg); }
+.scene-label.tail-r::after { left: 100%; margin-left: -5px; border-width: 1px 1px 0 0; transform: rotate(45deg); }
+.scene-label.tail-l::after { right: 100%; margin-right: -5px; border-width: 0 0 1px 1px; transform: rotate(45deg); }
 
 /* Tablets on their side (1024x768): the panel is narrow and short, so set the
    lesson a little tighter and the question and its answers come up with the
    text instead of under the fold. */
 @media (orientation: landscape) and (min-height: 501px) and (max-width: 1100px), (orientation: landscape) and (min-height: 501px) and (max-height: 800px) {
-  .panel-body { padding: 16px 20px 20px; }
-  .panel-title { font-size: 30px; }
+  .panel-body { padding: var(--sp-4) 20px 20px; }
+  .panel-title { font-size: 26px; }
   .lesson-head { margin-bottom: 10px; }
-  .dots { margin-top: 8px; }
-  .lesson-text p { margin-bottom: 10px; font-size: 20px; line-height: 1.6; }
-  .replay, .walk { margin: 0 0 12px; min-height: 46px; }
+  .dots { margin-top: var(--sp-2); }
+  .lesson-text p { margin-bottom: 10px; font-size: 19px; line-height: 1.6; }
+  .replay, .walk { margin: 0 0 12px; }
   .pic { margin: 4px 0 12px; }
   .pic img { max-height: 210px; }
-  .task { margin: 4px 0 12px; padding: 12px 14px; }
-  .task-prompt { margin-bottom: 8px; font-size: 20px; line-height: 1.45; }
+  .task { margin: 4px 0 12px; padding: 12px 14px 12px 16px; }
+  .task-prompt { margin-bottom: 8px; font-size: var(--fs-m); line-height: 1.45; }
   .options { gap: 8px; }
-  .option { min-height: 46px; padding: 6px 14px; font-size: 19px; line-height: 1.35; }
+  .option { padding: 6px 14px; font-size: 17px; line-height: 1.35; }
+  .panel-nav { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .panel-nav .primary { min-width: 0; padding: 0 10px 0 16px; }
+  .panel-nav .plain { padding: 0 14px 0 8px; }
+  .panel-nav .icon { width: 18px; height: 18px; }
+  .tools .seg-btn { padding: 0 8px; font-size: 17px; }
 }
 
 /* Smaller HUD on tablets and portrait. */
 @media (max-width: 1100px), (max-height: 800px) {
-  .hud-dial, .hud-dial svg { width: 128px; }
-  .hud-dial svg { height: 128px; }
-  /* clear of the dial's words ("Pointing due south" runs past the dial) */
-  .stage-notes { max-width: calc(100% - 380px); }
-  .dial-text { font-size: 16px; padding: 3px 9px; }
-  .stage-hook-line { font-size: 26px; padding: 8px 18px; }
-  .pad { grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(3, 62px); }
+  :root { --pad-key: 52px; --hud-gap: 10px; }
+  .hud-dial svg { width: 116px; height: 116px; }
+  .dial-text { font-size: 15px; }
+  .stage-hook-line { font-size: 22px; padding: 8px 18px; }
   .hud-odo { width: 212px; }
-  .odo-bar { height: 76px; }
+  .odo-bar { height: 72px; }
 }
 @media (orientation: portrait) {
   /* the stage is short here and the panel right under it says the same */
   .stage-hook-line { display: none; }
   .stage-hook { bottom: 14px; }
-}
-@media (max-width: 1100px) {
-  .ask-q { font-size: 23px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -600,18 +646,18 @@ body[data-mode="home"] .stage-hook { display: flex; }
   body[data-mode="free"] .stage-overlay { bottom: var(--peek); }
   body[data-mode="free"] .panel {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; max-height: 62%;
-    border: 0; border-image: none; border-top: 4px solid var(--wood); border-radius: 14px 14px 0 0;
-    box-shadow: 0 -6px 18px rgba(60, 40, 20, 0.22);
+    border: 0; border-top: 1px solid var(--line); border-radius: var(--r-l) var(--r-l) 0 0;
+    box-shadow: var(--sh-sheet);
   }
   body[data-mode="free"][data-sheet="closed"] .panel-body { display: none; }
   body[data-mode="free"] .sheet-handle {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
     flex: none; width: 100%; min-height: var(--peek); padding: 4px 16px calc(4px + env(safe-area-inset-bottom));
-    border: 0; background: #f6efe0; color: var(--wood-dark); font-size: 18px; font-weight: 700;
+    border: 0; border-radius: var(--r-l) var(--r-l) 0 0; background: var(--paper-2); color: var(--ink-2); font-size: var(--fs-s); font-weight: 700;
     cursor: pointer; touch-action: manipulation;
   }
-  body[data-mode="free"][data-sheet="open"] .sheet-handle { border-bottom: 2px solid var(--wood-mid); }
-  .sheet-grip { width: 44px; height: 5px; border-radius: 3px; background: var(--wood-mid); }
+  body[data-mode="free"][data-sheet="open"] .sheet-handle { border-bottom: 1px solid var(--line); }
+  .sheet-grip { width: 40px; height: 5px; border-radius: var(--r-full); background: var(--line-2); }
   .sheet-text { line-height: 1.25; }
 }
 
@@ -619,176 +665,198 @@ body[data-mode="home"] .stage-hook { display: flex; }
    for); the lesson under it is set a little tighter and scrolls */
 @media (orientation: portrait) and (min-width: 601px) {
   .layout { grid-template-rows: minmax(0, 53%) minmax(0, 1fr); }
-  .panel-body { padding: 12px 22px 18px; }
+  .panel-body { padding: var(--sp-3) 22px 18px; }
   .lesson-head { margin-bottom: 6px; }
-  .lesson-text p { font-size: 20px; line-height: 1.55; margin-bottom: 8px; }
-  .replay, .walk { margin: 0 0 10px; min-height: 46px; }
-  .task { margin: 4px 0 12px; padding: 10px 16px; }
-  .task-prompt { margin-bottom: 8px; font-size: 20px; }
+  .lesson-text p { font-size: 19px; line-height: 1.55; margin-bottom: 8px; }
+  .replay, .walk { margin: 0 0 10px; }
+  .task { margin: 4px 0 12px; padding: 10px 16px 10px 18px; }
+  .task-prompt { margin-bottom: 8px; font-size: var(--fs-m); }
   .options { gap: 8px; }
-  .option { min-height: 46px; padding: 6px 14px; font-size: 19px; }
+  .option { padding: 6px 14px; font-size: 17px; }
   .pic img { max-height: 170px; }
-  .panel-nav { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
-}
-
-/* portrait tablets: the same lying-down bars, at reading size for a class */
-@media (orientation: portrait) and (min-width: 601px) {
-  .hud-odo { left: 12px; bottom: 12px; width: 236px; padding: 8px 28px 8px 14px; }
-  .odo-name { font-size: 18px; }
-  .odo-read .num { font-size: 23px; }
+  .panel-nav { padding-top: var(--sp-2); padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom)); }
+  /* the same lying-down bars, at reading size for a class */
+  .hud-odo { width: 236px; padding: 8px 30px 8px 14px; }
+  .odo-name { font-size: 17px; }
+  .odo-read .num { font-size: 22px; }
   .odo-read .unit { font-size: 15px; }
   .odo-bar { height: 10px; }
-  .odo-diff { font-size: 16px; }
+  .odo-diff { font-size: 15px; }
 }
 
 /* ---------- phones, upright ---------- */
 @media (orientation: portrait) and (max-width: 600px) {
-  :root { --bar-h: 52px; }
-  .bar { gap: 8px; padding: 0 8px 0 12px; border-bottom-width: 3px; }
-  .mark { gap: 8px; font-size: 26px; letter-spacing: 0.04em; }
-  .seal { width: 32px; height: 32px; font-size: 22px; }
+  :root { --bar-h: 56px; --pad-key: var(--tap); --hud-gap: 8px; }
+  .bar { gap: 4px; padding: 0 6px 0 12px; }
+  .mark { gap: 8px; font-size: 24px; letter-spacing: 0.04em; }
+  .seal { width: 30px; height: 30px; font-size: 21px; }
   .tabs { gap: 2px; }
-  .tab { min-width: 0; min-height: 44px; padding: 0 14px; font-size: 19px; }
+  .tab { min-width: 0; padding: 0 12px; font-size: 17px; }
+  .lang-btn { padding: 0 8px; }
+  .lang-btn .icon { display: none; }
   .bar > .tabs + .lang-btn { margin-left: 0; }
-  html[lang="en"] .tab { padding: 0 12px; }
 
   .layout { grid-template-rows: minmax(0, 47%) minmax(0, 1fr); }
   body[data-mode="home"] .layout { grid-template-rows: minmax(0, 50%) minmax(0, 1fr); }
-  .panel { border-top-width: 6px; }
-  .panel-body { padding: 12px 16px 18px; }
-  .panel-title { font-size: 27px; }
-  .lesson-kicker { font-size: 16px; }
-  .dots li { width: 16px; } .dots li.now { width: 26px; }
-  .lesson-text p { font-size: 19px; line-height: 1.55; margin-bottom: 8px; }
-  .task { padding: 10px 12px; }
-  .task-prompt, .option { font-size: 19px; }
-  .option { min-height: 48px; padding: 6px 12px; }
-  .primary, .plain, .seg-btn, .toggle, .switch { min-height: 48px; }
-  .panel-nav { gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  .panel-body { padding: var(--sp-3) var(--sp-4) 18px; }
+  .panel-title { font-size: var(--fs-lead); }
+  .lesson-kicker { font-size: var(--fs-xs); }
+  .lesson-text p { font-size: var(--fs-m); line-height: 1.55; margin-bottom: 8px; }
+  .task { padding: 10px 12px 10px 14px; }
+  .task-prompt, .option { font-size: 17px; }
+  .option { padding: 6px 12px; }
+  .panel-nav { gap: var(--sp-2); padding: var(--sp-2) var(--sp-3) calc(var(--sp-2) + env(safe-area-inset-bottom)); }
   .panel-nav .primary { min-width: 0; padding: 0 18px; }
   .panel-nav .plain { padding: 0 14px; }
-  .more-cue { min-height: 44px; padding: 0 12px; font-size: 16px; }
+  .more-cue { padding: 0 12px 0 8px; font-size: 15px; }
 
-  .home-kicker { font-size: 15px; }
-  .home-title { font-size: 40px; margin-bottom: 4px; }
-  .home-hook { font-size: 21px; margin-bottom: 14px; }
-  .primary.big, .plain.big { min-height: 56px; font-size: 20px; padding: 0 20px; }
-  .list-head { font-size: 22px; margin-top: 22px; }
-  .ask-q { font-size: 21px; }
+  .home-kicker { font-size: var(--fs-xs); }
+  .home-title { font-size: 40px; margin-bottom: var(--sp-2); }
+  .home-hook { font-size: var(--fs-m); margin-bottom: var(--sp-4); }
+  .primary.big, .plain.big { min-height: 52px; font-size: var(--fs-m); padding: 0 20px; }
+  .list-head { margin-top: var(--sp-5); }
+  .ask-q { font-size: 17px; }
   .ask-a, .ask-go { font-size: 15px; }
-  .tools .seg-btn { font-size: 17px; padding: 0 10px; }
+  .lesson-title { font-size: var(--fs-m); }
+  .lesson-sum { font-size: 15px; }
+  .tools .seg-btn { font-size: var(--fs-s); padding: 0 8px; }
 
   /* HUD: small and see-through enough to keep the chariot in view */
-  .hud-dial { top: 8px; left: 8px; width: 92px; }
-  .hud-dial svg { width: 92px; height: 92px; }
-  .dial-text { margin-top: 3px; padding: 2px 7px; font-size: 13px; border-radius: 5px; }
-  .pause-btn { top: 8px; right: 8px; min-height: 44px; padding: 0 12px 0 10px; gap: 5px; font-size: 16px; }
-  .pause-btn svg { width: 20px; height: 20px; }
-  .share-btn { top: 58px; right: 8px; min-height: 40px; padding: 0 12px 0 10px; font-size: 15px; }
-  /* the top of the view is full here (dial, pause, copy link): the pause note
-     goes between the dial and the pause, the hint right across under the
-     dial's words, which it must not cover */
+  .hud-dial { padding: 5px 7px 6px; border-radius: var(--r-m); }
+  .hud-dial svg { width: 80px; height: 80px; }
+  .dial-text { margin-top: 3px; gap: 5px; font-size: var(--fs-xs); }
+  .dial-text::before { width: 8px; height: 8px; }
+  /* the corner buttons: just their icons (the words are their names and titles) */
+  .stage-corner { padding: 3px; border-radius: var(--r-m); }
+  .stage-corner .bar-btn { padding: 0; }
+  .stage-corner .bar-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* the top of the view is full here (dial, the corner buttons): the pause note
+     goes between them, the hint right across under the dial's words, which it
+     must not cover */
   .stage-notes { display: contents; }
-  .paused-note { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 220px); padding: 4px 12px; }
-  .paused-note b { font-size: 21px; }
+  .paused-note { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 240px); padding: 5px 12px; border-radius: var(--r-m); }
+  .paused-note b { font-size: var(--fs-m); }
   .paused-note span { display: none; }
-  .stage-hint { position: absolute; top: 134px; left: 8px; right: 8px; padding: 6px 10px; font-size: 15px; background: rgba(251, 248, 241, 0.9); }
+  .stage-hint { position: absolute; top: 132px; left: 8px; right: 8px; padding: 6px 10px; font-size: 15px; border-radius: var(--r-m); }
   /* in a lesson the step's words right under the view say the same, and the view is too short to spare */
   body[data-mode="lesson"] .stage-hint { display: none; }
-  .demo-count { top: auto; bottom: 8px; font-size: 15px; padding: 6px 12px; }
-  .scene-label { font-size: 15px; padding: 3px 9px; border-radius: 7px; max-width: 280px; }
+  .demo-count { top: auto; bottom: 8px; font-size: 15px; padding: 6px 12px; border-radius: var(--r-m); }
+  .scene-label { font-size: 15px; padding: 3px 9px; max-width: 280px; }
 
-  .drive-dock { right: 6px; bottom: 6px; gap: 6px; }
-  .pad { grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px); gap: 3px; }
-  .pad-btn { background: rgba(240, 223, 191, 0.78); border-width: 1.5px; border-radius: 10px; box-shadow: inset 0 -3px 0 rgba(220, 191, 140, 0.8); }
-  .pad-btn.held { background: rgba(220, 191, 140, 0.92); }
-  .pad-btn svg { width: 28px; height: 28px; }
-  .pad-btn span { display: none; }
-  .draw-btn { min-height: 44px; padding: 0 12px; gap: 6px; font-size: 16px; background: rgba(251, 248, 241, 0.92); }
-  .draw-btn svg { width: 22px; height: 22px; }
-
+  /* the drive bar stands up: the two buttons over the keys, clear of the wheel distances */
+  .stage-bar { flex-direction: column; align-items: flex-end; padding: 4px; gap: 4px; border-radius: var(--r-m); }
+  .bar-btns { flex-direction: row; }
+  .stage-bar > .bar-btns + .pad { padding: 4px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .pad { gap: 3px; }
+  .pad-btn { background: color-mix(in srgb, var(--paper-2) 80%, transparent); }
+  .pad-btn .icon { width: 24px; height: 24px; }
+  /* the two buttons share the width of the keys, each its icon over its word
+     (a child reads the word: "回到车后" says how to get back) */
+  /* as wide as the keys and no wider (width 0 + min-width: long words wrap, they don't widen the bar) */
+  .stage-bar > .bar-btns { align-self: stretch; width: 0; min-width: 100%; }
+  .bar-btns .bar-btn {
+    flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 4px;
+    font-size: var(--fs-xs); line-height: 1.15; white-space: normal; text-align: center;
+  }
+  .bar-btns .bar-btn .icon { width: 20px; height: 20px; }
 
   body[data-mode="free"] { --peek: 52px; }
-  body[data-mode="free"] .sheet-handle { font-size: 16px; }
+  body[data-mode="free"] .sheet-handle { font-size: 15px; }
   body[data-mode="free"] .panel { max-height: 66%; }
 }
 
 /* ---------- portrait screens and phones: the two wheels' distances lie down ---------- */
 @media (orientation: portrait), (orientation: landscape) and (max-height: 500px) {
-  .hud-odo { left: 6px; bottom: 6px; width: 168px; padding: 6px 22px 6px 10px; background: rgba(251, 248, 241, 0.84); border-width: 1.5px; }
+  .hud-odo { left: var(--hud-gap); bottom: var(--hud-gap); width: 172px; padding: 6px 26px 6px 10px; border-radius: var(--r-m); }
   .odo-cols { grid-template-columns: 1fr; gap: 3px; }
   .odo-col { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "name read" "bar bar"; align-items: baseline; column-gap: 6px; }
-  .odo-name { grid-area: name; font-size: 14px; }
+  .odo-name { grid-area: name; font-size: var(--fs-xs); }
   .odo-read { grid-area: read; text-align: right; }
   .odo-read .num { font-size: 17px; }
-  .odo-read .unit { font-size: 12px; }
+  .odo-read .unit { font-size: var(--fs-xs); }
   .odo-read .m { display: none; }
-  .odo-bar { grid-area: bar; width: auto; height: 7px; margin: 1px 0 0; border-radius: 3px; }
+  .odo-bar { grid-area: bar; width: auto; height: 7px; margin: 1px 0 0; border-radius: var(--r-full); background: repeating-linear-gradient(to right, transparent 0 calc(25% - 1px), var(--line-2) calc(25% - 1px) 25%) var(--paper-3); }
   .odo-bar .fill { top: 0; bottom: 0; right: auto; height: auto; left: calc(var(--from, 0) * 100%); width: calc(var(--len, 0) * 100%); }
   .odo-bar .zero { top: -2px; bottom: -2px; left: 50%; right: auto; width: 2px; height: auto; }
-  .odo-diff { margin-top: 3px; font-size: 13px; }
-  .hud-odo.folded { min-height: 44px; padding: 6px 26px 6px 10px; }
-  .odo-fold { top: 5px; right: 6px; width: 8px; height: 8px; border-width: 0 2px 2px 0; }
-  .hud-odo.folded .odo-fold { top: 16px; }
+  .odo-diff { margin-top: 3px; font-size: var(--fs-xs); text-wrap: balance; }
+  .hud-odo.folded { min-height: var(--tap); padding: 6px 28px 6px 10px; }
+  .odo-fold { top: 5px; right: 5px; width: 16px; height: 16px; }
+  .hud-odo.folded .odo-fold { top: calc(50% - 8px); }
+}
+@media (orientation: portrait) and (min-width: 601px) {
+  .hud-odo { width: 236px; padding: 8px 30px 8px 14px; }
+  .odo-name { font-size: 17px; }
+  .odo-read .num { font-size: 22px; }
+  .odo-read .unit { font-size: 15px; }
+  .odo-bar { height: 10px; }
+  .odo-diff { font-size: 15px; }
 }
 
 /* ---------- phones on their side ---------- */
 @media (orientation: landscape) and (max-height: 500px) {
-  :root { --bar-h: 48px; --panel-w: 330px; }
-  .bar { padding: 0 8px 0 14px; border-bottom-width: 3px; }
-  .mark { font-size: 24px; gap: 8px; }
-  .seal { width: 30px; height: 30px; font-size: 21px; }
-  .tab { min-height: 44px; min-width: 0; padding: 0 16px; font-size: 18px; }
+  :root { --bar-h: 52px; --panel-w: 330px; --pad-key: 46px; --hud-gap: 8px; }
+  .bar { padding: 0 6px 0 14px; }
+  .mark { font-size: 22px; gap: 8px; }
+  .seal { width: 28px; height: 28px; font-size: 19px; }
+  .tab { min-height: 44px; min-width: 0; padding: 0 14px; font-size: var(--fs-s); }
+  .lang-btn { min-height: 44px; }
   .bar > .tabs + .lang-btn { margin-left: 0; }
-  .panel { border-left-width: 6px; }
   .panel-body { padding: 10px 14px 14px; }
-  .panel-title { font-size: 24px; }
+  .panel-title { font-size: 22px; }
   .lesson-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; margin-bottom: 4px; }
-  .lesson-kicker { margin: 0; font-size: 15px; }
-  .dots { margin: 0 0 0 auto; align-self: center; }
-  .dots li { width: 14px; } .dots li.now { width: 22px; }
-  .lesson-text p { font-size: 18px; line-height: 1.5; margin-bottom: 6px; }
-  .task { margin: 4px 0 10px; padding: 8px 12px; }
-  .task-prompt, .option { font-size: 18px; }
+  .lesson-kicker { margin: 0; font-size: var(--fs-xs); }
+  .dots { width: 30%; margin: 0 0 0 auto; align-self: center; }
+  .lesson-text p { font-size: 17px; line-height: 1.5; margin-bottom: 6px; }
+  .task { margin: 4px 0 10px; padding: 8px 12px 8px 14px; }
+  .task-prompt, .option { font-size: var(--fs-s); }
   .option { min-height: 44px; padding: 4px 10px; }
   .primary, .plain, .seg-btn, .toggle, .switch { min-height: 44px; }
   .panel-nav { gap: 6px; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); }
   .panel-nav .primary { min-width: 0; padding: 0 14px; }
   .panel-nav .plain { padding: 0 10px; }
-  .more-cue { min-height: 44px; padding: 0 8px; font-size: 15px; }
+  .more-cue { min-height: 44px; padding: 0 8px; font-size: var(--fs-xs); }
   .pic img { max-height: 140px; }
-  .home-kicker { font-size: 14px; }
+  .home-kicker { font-size: var(--fs-xs); }
   .home-title { font-size: 34px; }
-  .home-hook { font-size: 19px; margin-bottom: 10px; }
-  .primary.big, .plain.big { min-height: 50px; font-size: 19px; padding: 0 18px; }
+  .home-hook { font-size: 17px; margin-bottom: 10px; }
+  .primary.big, .plain.big { min-height: 48px; font-size: 17px; padding: 0 18px; }
   /* the panel beside it says the same; keep the chariot clear */
   .stage-hook { bottom: 10px; }
   .stage-hook-line { display: none; }
-  .drag-hint { font-size: 14px; padding: 4px 12px 4px 10px; }
+  .drag-hint { font-size: var(--fs-xs); padding: 4px 12px 4px 10px; }
 
-  .hud-dial { top: 8px; left: 8px; width: 84px; }
-  .hud-dial svg { width: 84px; height: 84px; }
-  .dial-text { margin-top: 2px; padding: 2px 6px; font-size: 12px; }
-  .pause-btn { top: 8px; right: 8px; min-height: 44px; padding: 0 12px 0 10px; gap: 5px; font-size: 16px; }
-  .pause-btn svg { width: 20px; height: 20px; }
-  .share-btn { top: 58px; right: 8px; min-height: 40px; padding: 0 12px 0 10px; font-size: 15px; }
-  .stage-notes { top: 8px; gap: 6px; max-width: calc(100% - 240px); }
-  .paused-note { padding: 4px 12px; }
-  .paused-note b { font-size: 20px; }
-  .paused-note span { font-size: 13px; }
-  .stage-hint { padding: 4px 10px; font-size: 14px; }
-  .drive-dock { right: 6px; bottom: 6px; gap: 4px; }
-  .pad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px); gap: 2px; }
-  .pad-btn { background: rgba(240, 223, 191, 0.78); border-width: 1.5px; border-radius: 9px; }
-  .pad-btn svg { width: 24px; height: 24px; }
-  .pad-btn span { display: none; }
-  .draw-btn { min-height: 44px; padding: 0 10px; gap: 5px; font-size: 15px; }
-  .draw-btn svg { width: 20px; height: 20px; }
+  .hud-dial { padding: 5px 7px 6px; border-radius: var(--r-m); }
+  .hud-dial svg { width: 74px; height: 74px; }
+  .dial-text { margin-top: 2px; gap: 5px; font-size: var(--fs-xs); }
+  .dial-text::before { width: 8px; height: 8px; }
+  .stage-corner { padding: 3px; border-radius: var(--r-m); }
+  .stage-corner .bar-btn { min-height: 44px; min-width: 44px; padding: 0; }
+  .stage-corner .bar-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .stage-notes { top: 64px; gap: 6px; max-width: calc(100% - 120px); }
+  .paused-note { padding: 4px 12px; border-radius: var(--r-m); }
+  .paused-note b { font-size: 17px; }
+  .paused-note span { font-size: var(--fs-xs); }
+  .stage-hint { padding: 4px 10px; font-size: var(--fs-xs); border-radius: var(--r-m); }
+  .stage-bar { padding: 4px; gap: 4px; border-radius: var(--r-m); }
+  .pad { gap: 2px; }
+  .pad-btn { background: color-mix(in srgb, var(--paper-2) 80%, transparent); }
+  .pad-btn .icon { width: 22px; height: 22px; }
+  /* the two buttons over the keys, icon over word, as on a phone held upright:
+     the bar stays as narrow as the keys, clear of the sheet's handle at the bottom middle */
+  .stage-bar { flex-direction: column; align-items: flex-end; }
+  .bar-btns { flex-direction: row; }
+  .stage-bar > .bar-btns + .pad { padding: 4px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .stage-bar > .bar-btns { align-self: stretch; width: 0; min-width: 100%; }
+  .bar-btns .bar-btn {
+    flex: 1 1 0; min-width: 0; min-height: var(--pad-key); flex-direction: column; justify-content: center; gap: 2px; padding: 3px 4px;
+    font-size: var(--fs-xs); line-height: 1.15; white-space: normal; text-align: center;
+  }
+  .bar-btns .bar-btn .icon { width: 20px; height: 20px; }
 
   /* the sheet's handle is a pill at the bottom middle, between the HUD panels;
      open, the panel stands at the right */
   body[data-mode="free"] { --peek: 0px; }
-  body[data-mode="free"] .panel { left: auto; top: 0; width: min(360px, 52%); max-height: none; border-top: 0; border-left: 4px solid var(--wood); border-radius: 0; }
+  body[data-mode="free"] .panel { left: auto; top: 0; width: min(360px, 52%); max-height: none; border-top: 0; border-left: 1px solid var(--line); border-radius: 0; }
   /* the HUD keeps to the part of the view the open sheet leaves */
   body[data-mode="free"][data-sheet="open"] .stage-overlay { right: min(360px, 52%); }
   body[data-mode="free"][data-sheet="closed"] .panel {
@@ -796,9 +864,26 @@ body[data-mode="home"] .stage-hook { display: flex; }
     background: transparent; border: 0; box-shadow: none;
   }
   body[data-mode="free"][data-sheet="closed"] .sheet-handle {
-    flex-direction: row; min-height: 44px; padding: 0 16px; border: 2px solid var(--wood-dark); border-radius: 22px;
-    background: rgba(251, 248, 241, 0.94); font-size: 15px; box-shadow: 0 2px 4px rgba(60, 40, 20, 0.2);
+    flex-direction: row; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-full);
+    background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); font-size: var(--fs-xs); box-shadow: var(--sh-2);
   }
   body[data-mode="free"][data-sheet="closed"] .sheet-grip { display: none; }
-  body[data-mode="free"] .sheet-handle { min-height: 44px; font-size: 16px; }
+  body[data-mode="free"] .sheet-handle { min-height: 44px; font-size: 15px; border-radius: 0; }
+}
+
+/* the wheel distances folded (after the layouts above, which set them out unfolded) */
+.hud-odo.folded .odo-cols { display: flex; align-items: baseline; gap: var(--sp-4); }
+.hud-odo.folded .odo-col { display: flex; flex-direction: row; align-items: baseline; gap: 6px; }
+.hud-odo.folded .odo-name { order: -1; font-size: var(--fs-s); }
+.hud-odo.folded .odo-read { line-height: 1.2; }
+.hud-odo.folded .odo-read .num { font-size: var(--fs-m); }
+.hud-odo.folded .odo-read .unit { font-size: var(--fs-xs); }
+.hud-odo.folded .odo-bar, .hud-odo.folded .odo-read .m, .hud-odo.folded .odo-diff { display: none; }
+/* phones: the two numbers one over the other, so the folded card stays narrow
+   beside the drive bar whatever the distances grow to */
+@media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
+  .hud-odo.folded .odo-cols { flex-direction: column; align-items: stretch; gap: 0; }
+  .hud-odo.folded .odo-col { justify-content: space-between; gap: var(--sp-3); }
+  .hud-odo.folded .odo-name { font-size: var(--fs-xs); }
+  .hud-odo.folded .odo-read .num { font-size: var(--fs-s); }
 }

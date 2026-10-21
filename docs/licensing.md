@@ -20,6 +20,7 @@ uvx reuse lint      # 或者 pip install reuse && reuse lint
 | 路径 | 作者 | 许可 | 来源 |
 |---|---|---|---|
 | `vendor/three/**` | three.js authors | MIT（`vendor/three/LICENSE`） | npm 包 `three@0.186.1`，用 `pnpm vendor` 原样复制 |
+| `vendor/tabler-icons/**` | Paweł Kuna（Tabler Icons） | MIT（`vendor/tabler-icons/LICENSE`） | npm 包 `@tabler/icons@3.49.0`（outline 线性图标），`pnpm vendor` 只取页面用到的二十来个图标的 SVG 路径，写成 `icons.js` |
 | `images/lessons/sancai-tuhui.jpg` | 王圻、王思义编《三才图会》（明，1609） | 公有领域（`LicenseRef-PublicDomain`） | [Commons: 指南車圖 (三才圖會).jpg](https://commons.wikimedia.org/wiki/File:%E6%8C%87%E5%8D%97%E8%BB%8A%E5%9C%96_(%E4%B8%89%E6%89%8D%E5%9C%96%E6%9C%83).jpg)。Commons 元数据把作者写作「王沂」 |
 | `images/lessons/science-museum-model.jpg` | Andy Dingley（2008 年摄） | CC BY 3.0 | [Commons: South-pointing chariot (Science Museum model).jpg](https://commons.wikimedia.org/wiki/File:South-pointing_chariot_(Science_Museum_model).jpg)，缩小到 1200 px 宽 |
 | `images/lessons/taiwan-museum-gears.jpg` | SSR2000（2014 年摄） | CC BY-SA 3.0（Commons 上是 GFDL 与 CC BY-SA 3.0 双许可，本项目按后者使用） | [Commons: Gears of South-pointing chariot Model in National Museum of Natural Science, Taiwan.JPG](https://commons.wikimedia.org/wiki/File:Gears_of_South-pointing_chariot_Model_in_National_Museum_of_Natural_Science,_Taiwan.JPG)，缩小到 1200 px 高 |

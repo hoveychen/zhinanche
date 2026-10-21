@@ -92,3 +92,11 @@ path = ["assets/photo/*.webp"]
 precedence = "override"
 SPDX-FileCopyrightText = "Poly Haven (polyhaven.com): Greg Zaal, Jarod Guest, Rob Tuytel, Amal Kumar, Dimitrios Savva, Dario Barresi, Rico Cilliers"
 SPDX-License-Identifier = "CC0-1.0"
+
+# Icons: Tabler Icons (outline set), copied by tools/vendor.mjs (pnpm vendor)
+# from the npm package @tabler/icons; keeps its LICENSE.
+[[annotations]]
+path = "vendor/tabler-icons/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2020-2026 Paweł Kuna (Tabler Icons)"
+SPDX-License-Identifier = "MIT"

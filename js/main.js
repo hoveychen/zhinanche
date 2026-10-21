@@ -7,7 +7,8 @@ import { DriveInput } from "./app/drive.js";
 import { Tools } from "./app/tools.js";
 import { Course } from "./app/course.js";
 import { Dial, Odometer } from "./app/hud.js";
-import { byId, h, s } from "./app/dom.js";
+import { byId, h } from "./app/dom.js";
+import { icon } from "./app/icons.js";
 import { S, bind, onLang, applyDocument, langSwitch, lessons } from "./i18n.js";
 import { decodeShare, setupOf } from "./app/share.js";
 import { placeCallout as placeCalloutBox } from "./app/callout.js";
@@ -104,12 +105,15 @@ const tools = new Tools({
 });
 const dial = new Dial();
 const odo = new Odometer();
+/** touch tablets and phones: free driving starts with the wheel distances folded there
+ * (a laptop window of the same size keeps them open, as they cost it little room) */
+const smallHud = matchMedia("(pointer: coarse), (max-width: 760px)");
 const hint = bind(h("p", { class: "stage-hint", hidden: true }), (s) => s.stage.drawHint);
 // Free driving: go close on the gears (seen through the body) and back.
 const gearsText = h("span", { text: S().free.gearsOn });
 let xrayBeforeGears = false;
 const gearsBtn = h("button", {
-  type: "button", class: "draw-btn gears-btn", "data-control": "gearsView", "aria-pressed": "false",
+  type: "button", class: "bar-btn gears-btn", "data-control": "gearsView", "aria-pressed": "false",
   onclick: () => {
     stopDrawing(false);
     const st = app.state;
@@ -120,7 +124,8 @@ const gearsBtn = h("button", {
     }
   },
 }, [
-  /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M18.1 9.9 L20.9 9.9 L20.9 14.1 L18.1 14.1 L17.8 14.8 L19.8 16.8 L16.8 19.8 L14.8 17.8 L14.1 18.1 L14.1 20.9 L9.9 20.9 L9.9 18.1 L9.2 17.8 L7.2 19.8 L4.2 16.8 L6.2 14.8 L5.9 14.1 L3.1 14.1 L3.1 9.9 L5.9 9.9 L6.2 9.2 L4.2 7.2 L7.2 4.2 L9.2 6.2 L9.9 5.9 L9.9 3.1 L14.1 3.1 L14.1 5.9 L14.8 6.2 L16.8 4.2 L19.8 7.2 L17.8 9.2 Z M15 12 A3 3 0 1 0 9 12 A3 3 0 1 0 15 12" })]))),
+  // a magnifier to go close (a cog reads as "settings"), the same one out to come back
+  icon("zoom-in", "i-in"), icon("zoom-out", "i-out"),
   gearsText,
 ]);
 const demoCount = h("p", { class: "demo-count", hidden: true });
@@ -129,15 +134,15 @@ const callout = h("div", { class: "callout", hidden: true, role: "status" });
 const stageHook = h("div", { class: "stage-hook" }, [
   bind(h("p", { class: "stage-hook-line" }), (s) => s.stage.hook),
   h("p", { class: "drag-hint" }, [
-    /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M4 12 L8 8 V10.5 H16 V8 L20 12 L16 16 V13.5 H8 V16 Z" })]))),
+    icon("arrows-horizontal"),
     bind(h("span"), (s) => s.stage.dragHint),
   ]),
 ]);
 // The global pause: holds the lesson's auto-play, hand driving, a drawn route,
 // the gears and the walking demo; the view can still be dragged round.
 const pauseText = h("span", { text: S().ui.pause });
-const pauseBtn = bind(h("button", { type: "button", class: "pause-btn", "aria-pressed": "false", onclick: () => app.setPaused(!app.paused) }, [
-  /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { class: "i-pause", d: "M6 4 H10 V20 H6 Z M14 4 H18 V20 H14 Z" }), s("path", { class: "i-play", d: "M7 4 L20 12 L7 20 Z" })]))),
+const pauseBtn = bind(h("button", { type: "button", class: "bar-btn pause-btn", "aria-pressed": "false", onclick: () => app.setPaused(!app.paused) }, [
+  icon("player-pause-filled", "i-pause"), icon("player-play-filled", "i-play"),
   pauseText,
 ]), (s) => s.ui.pauseKey, "title");
 const share = new ShareButton(() => setupOf(app.state, app.drawn));
@@ -151,7 +156,12 @@ addEventListener("keydown", (e) => {
   else return;
   e.preventDefault();
 });
-overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), h("div", { class: "stage-notes" }, [pausedNote, hint]), demoCount, callout, stageHook, pauseBtn, share.el, share.status);
+// The view's buttons sit on two floating bars: the corner (pause; the copy
+// link in free driving) and the drive bar (the gears view, "draw a road", the
+// arrow keys), which shows only what the step uses.
+const barBtns = h("div", { class: "bar-btns" }, [gearsBtn, input.drawBtn]);
+const stageBar = h("div", { class: "stage-bar" }, [barBtns, input.pad]);
+overlay.append(dial.el, odo.el, stageBar, h("div", { class: "stage-notes" }, [pausedNote, hint]), demoCount, callout, stageHook, h("div", { class: "stage-corner" }, [pauseBtn, share.el]), share.status);
 /** The drawing hint shows while a road is wanted: not while one is being drawn or driven. */
 function syncHint() {
   hint.hidden = !input.drawOn || drawing !== null || app.follow !== null;
@@ -165,6 +175,10 @@ const course = new Course(app, tools, byId("panel"), {
       b.setAttribute("aria-current", on ? "page" : "false");
     }
     document.body.dataset.mode = mode;
+    // free driving on a tablet or phone: the wheel distances start folded to
+    // their one line, so the view's corners are not all cards; a lesson that
+    // shows them is there to be read, so they open
+    odo.setFolded(mode === "free" && smallHud.matches);
   },
 });
 for (const b of document.querySelectorAll("[data-go]")) {
@@ -179,6 +193,8 @@ app.onState((st) => {
   input.pad.hidden = !st.controls.includes("drive");
   input.drawBtn.hidden = !st.controls.includes("draw");
   gearsBtn.hidden = !st.controls.includes("gearsView");
+  barBtns.hidden = gearsBtn.hidden && input.drawBtn.hidden;
+  stageBar.hidden = barBtns.hidden && input.pad.hidden;
   const gears = st.view === "gears";
   gearsBtn.classList.toggle("on", gears);
   gearsBtn.setAttribute("aria-pressed", String(gears));

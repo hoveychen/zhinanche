@@ -4,15 +4,12 @@
 
 import { h } from "./dom.js";
 import { bind } from "../i18n.js";
+import { icon } from "./icons.js";
 
 /** @typedef {"up" | "down" | "left" | "right"} Dir */
 
-const ARROW = {
-  up: "M12 4 L20 14 H15 V20 H9 V14 H4 Z",
-  down: "M12 20 L4 10 H9 V4 H15 V10 H20 Z",
-  left: "M4 12 L14 4 V9 H20 V15 H14 V20 Z",
-  right: "M20 12 L10 20 V15 H4 V9 H10 V4 Z",
-};
+/** @type {Record<Dir, import("./icons.js").IconName>} */
+const ARROW = { up: "arrow-big-up", down: "arrow-big-down", left: "arrow-big-left", right: "arrow-big-right" };
 /**
  * Seconds from standing to full speed, from full speed to a stop, and to
  * swing the steering fully over: a short roll-off and a short brake instead of
@@ -47,10 +44,8 @@ export class DriveInput {
 
     /** @param {Dir} d */
     const btn = (d) => {
-      const b = bind(h("button", { type: "button", class: `pad-btn pad-${d}` }, [
-        /** @type {Node} */ (/** @type {unknown} */ (svgArrow(ARROW[d]))),
-        bind(h("span"), (s) => s.drive[d]),
-      ]), (s) => s.drive[d], "aria-label");
+      // the arrow alone on the key; its word is its name and its tooltip
+      const b = bind(bind(h("button", { type: "button", class: `pad-btn pad-${d}` }, [icon(ARROW[d])]), (s) => s.drive[d], "aria-label"), (s) => s.drive[d], "title");
       const down = (/** @type {PointerEvent} */ e) => {
         e.preventDefault();
         b.setPointerCapture?.(e.pointerId);
@@ -83,10 +78,10 @@ export class DriveInput {
     this.pad = bind(h("div", { class: "pad", "data-control": "drive", role: "group" }, [
       btn("up"), btn("left"), btn("right"), btn("down"),
     ]), (s) => s.drive.padLabel, "aria-label");
-    this.drawBtn = h("button", { type: "button", class: "draw-btn", "data-control": "draw", "aria-pressed": "false", onclick: () => this.setDraw(!this.drawOn) }, [
-      /** @type {Node} */ (/** @type {unknown} */ (svgArrow("M4 20 L5 15 L16 4 L20 8 L9 19 Z M14 6 L18 10"))),
+    this.drawBtn = bind(h("button", { type: "button", class: "bar-btn draw-btn", "data-control": "draw", "aria-pressed": "false", onclick: () => this.setDraw(!this.drawOn) }, [
+      icon("pencil"),
       bind(h("span"), (s) => s.drive.draw),
-    ]);
+    ]), (s) => s.drive.draw, "title");
 
     window.addEventListener("keydown", (e) => {
       const d = KEYS[e.code];
@@ -130,16 +125,4 @@ export class DriveInput {
 /** @param {EventTarget | null} t */
 function isTyping(t) {
   return t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
-}
-
-/** @param {string} d */
-function svgArrow(d) {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("aria-hidden", "true");
-  const p = document.createElementNS(ns, "path");
-  p.setAttribute("d", d);
-  svg.append(p);
-  return svg;
 }

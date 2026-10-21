@@ -129,8 +129,8 @@ export const STR_EN = {
     odoLabel: "How far each wheel has rolled (tap to fold or unfold)",
     same: "Both wheels rolled the same",
     opposite: "The wheels roll opposite ways",
-    rightMore: (chi) => `Right wheel: ${m(chi)} m more`,
-    leftMore: (chi) => `Left wheel: ${m(chi)} m more`,
+    rightMore: (chi) => `Right wheel: ${m(chi)}\u00a0m more`,
+    leftMore: (chi) => `Left wheel: ${m(chi)}\u00a0m more`,
   },
 
   tools: {
@@ -147,7 +147,7 @@ export const STR_EN = {
     assistNone: "The driver stops helping — the chariot turns any old way.",
     faults: "Flaws",
     faultsBlock: "Is it built true?",
-    faultNone: "Built just right",
+    faultNone: "Just right",
     faultTrack: "Wheels too wide",
     faultTrackHint: "The two wheels are set a little too far apart",
     faultWheel: "Big left wheel",

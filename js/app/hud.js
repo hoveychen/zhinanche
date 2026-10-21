@@ -4,6 +4,7 @@
 
 import { h, s } from "./dom.js";
 import { S, bind, onLang } from "../i18n.js";
+import { icon } from "./icons.js";
 
 /** Degrees off south still shown as "pointing south". Same as the ground ring. */
 const OK_DEG = 1;
@@ -109,12 +110,9 @@ export class Odometer {
     this.el = bind(h("div", { class: "hud-odo", role: "button", tabindex: "0", "aria-expanded": "true" }, [
       h("div", { class: "odo-cols" }, [this.l.el, this.r.el]),
       this.diff,
-      h("span", { class: "odo-fold", "aria-hidden": "true" }),
+      icon("chevron-down", "odo-fold"),
     ]), (str) => str.hud.odoLabel, "aria-label");
-    const fold = () => {
-      const folded = this.el.classList.toggle("folded");
-      this.el.setAttribute("aria-expanded", String(!folded));
-    };
+    const fold = () => this.setFolded(!this.el.classList.contains("folded"));
     this.el.addEventListener("click", fold);
     this.el.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -123,6 +121,12 @@ export class Odometer {
       }
     });
     this.scale = 10;
+  }
+
+  /** @param {boolean} folded */
+  setFolded(folded) {
+    this.el.classList.toggle("folded", folded);
+    this.el.setAttribute("aria-expanded", String(!folded));
   }
 
   /** @param {number} distL signed chi @param {number} distR */
