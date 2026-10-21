@@ -43,6 +43,13 @@ function segmented(label, choices, pick) {
     return hint ? bind(b, w(hint), "title") : b;
   });
   const el = bind(h("div", { class: "seg", role: "group" }, buttons), w(label), "aria-label");
+  // the buttons' words never wrap (a word broken over two lines in one
+  // button and not the next reads as three different kinds of button)
+  if (typeof ResizeObserver === "function") {
+    const ro = new ResizeObserver(() => fitSeg(el, buttons));
+    ro.observe(el);
+    for (const b of buttons) ro.observe(b);
+  }
   return {
     el,
     /** @param {(v: T) => boolean} isOn */
@@ -54,6 +61,27 @@ function segmented(label, choices, pick) {
       });
     },
   };
+}
+
+/**
+ * Lay a row of buttons out to fit its width, each word on one line: as
+ * equals if the longest fits a share; else each as wide as its word (the
+ * spare room shared out); else one under the other (English "Wheels too
+ * wide" in a narrow panel).
+ * @param {HTMLElement} el @param {HTMLElement[]} buttons
+ */
+function fitSeg(el, buttons) {
+  const room = el.clientWidth;
+  if (!room) return;
+  el.classList.add("measure");
+  const cs = getComputedStyle(el);
+  const free = room - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.columnGap || "0") * (buttons.length - 1);
+  const ws = buttons.map((b) => b.offsetWidth);
+  el.classList.remove("measure");
+  const even = Math.max(...ws) * buttons.length <= free + 0.5;
+  const stack = !even && ws.reduce((a, b) => a + b, 0) > free + 0.5;
+  el.classList.toggle("even", even);
+  el.classList.toggle("stack", stack);
 }
 
 /**

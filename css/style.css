@@ -350,14 +350,19 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 }
 .tool-note { margin: 6px 0 0; font-size: var(--fs-s); color: var(--ink-2); line-height: 1.5; }
 /* a row of buttons, one pressed: a sunken track with the pressed one filled in
-   the accent, so a child sees at a glance which it is. Always one row (at most
-   three): a word too long for its share wraps inside its button. */
+   the accent, so a child sees at a glance which it is. Each word on one line
+   (js/app/tools.js fitSeg): equal buttons if the longest word fits a share,
+   else as wide as their words, else one under the other. */
 .seg { display: flex; gap: 3px; padding: 3px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-m); }
 .seg-btn {
   flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 4px 14px; border: 1px solid transparent; border-radius: calc(var(--r-m) - 3px);
-  background: transparent; color: var(--ink-2); font-size: var(--fs-m); font-weight: 600; line-height: 1.25; text-wrap: balance;
+  background: transparent; color: var(--ink-2); font-size: var(--fs-m); font-weight: 600; line-height: 1.25; white-space: nowrap;
   cursor: pointer; touch-action: manipulation;
 }
+.seg.even .seg-btn { flex: 1 1 0; }
+.seg.measure .seg-btn { flex: none; }
+.seg.stack { flex-direction: column; }
+.seg.stack .seg-btn { flex: none; white-space: normal; }
 .seg-btn:hover:not(.on) { background: var(--paper-3); color: var(--ink); }
 .seg-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--sh-1); }
 /* explode slider (js/app/tools.js): drag to take the chariot apart */
