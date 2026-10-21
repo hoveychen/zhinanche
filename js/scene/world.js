@@ -23,6 +23,10 @@ import { HighlightGlow, OUTLINES, setBoxLineSize, updateOutlines } from "./gearv
 /** @import { PartId, ViewId, DemoId } from "../teach/types.js" */
 /** @import { Insets } from "./cameraRig.js" */
 
+/** Parts small enough to be hard to tap: a tap this near one (CSS px) picks it. */
+const SMALL_PART = /pinion/;
+const PICK_RING = 12;
+
 /** Half the distance between the model's wheels (chi). */
 const HALF_TRACK = 3;
 
@@ -558,8 +562,25 @@ export class World {
    * @returns {{title: string, detail: string, point: THREE.Vector3, side: "l" | "r" | null} | null}
    */
   pick(clientX, clientY) {
-    if (!this.holder.visible || !this.rig) return null;
-    const hit = this.rig.pick(this.#ray(clientX, clientY));
+    const rig = this.rig;
+    if (!this.holder.visible || !rig) return null;
+    let hit = rig.pick(this.#ray(clientX, clientY));
+    // Looking inside, a finger is wider than the differential's small gears,
+    // and from behind and above the top flat gear's teeth stand in front of
+    // most of them: look round the point as well (a ring of PICK_RING CSS
+    // px). A small gear there wins; a tap between parts takes what is round it.
+    if (rig.inside && !SMALL_PART.test(String(hit?.node.userData.name ?? ""))) {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const near = rig.pick(this.#ray(clientX + Math.cos(a) * PICK_RING, clientY + Math.sin(a) * PICK_RING));
+        if (!near) continue;
+        if (SMALL_PART.test(String(near.node.userData.name ?? ""))) {
+          hit = near;
+          break;
+        }
+        hit ??= near;
+      }
+    }
     if (!hit) return null;
     const cap = partCaption(hit.node.userData);
     const name = String(hit.node.userData.name ?? "");
