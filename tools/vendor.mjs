@@ -43,7 +43,7 @@ export const FILES = [
  * weight. Only these are copied, into one small module of their markup.
  */
 export const ICONS = [
-  "player-pause-filled", "player-play-filled", "link", "check", "settings", "pencil",
+  "player-pause-filled", "player-play-filled", "link", "check", "zoom-in", "zoom-out", "pencil",
   "arrow-big-up", "arrow-big-down", "arrow-big-left", "arrow-big-right",
   "arrows-horizontal", "arrow-down", "arrow-right", "chevron-left", "chevron-right", "chevron-down",
   "eye", "language", "tool", "repeat", "walk", "arrow-back-up",

@@ -472,6 +472,8 @@ body[data-mode="free"] .share-btn { display: inline-flex; }
 .stage-bar { position: absolute; right: var(--hud-gap); bottom: var(--hud-gap); display: flex; align-items: stretch; gap: 6px; padding: 6px; }
 .bar-btns { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
 .bar-btns .bar-btn { min-height: var(--pad-key); justify-content: flex-start; }
+.gears-btn .i-out, .gears-btn.on .i-in { display: none; }
+.gears-btn.on .i-out { display: block; }
 .stage-bar > .bar-btns + .pad { padding-left: 6px; border-left: 1px solid var(--line); }
 .pad {
   display: grid; grid-template-columns: repeat(3, var(--pad-key)); grid-template-rows: repeat(2, var(--pad-key));
@@ -726,8 +728,14 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .pad { gap: 3px; }
   .pad-btn { background: color-mix(in srgb, var(--paper-2) 80%, transparent); }
   .pad-btn .icon { width: 24px; height: 24px; }
-  .bar-btns .bar-btn { padding: 0; justify-content: center; }
-  .bar-btns .bar-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* the two buttons share the width of the keys, each its icon over its word
+     (a child reads the word: "回到车后" says how to get back) */
+  .stage-bar > .bar-btns { align-self: stretch; }
+  .bar-btns .bar-btn {
+    flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 4px;
+    font-size: var(--fs-xs); line-height: 1.15; white-space: normal; text-align: center;
+  }
+  .bar-btns .bar-btn .icon { width: 20px; height: 20px; }
 
   body[data-mode="free"] { --peek: 52px; }
   body[data-mode="free"] .sheet-handle { font-size: 15px; }
@@ -810,8 +818,9 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .pad { gap: 2px; }
   .pad-btn { background: color-mix(in srgb, var(--paper-2) 80%, transparent); }
   .pad-btn .icon { width: 22px; height: 22px; }
-  .bar-btns .bar-btn { padding: 0; justify-content: center; }
-  .bar-btns .bar-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* beside the keys, as on a tablet, words and all */
+  .bar-btns .bar-btn { padding: 0 12px 0 10px; gap: 6px; font-size: var(--fs-xs); }
+  .bar-btns .bar-btn .icon { width: 20px; height: 20px; }
 
   /* the sheet's handle is a pill at the bottom middle, between the HUD panels;
      open, the panel stands at the right */

@@ -121,7 +121,8 @@ const gearsBtn = h("button", {
     }
   },
 }, [
-  icon("settings"),
+  // a magnifier to go close (a cog reads as "settings"), the same one out to come back
+  icon("zoom-in", "i-in"), icon("zoom-out", "i-out"),
   gearsText,
 ]);
 const demoCount = h("p", { class: "demo-count", hidden: true });
