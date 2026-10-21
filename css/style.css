@@ -90,7 +90,9 @@ button { font: inherit; color: inherit; }
 .bar > .tabs + .lang-btn { margin-left: -12px; }
 /* English needs none of the spacing the Chinese titles are set with */
 html[lang="en"] .mark { letter-spacing: 0; font-size: 28px; }
-html[lang="en"] .home-title { letter-spacing: 0; font-size: 44px; }
+/* "The South-Pointing" on one line (its hyphen does not break) at any panel width:
+   sized to the panel, never bigger than 44px */
+html[lang="en"] .home-title { letter-spacing: 0; font-size: min(44px, 10.6cqi); }
 @media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
   html[lang="en"] .mark [data-i18n] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
@@ -110,7 +112,7 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
   border-left: 10px solid var(--wood);
   border-image: repeating-linear-gradient(180deg, var(--wood) 0 22px, #9b6a38 22px 26px, var(--wood) 26px 61px, #b37d46 61px 64px) 10;
 }
-.panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 22px 24px 28px; }
+.panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 22px 24px 28px; container-type: inline-size; }
 
 @media (min-width: 1280px) { :root { --panel-w: 460px; } }
 
@@ -299,7 +301,9 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 }
 .seg-btn:first-child { margin-left: 0; border-radius: 8px 0 0 8px; }
 .seg-btn:last-child { border-radius: 0 8px 8px 0; }
-.seg-btn.on { background: var(--shiqing); border-color: var(--shiqing); color: #fff; font-weight: 600; position: relative; }
+/* pressed reads bold without getting wider: real bold would rewrap the row
+   ("Wheels too wide" in English) and move the buttons under the finger */
+.seg-btn.on { background: var(--shiqing); border-color: var(--shiqing); color: #fff; text-shadow: 0.35px 0 0 currentColor, -0.35px 0 0 currentColor; position: relative; }
 /* explode slider (js/app/tools.js): drag to take the chariot apart */
 .slider { display: flex; align-items: center; gap: 10px; }
 .slider-end { flex: none; min-height: 48px; padding: 0 10px; border: none; background: none; font-size: 18px; color: var(--wood-dark); }
@@ -609,7 +613,6 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .tab { min-width: 0; min-height: 44px; padding: 0 14px; font-size: 19px; }
   .bar > .tabs + .lang-btn { margin-left: 0; }
   html[lang="en"] .tab { padding: 0 12px; }
-  html[lang="en"] .home-title { font-size: 38px; }
 
   .layout { grid-template-rows: minmax(0, 47%) minmax(0, 1fr); }
   body[data-mode="home"] .layout { grid-template-rows: minmax(0, 50%) minmax(0, 1fr); }

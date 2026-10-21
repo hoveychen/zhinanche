@@ -310,18 +310,29 @@ try {
   const shared = decodeShare(location.hash);
   // load the shared chariot first, not the default one
   if (shared) world.mechanism = shared.mechanism;
-  await world.load();
-  loading.hidden = true;
   // ?free opens free driving; ?lesson=N&step=K (1-based) opens a lesson step.
   const q = new URLSearchParams(location.search);
   const LESSONS = lessons();
   const li = Number(q.get("lesson")) - 1;
+  const k = Number.isInteger(li) && li >= 0 && li < LESSONS.length ? Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1))) : 0;
+  // the panel's words need no model: put them up while it loads, in a gap
+  // while the model is fetched and compiled, so they do not hold it up
+  const loaded = world.load();
+  let up = false;
+  const early = () => {
+    if (up) return;
+    up = true;
+    course.preview(shared || q.has("free") ? { mode: "free" } : k ? { mode: "lesson", lesson: li, step: k - 1 } : { mode: "home" });
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(early);
+  else setTimeout(early, 0);
+  await loaded;
+  up = true;
+  loading.hidden = true;
+  course.panel.inert = false;
   if (shared) openShared(shared);
   else if (q.has("free")) course.free();
-  else if (Number.isInteger(li) && li >= 0 && li < LESSONS.length) {
-    const k = Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1)));
-    course.open(li, k - 1);
-  }
+  else if (k) course.open(li, k - 1);
   else course.home();
   requestAnimationFrame(frame);
   world.prefetchOther();

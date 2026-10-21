@@ -76,6 +76,29 @@ export class Course {
     app.onTick(() => this.#tick());
   }
 
+  /**
+   * While the chariot is still loading: put up the page the address asks for
+   * (the lesson list, a step's words, free driving's notes) so the panel is
+   * not blank. Nothing in it works until the real one replaces it (inert).
+   * @param {{mode: "home" | "free"} | {mode: "lesson", lesson: number, step: number}} at
+   */
+  preview(at) {
+    this.panel.inert = true;
+    this.mode = at.mode;
+    if (at.mode === "home") this.#renderHome();
+    else if (at.mode === "free") {
+      this.setSheet(false);
+      this.#renderFree();
+    } else if (at.mode === "lesson") {
+      this.lesson = at.lesson;
+      this.step = at.step;
+      this.#render(this.current, this.current.steps[at.step]);
+    }
+    // the step's own controls come with its scene, once the chariot is out
+    if (at.mode !== "free") this.tools.el.hidden = true;
+    this.cb.onMode(at.mode);
+  }
+
   // ---------- home ----------
 
   home() {
@@ -246,7 +269,7 @@ export class Course {
       this.replayBtn = h("button", { type: "button", class: "plain replay", onclick: () => this.app.replay() }, [h("span", { text: t.replay })]);
       parts.push(this.replayBtn);
     }
-    if (step.scene?.demo === "holdHands" || (this.app.state.demo === "holdHands")) {
+    if (stateAt(lesson.steps, this.step).demo === "holdHands") {
       parts.push(h("button", { type: "button", class: "primary walk", "data-demo": "walk", onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: t.walk })]));
     }
     this.doTask = null;

@@ -333,7 +333,7 @@ export const LESSONS = [
       },
       {
         text: "古书里还说，有一辆指南车是人躲在车里，偷偷转木人！\n\n真正的指南车不用偷偷转。它靠齿轮记账，是古人了不起的机器。",
-        scene: { demo: null, slip: {}, faults: {}, reset: true, view: "overview", controls: ["drive", "draw", "mechanism", "assist", "faults", "slip", "xray", "explode", "reset", "speed"] },
+        scene: { demo: null, slip: {}, faults: {}, reset: true, view: "overview", controls: [] },
       },
     ],
   },
