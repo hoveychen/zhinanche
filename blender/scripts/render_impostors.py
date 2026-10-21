@@ -7,9 +7,9 @@ seen from a ring of directions round it (tools/assets/build_trees.py runs this).
 
 The sun and the sky never move and the trees never turn (js/scene/courtyard.js), so the
 light can be baked into the frames: Cycles renders the tree under the same sun as
-js/scene/environment.js (SUN_DIR, colour 0xffdcb0, intensity 3.4: a three.js
+js/scene/environment.js (SUN: 17° up, colour 0xffc690, intensity 4.4: a three.js
 DirectionalLight's Lambert term is albedo·I·cosθ/π, as a Cycles sun of strength I) and
-the same photographed sky (sky-env, radiance / headroom, ×0.9 as scene.environmentIntensity),
+the same photographed sky (sky-env, radiance / headroom, ×0.62 as scene.environmentIntensity),
 over paving it can't see but that bounces light up. Each frame is an orthographic view
 from elevation --elev, frame k from azimuth k/frames of a turn (three.js: the camera at
 (sin φ, ·, cos φ) from the tree; φ = 0 is south, +z). The page draws a frame on an upright
@@ -28,13 +28,16 @@ import bpy
 import numpy as np
 from mathutils import Vector
 
-# three.js SUN_DIR (environment.js): 28° up, 24° north of west; three (x, y, z) → Blender (x, -z, y).
-_E, _A = math.radians(28), math.radians(24)
+# three.js SUN (environment.js): 17° up, 24° north of west; three (x, y, z) → Blender (x, -z, y).
+# tests/scene/light.test.js keeps these in step with environment.js.
+SUN_ELEVATION, SUN_NORTH_OF_WEST = 17.0, 24.0
+_E, _A = math.radians(SUN_ELEVATION), math.radians(SUN_NORTH_OF_WEST)
 SUN_THREE = Vector((-math.cos(_E) * math.cos(_A), math.sin(_E), -math.cos(_E) * math.sin(_A))).normalized()
 SUN = Vector((SUN_THREE.x, -SUN_THREE.z, SUN_THREE.y))
-SUN_COLOUR = (1.0, 0.7157, 0.4342)  # 0xffdcb0 in linear sRGB
-SUN_STRENGTH = 3.4
-ENV_INTENSITY = 0.9
+SUN_HEX = 0xFFC690
+SUN_COLOUR = tuple((((SUN_HEX >> s & 255) / 255 + 0.055) / 1.055) ** 2.4 for s in (16, 8, 0))  # linear sRGB
+SUN_STRENGTH = 4.4
+ENV_INTENSITY = 0.62
 # The paving round the court, as environment.js puts it in the reflection map (0x8a8378).
 GROUND = (0.2541, 0.2271, 0.1878)
 

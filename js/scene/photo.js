@@ -151,7 +151,7 @@ export class Photos {
     this.renderer = renderer;
     this.level = level;
     this.aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-    /** @type {(() => void)[]} GPU work waiting for a frame of its own */
+    /** @type {{run: () => void, when?: () => boolean}[]} GPU work waiting for a frame of its own (and maybe for a calm one) */
     this.jobs = [];
     /** @type {Promise<PhotoManifest | null>} */
     this.manifest = fetch(new URL("manifest.json", ROOT))
@@ -181,16 +181,20 @@ export class Photos {
   }
 
   /**
-   * Run `fn` on a later frame, alone (tick).
-   * @template T @param {() => T} fn @returns {Promise<T>}
+   * Run `fn` on a later frame, alone (tick); with `when`, on the first frame
+   * it says yes (other jobs go ahead meanwhile).
+   * @template T @param {() => T} fn @param {() => boolean} [when] @returns {Promise<T>}
    */
-  later(fn) {
-    return new Promise((done, fail) => this.jobs.push(() => {
-      try {
-        done(fn());
-      } catch (err) {
-        fail(err);
-      }
+  later(fn, when) {
+    return new Promise((done, fail) => this.jobs.push({
+      run: () => {
+        try {
+          done(fn());
+        } catch (err) {
+          fail(err);
+        }
+      },
+      when,
     }));
   }
 
@@ -201,7 +205,8 @@ export class Photos {
 
   /** Run at most one waiting job. Call once a frame, before drawing. */
   tick() {
-    this.jobs.shift()?.();
+    const i = this.jobs.findIndex((j) => !j.when || j.when());
+    if (i >= 0) this.jobs.splice(i, 1)[0].run();
   }
 
   /**
@@ -209,9 +214,10 @@ export class Photos {
    * @param {Decoded} d
    * @param {{colour: boolean, repeat: boolean, mips: boolean, gltf?: boolean}} o
    * @param {boolean} [queue] queue the upload (else the first draw does it)
+   * @param {() => boolean} [when] upload only on a frame this says yes to
    * @returns {{tex: THREE.Texture, up: Promise<void>}}
    */
-  #texture({ image, flipY }, o, queue = true) {
+  #texture({ image, flipY }, o, queue = true, when = undefined) {
     const tex = new THREE.Texture(/** @type {any} */ (image));
     tex.flipY = flipY;
     tex.colorSpace = o.colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -222,16 +228,17 @@ export class Photos {
     tex.anisotropy = o.mips ? this.aniso : 1;
     tex.needsUpdate = true;
     // (a texture already drawn with is not uploaded again)
-    return { tex, up: queue ? this.later(() => this.renderer.initTexture(tex)) : Promise.resolve() };
+    return { tex, up: queue ? this.later(() => this.renderer.initTexture(tex), when) : Promise.resolve() };
   }
 
   /**
    * One texture, fetched, decoded and uploaded.
    * @param {string} file
    * @param {{colour: boolean, repeat: boolean, mips: boolean, gltf?: boolean}} o
+   * @param {() => boolean} [when] upload only on a frame this says yes to
    */
-  async #load(file, o) {
-    const { tex, up } = this.#texture(await this.decoder.decode(new URL(file, ROOT), "auto", !o.gltf), o);
+  async #load(file, o, when = undefined) {
+    const { tex, up } = this.#texture(await this.decoder.decode(new URL(file, ROOT), "auto", !o.gltf), o, true, when);
     await up;
     return tex;
   }
@@ -330,10 +337,11 @@ export class Photos {
    * writes chariot-<mechanism>-ao.webp next to the scans): read on the GLB's
    * own UVs, so no repeat. Fetched after the sky like the surfaces.
    * @param {string} mechanism
+   * @param {() => boolean} [when] upload only on a frame this says yes to
    * @returns {Promise<THREE.Texture>}
    */
-  async atlas(mechanism) {
+  async atlas(mechanism, when) {
     await this.skyDone;
-    return this.#load(`chariot-${mechanism}-ao-${this.level === "lite" ? 512 : 1024}.webp`, { colour: false, repeat: false, mips: true, gltf: true });
+    return this.#load(`chariot-${mechanism}-ao-${this.level === "lite" ? 512 : 1024}.webp`, { colour: false, repeat: false, mips: true, gltf: true }, when);
   }
 }

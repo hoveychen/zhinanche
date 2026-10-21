@@ -15,12 +15,25 @@ import { placeholder } from "./photo.js";
 /** @import { PhotoSky } from "./photo.js" */
 
 /**
- * Direction to the sun: west, a little north (south = +z, west = −x), 28° up.
- * The follow camera looks south from the north, so the sun is behind it on
- * the right: side light on the chariot, shadows falling left and away.
+ * The sun of a late afternoon, not yet evening: west, a little north (south =
+ * +z, west = −x), SUN.elevation up. The follow camera looks south from the
+ * north, so the sun is behind it on the right: side light on the chariot,
+ * long shadows falling left and away. Low and warm, so the lit faces glow and
+ * the shade, filled by the blue sky, goes cool: the contrast a photo has.
+ * blender/scripts/render_impostors.py bakes the trees under this same sun
+ * (tests/scene/light.test.js keeps the two in step).
  */
+export const SUN = {
+  elevation: 17,
+  northOfWest: 24,
+  colour: 0xffc690,
+  intensity: 4.4,
+  /** scene.environmentIntensity once the sky is baked: the fill from the sky */
+  sky: 0.62,
+};
+
 export const SUN_DIR = (() => {
-  const elev = THREE.MathUtils.degToRad(28), az = THREE.MathUtils.degToRad(24);
+  const elev = THREE.MathUtils.degToRad(SUN.elevation), az = THREE.MathUtils.degToRad(SUN.northOfWest);
   return new THREE.Vector3(-Math.cos(elev) * Math.cos(az), Math.sin(elev), -Math.cos(elev) * Math.sin(az)).normalize();
 })();
 
@@ -131,6 +144,18 @@ void main() {
     vec3 p = texture2D(photo, puv).rgb * photoGain;
     p = mix(p, photoZenith, smoothstep(0.9, 1.0, v));
     p = mix(p, photoLow, smoothstep(0.03, -0.01, v));
+    // The photo was taken under a higher sun. Ours is low: the clouds' white
+    // (bright, unsaturated) takes its gold, the blue deepens overhead, and
+    // the low sky towards the sun warms; away from it, a faint rose haze.
+    float pl = dot(p, vec3(0.2126, 0.7152, 0.0722));
+    float mx = max(p.r, max(p.g, p.b)), mn = min(p.r, min(p.g, p.b));
+    float white = smoothstep(0.38, 0.12, (mx - mn) / max(mx, 1e-4));
+    float sunSide = pow(clamp(0.5 + 0.5 * az, 0.0, 1.0), 2.0);
+    vec3 cloudGold = mix(vec3(1.06, 0.97, 0.86), vec3(1.16, 0.97, 0.78), sunSide);
+    p *= mix(vec3(1.0), cloudGold, white * smoothstep(0.25, 0.9, pl));
+    p *= mix(vec3(1.0), vec3(0.95, 0.97, 1.02), (1.0 - white) * smoothstep(0.1, 0.6, h));
+    vec3 lowTint = mix(vec3(1.08, 0.98, 0.93), vec3(1.2, 1.0, 0.8), sunSide);
+    p *= mix(vec3(1.0), lowTint, exp(-max(h, 0.0) * 4.0));
     if (h < 0.0) p = mix(p, groundCol, smoothstep(0.03, 0.2, -h));
     // a soft glow round our sun (the photo's own sun is painted out)
     p += glow * (pow(s, 8.0) * 0.1 + pow(s, 60.0) * 0.5);
@@ -275,7 +300,12 @@ export class SetShadow {
     this.camera = cam;
     this.rt = new THREE.WebGLRenderTarget(size, size, { depthBuffer: true });
     this.rt.depthTexture = new THREE.DepthTexture(size, size, THREE.UnsignedIntType);
-    this.rt.depthTexture.minFilter = this.rt.depthTexture.magFilter = THREE.NearestFilter;
+    // looked up with the hardware's depth compare, filtered: every tap is a
+    // 2×2 bilinear blend of lit and shaded, so a shadow's edge runs smoothly
+    // between texels (with plain nearest taps the low sun stretched each texel
+    // into a visible block, the trees' shadows a mosaic on the walls)
+    this.rt.depthTexture.minFilter = this.rt.depthTexture.magFilter = THREE.LinearFilter;
+    this.rt.depthTexture.compareFunction = THREE.LessEqualCompare;
     /** world → shadow map [0, 1]³, for the courtyard at the origin */
     this.base = new THREE.Matrix4()
       .set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
@@ -288,6 +318,20 @@ export class SetShadow {
       setShadowOn: { value: 0 },
     };
     this.offset = new THREE.Vector3();
+  }
+
+  /**
+   * Make the map a depth texture at once (cleared: all lit), so a material
+   * patched before the bake is drawn with a shadow sampler that has one (an
+   * empty slot gets a colour texture, and the draw is dropped).
+   * @param {THREE.WebGLRenderer} renderer
+   */
+  init(renderer) {
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.rt);
+    renderer.clear();
+    renderer.setRenderTarget(prev);
+    this.uniforms.setShadowMap.value = this.rt.depthTexture;
   }
 
   /**
@@ -364,7 +408,7 @@ export class SetShadow {
         .replace(
           "#include <common>",
           `#include <common>
-          uniform sampler2D setShadowMap;
+          uniform sampler2DShadow setShadowMap;
           uniform mat4 setShadowMatrix;
           uniform float setShadowTexel;
           uniform float setShadowOn;
@@ -377,7 +421,7 @@ export class SetShadow {
             float z = p.z - 0.0004;
             float lit = 0.0;
             for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
-              lit += step(z, texture2D(setShadowMap, p.xy + vec2(float(i), float(j)) * setShadowTexel).r);
+              lit += texture(setShadowMap, vec3(p.xy + vec2(float(i), float(j)) * setShadowTexel, z));
             }
             return lit / 9.0;
           }`,
@@ -417,7 +461,7 @@ export class Environment {
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     scene.background = FOG.clone();
-    scene.fog = new THREE.FogExp2(FOG, 0.0016);
+    scene.fog = new THREE.FogExp2(FOG, 0.0018);
 
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(1000, 32, 16), skyMaterial(null));
     this.sky.name = "sky";
@@ -431,7 +475,7 @@ export class Environment {
     this.hemi = new THREE.HemisphereLight(0xbcd3ea, 0x8a7a66, 0.45);
     scene.add(this.hemi);
 
-    const sun = new THREE.DirectionalLight(0xffdcb0, 3.4);
+    const sun = new THREE.DirectionalLight(SUN.colour, SUN.intensity);
     sun.castShadow = true;
     sun.shadow.mapSize.set(opts.shadowSize, opts.shadowSize);
     // Low sun, long shadows: the box reaches out on the side they fall.
@@ -531,7 +575,7 @@ export class Environment {
     envSky.geometry.dispose();
     this.scene.environment?.dispose();
     this.scene.environment = rt.texture;
-    this.scene.environmentIntensity = 0.9;
+    this.scene.environmentIntensity = SUN.sky;
     this.hemi.intensity = 0.12;
   }
 
