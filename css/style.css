@@ -891,3 +891,9 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .hud-odo.folded .odo-name { font-size: var(--fs-xs); }
   .hud-odo.folded .odo-read .num { font-size: var(--fs-s); }
 }
+
+/* A step with "draw a road" and no arrow keys (lesson 2): on phones the
+   buttons take their width from the keys, so with the keys hidden the bar
+   fell to a 10px sliver. Then they take their own width. */
+.stage-bar:has(> .pad[hidden]) > .bar-btns { width: auto; min-width: 0; }
+.stage-bar:has(> .pad[hidden]) .bar-btns .bar-btn { flex: 0 0 auto; min-width: 72px; white-space: nowrap; }
