@@ -297,6 +297,15 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
 .trouble .tool { margin-top: 10px; }
 .tool { margin-top: 14px; }
 .tool-title { font-size: 17px; color: var(--wood-dark); font-weight: 600; margin-bottom: 6px; }
+/* phones: the control a task asks for sits tight under it, its heading left
+   to the task's own words, so it is on screen without scrolling */
+@media (max-width: 600px) {
+  .tools.led { margin-top: 6px; padding-top: 0; border-top: 0; }
+  .tools.led > .tool.lead { margin-top: 4px; }
+  .tools.led > .tool.lead > .tool-title { display: none; }
+  .tools.led > .trouble.lead { margin-top: 4px; padding-top: 4px; }
+  .tools.led > .trouble.lead > .trouble-head, .tools.led > .trouble.lead > .trouble-note { display: none; }
+}
 .tool-note { margin: 6px 0 0; font-size: 17px; color: var(--ink-soft); line-height: 1.5; }
 .seg { display: flex; flex-wrap: wrap; gap: 0; }
 .seg-btn {

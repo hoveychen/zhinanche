@@ -139,9 +139,25 @@ export class Tools {
       bind(h("p", { class: "trouble-note" }), (s) => s.free.breakNote),
       b.faults, b.slip,
     ]), (s) => s.free.breakHead, "aria-label");
-    this.el = bind(h("div", { class: "tools", role: "group" }, [this.trouble, b.mechanism, b.assist, b.xray, b.explode, b.speed, b.reset]), w("label"), "aria-label");
+    this.order = [this.trouble, b.mechanism, b.assist, b.xray, b.explode, b.speed, b.reset];
+    this.el = bind(h("div", { class: "tools", role: "group" }, this.order), w("label"), "aria-label");
     /** @type {SceneState | null} */
     this.state = null;
+  }
+
+  /**
+   * Put the control a task asks for first, right under the task (a short
+   * panel would leave it below the fold); null: the usual order.
+   * @param {Exclude<ControlId, "drive" | "draw" | "gearsView"> | null} id
+   */
+  lead(id) {
+    const block = id ? this.blocks[id] : null;
+    // the faults and the ground sit in their own group: that group leads
+    const first = block?.parentElement === this.trouble ? this.trouble : block;
+    const want = first && first.parentElement === this.el ? [first, ...this.order.filter((el) => el !== first)] : this.order;
+    if (want.some((el, i) => this.el.children[i] !== el)) this.el.replaceChildren(...want);
+    this.el.classList.toggle("led", want !== this.order);
+    for (const el of this.order) el.classList.toggle("lead", el === want[0] && want !== this.order);
   }
 
   /** @param {SceneState} st */
