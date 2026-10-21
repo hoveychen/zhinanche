@@ -878,6 +878,26 @@ def meshes():
 def unwrap():
     """One UV atlas over every mesh, deterministic (so the GLB stays reproducible)."""
     objs = meshes()
+    # Discs and rims are revolved as wedges that only touch: each wedge's face would be
+    # an island of its own, baked on its own, and a disc's top read as a sunburst of
+    # wedges in different greys. Weld coincident vertices first (flat-shaded meshes only:
+    # the faces keep their own normals) so a flat face across wedges is one island.
+    import bmesh
+    for o in objs:
+        if any(p.use_smooth for p in o.data.polygons):
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+        # the walls where two wedges touch are now inside the solid (welding keeps one of
+        # each pair): every edge of such a wall is shared by more than two faces. Drop
+        # them (the page's ink outline, a hull pushed out along the normals, poked them
+        # through a disc's top as a ring of radial lines)
+        inner = [f for f in bm.faces if all(len(e.link_faces) > 2 for e in f.edges)]
+        if inner:
+            bmesh.ops.delete(bm, geom=inner, context="FACES_ONLY")
+        bm.to_mesh(o.data)
+        bm.free()
     bpy.ops.object.select_all(action="DESELECT")
     for o in objs:
         o.select_set(True)

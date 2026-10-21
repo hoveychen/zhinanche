@@ -19,7 +19,12 @@ const OUTLINE_VERT = /* glsl */ `
 uniform vec2 res;
 uniform float width;
 void main() {
-  vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  // a little further from the eye than the part: pushing a fan of thin
+  // triangles out in screen space can turn some of them round, and at the
+  // part's own depth they inked a disc's face in sectors
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  mv.xyz += normalize(mv.xyz) * (0.01 + 0.001 * length(mv.xyz));
+  vec4 clip = projectionMatrix * mv;
   vec3 n = normalize(normalMatrix * normal);
   vec2 dir = (projectionMatrix * vec4(n, 0.0)).xy;
   float len = length(dir);
@@ -125,15 +130,15 @@ void main() {
   float d = length(vView);
   float facing = abs(dot(normalize(vNormal), vView / d));
   float fres = pow(1.0 - facing, 3.0);
-  float a = (0.03 + 0.32 * fres) * opacity * smoothstep(fade.x, fade.y, d);
+  float a = (0.012 + 0.5 * fres) * opacity * smoothstep(fade.x, fade.y, d);
   if (a < 0.003) discard;
   gl_FragColor = vec4(mix(fill, rim, fres), a);
 }`;
 
 /** How strong the ghost is at full (x-ray on, not taken apart). */
 export const WIRE_OPACITY = 1;
-/** The ghost fades out nearer the camera than this (chi): gone at x, full at y. */
-const GHOST_FADE = new THREE.Vector2(7, 16);
+/** The ghost fades out nearer the camera than this (chi): gone at x, full at y (the gears views look from 10-14 chi: the boards in front of them, layer on layer, made a red haze). */
+const GHOST_FADE = new THREE.Vector2(10, 22);
 
 const GHOST = new THREE.ShaderMaterial({
   uniforms: {
