@@ -82,6 +82,7 @@ Post `https://<site>/en.html` to English-speaking places (on GitHub Pages `https
 - The body, railings and the man's look are there to be pretty and readable, not archaeology.
 - The faults in the "break it" demos (track 10% wide, one wheel 5% big, 20% slip) are exaggerated so the drift shows within a few moves. Real errors were much smaller, but they add up over a long road.
 - One Song *chi* is taken as 0.31 m, used only to show metres on screen.
+- The courtyard, the gate and the sky are a set, not a reconstruction of any real palace. The sky, paving, walls, roof tiles and the chariot's wood are photographed scans (Poly Haven, CC0); the weathering, shadows and sky occlusion are procedural or baked while the page loads, only so the picture reads like a photograph. See [decision 0004](design/decisions/0004-realtime-photo-look.md) (in Chinese).
 
 Every number has its source and a confidence label in [`params/chariot.json`](params/chariot.json) (labels explained in [`docs/sources.md`](docs/sources.md)). The research behind it, and what it doesn't cover, is in [`research/REPORT.md`](research/REPORT.md); bibliography in [`research/sources/bibliography.md`](research/sources/bibliography.md). Those are in Chinese.
 
@@ -108,5 +109,6 @@ design/decisions/     design decision records
 - Lesson text, 3D models, parameters, docs: [CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt)
 - three.js: MIT
 - Lesson pictures: per file. *Sancai Tuhui* (public domain); Andy Dingley's photo of the Science Museum, London model (CC BY 3.0); SSR2000's photo of the gears at Taiwan's National Museum of Natural Science (CC BY-SA 3.0)
+- Sky and surface scans: Poly Haven, CC0 (downloaded and recompressed by `tools/assets/build_photo.py`)
 
 Details in [`docs/licensing.md`](docs/licensing.md) and [`REUSE.toml`](REUSE.toml). The setup follows [leibniz-stepped-reckoner](https://github.com/wixette/leibniz-stepped-reckoner).

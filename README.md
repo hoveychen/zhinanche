@@ -110,6 +110,7 @@ LICENSES/             许可证全文
 - 车身外形、栏杆、木人造型只为好看、好读，不是考据结果。
 - 故障演示里的尺寸误差和打滑（轮距大 10%、一个轮子大 5%、打滑 20%）故意放大，让偏差几步之内就能看出来。真车的误差小得多，但会在长路上一点点攒起来。
 - 宋尺取 0.31 米，只用于界面上换算「米」。
+- 庭院、牌楼和天空是布景，不是某座真实宫殿的复原。天空、地砖、墙、瓦、车木用的是实拍扫描（Poly Haven，CC0），做旧、阴影和天光遮蔽是程序生成或在加载时烘焙的，只为看起来像实拍；见[决策 0004](design/decisions/0004-realtime-photo-look.md)。
 
 每个参数的出处和置信度都在 [`params/chariot.json`](params/chariot.json) 里，标签含义见 [`docs/sources.md`](docs/sources.md)。调研的依据和没覆盖到的地方见 [`research/REPORT.md`](research/REPORT.md)，书目见 [`research/sources/bibliography.md`](research/sources/bibliography.md)。
 
@@ -118,6 +119,7 @@ LICENSES/             许可证全文
 - 代码：[Apache-2.0](LICENSE)
 - 课件文字、3D 模型、参数、文档：[CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt)
 - three.js：MIT
+- 天空和材质扫描：Poly Haven，CC0（`tools/assets/build_photo.py` 下载并压缩）
 - 课件图片：逐文件标注。三才图会（公有领域）；Andy Dingley 摄的伦敦科学博物馆模型（CC BY 3.0）；SSR2000 摄的台湾国立自然科学博物馆齿轮（CC BY-SA 3.0）
 
 详见 [`docs/licensing.md`](docs/licensing.md) 和 [`REUSE.toml`](REUSE.toml)。参照了 [leibniz-stepped-reckoner](https://github.com/wixette/leibniz-stepped-reckoner) 的做法。
