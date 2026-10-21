@@ -12,8 +12,10 @@
  * "intro": the hero view for a moment, then slowly out to "follow" (the home
  * page's opening; in a lesson step a shorter one, and the step's route
  * waits till it is out); "pair": low behind the differential's two flat gears,
- * which lie one above the other, so both and their turning arrows show.
- * @typedef {"overview" | "top" | "follow" | "gears" | "works" | "wheels" | "figure" | "above" | "hero" | "intro" | "pair"} ViewId
+ * which lie one above the other, so both and their turning arrows show;
+ * "diff": close in, at the height of the gap between those two, on the small
+ * gears and the carrier that holds them.
+ * @typedef {"overview" | "top" | "follow" | "gears" | "works" | "wheels" | "figure" | "above" | "hero" | "intro" | "pair" | "diff"} ViewId
  */
 
 /**

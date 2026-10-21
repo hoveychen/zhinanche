@@ -65,13 +65,13 @@ const ABOVE = { x: 10, z: 8 };
 const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
 
 /** Views close in on the works on purpose: they may look from inside the body. */
-const CLOSE = new Set(["gears", "works", "pair", "wheels", "figure", "hero", "intro"]);
+const CLOSE = new Set(["gears", "works", "pair", "diff", "wheels", "figure", "hero", "intro"]);
 
 /** The gears view looks from behind and above, a little to the right (chariot local). */
 const GEARS_DIR = /** @type {const} */ ([-1, 1.35, 0.75]);
 
 /** Views that swing round with the chariot. */
-const TURNING = new Set(["gears", "works", "pair", "wheels", "figure"]);
+const TURNING = new Set(["gears", "works", "pair", "diff", "wheels", "figure"]);
 
 export class CameraRig {
   /**
@@ -307,9 +307,11 @@ export class CameraRig {
         // fill the view (the figure is up its shaft, out of the picture: the
         // dial shows where it points); a little to the right so the big left
         // crown wheel shows its face. The boards go see-through with x-ray.
-        const target = song ? local(1.1, 3.7, 0) : local(0.2, 2.5, -0.5);
-        const r = song ? 4.9 : 4.4;
-        return { target, pos: target.clone().addScaledVector(dirLocal(...GEARS_DIR), this.fit(r)) };
+        // The differential from lower down: from as high as the Song one, its
+        // small top flat gear covers the small gears and carrier under it.
+        const target = song ? local(1.1, 3.7, 0) : local(0.1, 2.2, -0.4);
+        const r = song ? 4.9 : 4.2;
+        return { target, pos: target.clone().addScaledVector(song ? dirLocal(...GEARS_DIR) : dirLocal(-1, 0.72, 0.62), this.fit(r)) };
       }
       case "works": {
         // The gears and, up the shaft, the figure standing on them: the
@@ -323,8 +325,17 @@ export class CameraRig {
         // gears lie one above the other on the shaft (big left one under,
         // small right one over), and from this low they and their turning
         // arrows stand apart; the left wheel is on the left of the screen.
-        const target = local(0, 1.6, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.6, 0.25), this.fit(3.6)) };
+        const target = local(0, 1.55, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.42, 0.25), this.fit(3.1)) };
+      }
+      case "diff": {
+        // In at the height of the gap between the two flat gears (big left one
+        // under, top 1.28; small right one over, from 1.72): the small gears
+        // that roll between them stand on edge on the carrier's arms (local
+        // x ±0.6). From behind and a little right the near one shows its face
+        // and the far one its edge past the carrier's hub.
+        const target = local(-0.15, 1.5, 0.05);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.2, 0.42), this.fit(1.9)) };
       }
       case "above": {
         // Close over the chariot, north up, tipped so the figure reads as a
