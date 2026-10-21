@@ -116,6 +116,8 @@ export const STR = {
     /** @param {number} k 1-based @param {number} n */
     stepsLabel: (k, n) => `第 ${k} 步，共 ${n} 步`,
     replay: "再看一遍",
+    /** under a question asked before the scene plays (ChoiceTask.guess) */
+    guessNote: "先猜一猜，选好了就演给你看。",
     walk: "让他们走一圈",
     navLabel: "翻页",
     back: "上一步",

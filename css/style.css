@@ -230,6 +230,8 @@ html[lang="en"] .home-kicker { letter-spacing: 0.06em; text-transform: uppercase
   background: var(--shiqing-light); border-left: 6px solid var(--shiqing); border-radius: 0 8px 8px 0;
 }
 .task-prompt { margin: 0 0 10px; font-weight: 700; font-size: 21px; }
+/* a question asked before the scene plays: say it will play once answered */
+.guess-note { margin: -4px 0 10px; font-size: 17px; line-height: 1.4; color: var(--shiqing); }
 .options { display: flex; flex-wrap: wrap; gap: 10px; }
 .option {
   flex: 1 1 auto; text-align: center; padding: 10px 18px; border: 2px solid var(--wood-mid); border-radius: 8px;

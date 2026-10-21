@@ -61,6 +61,9 @@ export class Course {
     /** the option picked in this step's choice, so a relabel can pick it again */
     /** @type {number | null} */
     this.chosen = null;
+    /** a guess-first question (ChoiceTask.guess): what plays once it is answered */
+    /** @type {{play: string | null, walk: boolean} | null} */
+    this.held = null;
     // In the nav bar, in place of the step count, so it never covers the task.
     this.cue = h("button", { type: "button", class: "more-cue", hidden: true, onclick: () => this.#reveal(true) }, [
       /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M12 21 L4 12 H9 V3 H15 V12 H20 Z" })]))),
@@ -219,13 +222,22 @@ export class Course {
     this.app.idleLoop = false;
     this.app.takeOver();
     this.app.lastPlay = null;
-    if (jump) this.app.direct(step.scene ?? {}, { jump: stateAt(lesson.steps, k) });
-    else this.app.direct(step.scene ?? {});
+    // Guess first, then watch: nothing plays until the question is answered.
+    const guess = step.task?.kind === "choose" && step.task.guess === true;
+    const scene = { ...step.scene };
+    if (guess) delete scene.play;
+    if (jump) this.app.direct(scene, { jump: stateAt(lesson.steps, k) });
+    else this.app.direct(scene);
     this.app.newTracker();
     // A step about the walk the children did ("count their footprints"),
-    // reached without walking them (Next pressed, or a link to it): walk them now.
+    // reached without walking them (Next pressed, or a link to it): walk them
+    // now, or once the guess is in. Half-way round, a guess starts them over.
     const hh = this.app.world.holdHands;
-    if (this.app.state.demo === "holdHands" && !(step.task?.kind === "do" && step.task.check === "playedDemo") && !hh.walking && hh.steps.in === 0) hh.walk();
+    const about = this.app.state.demo === "holdHands" && !(step.task?.kind === "do" && step.task.check === "playedDemo");
+    if (about && guess && hh.walking) hh.reset();
+    const unwalked = about && !hh.walking && hh.steps.in === 0;
+    if (unwalked && !guess) hh.walk();
+    this.held = guess ? { play: step.scene?.play ?? null, walk: unwalked } : null;
     this.#render(lesson, step);
     keepAddress({ mode: "lesson", lesson: this.lesson + 1, step: k + 1 });
   }
@@ -266,7 +278,7 @@ export class Course {
     }
     this.replayBtn = null;
     if (step.scene?.play) {
-      this.replayBtn = h("button", { type: "button", class: "plain replay", onclick: () => this.app.replay() }, [h("span", { text: t.replay })]);
+      this.replayBtn = h("button", { type: "button", class: "plain replay", hidden: this.held !== null, onclick: () => this.app.replay() }, [h("span", { text: t.replay })]);
       parts.push(this.replayBtn);
     }
     if (stateAt(lesson.steps, this.step).demo === "holdHands") {
@@ -310,11 +322,26 @@ export class Course {
         fb.textContent = right ? t.right : t.wrong;
         box.classList.toggle("passed", right);
         fb.className = `feedback ${right ? "yes" : "hint"}`;
+        this.#release();
+        box.querySelector(".guess-note")?.remove();
         this.#reveal(true, fb);
       },
     }));
-    box.append(h("p", { class: "task-prompt", text: t.prompt }), h("div", { class: "options" }, opts), fb);
+    const note = t.guess && this.held ? h("p", { class: "guess-note", text: S().course.guessNote }) : null;
+    box.append(h("p", { class: "task-prompt", text: t.prompt }), ...(note ? [note] : []), h("div", { class: "options" }, opts), fb);
     return box;
+  }
+
+  /** The guess is in: play what the question held back. */
+  #release() {
+    const held = this.held;
+    if (!held) return;
+    this.held = null;
+    if (held.play) this.app.play(held.play);
+    const hh = this.app.world.holdHands;
+    // not if "walk them round" already did
+    if (held.walk && !hh.walking && hh.steps.in === 0) hh.walk();
+    if (this.replayBtn) this.replayBtn.hidden = false;
   }
 
   /** @param {DoTask} t */

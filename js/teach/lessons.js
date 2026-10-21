@@ -128,9 +128,10 @@ export const LESSONS = [
         task: { kind: "do", prompt: "让两个小朋友走一圈", check: "playedDemo", done: "走完一圈啦！" },
       },
       {
-        text: "数一数他们的脚印。\n\n两人一起走完一圈。里圈小，外圈大。",
+        text: "两人一起走一圈。里圈小，外圈大。\n\n先猜一猜，再数一数他们的脚印。",
         task: {
           kind: "choose",
+          guess: true,
           prompt: "谁走的路更多？",
           options: ["里圈的人", "外圈的人", "一样多"],
           answer: 1,
@@ -185,10 +186,11 @@ export const LESSONS = [
         scene: { reset: true, view: "works", highlight: ["pinion", "carrier", "figure"], play: "straight" },
       },
       {
-        text: "车拐弯时，外边的车轮转得多。\n\n多出来的圈数，就让架子带着木人<b>反着</b>转回去。",
+        text: "车拐弯时，外边的车轮转得多。\n\n多出来的圈数，会让架子带着木人转起来。往哪边转呢？",
         scene: { reset: true, view: "works", highlight: ["wheelR", "carrier", "figure"], play: "pivotLeft" },
         task: {
           kind: "choose",
+          guess: true,
           prompt: "车身向左转，木人在车上会怎么转？",
           options: ["也向左转", "向右转回去", "一动不动"],
           answer: 1,
@@ -251,10 +253,11 @@ export const LESSONS = [
         scene: { view: "top", highlight: ["bigFlat", "figure"] },
       },
       {
-        text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。这一回，「车夫帮忙」已经关掉了，车随便绕一个大圈。",
+        text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。这一回，「车夫帮忙」已经关掉了，车要随便绕一个大圈。",
         scene: { reset: true, assist: false, view: "top", trails: true, highlight: [], play: "circle", controls: ["assist", "reset"] },
         task: {
           kind: "choose",
+          guess: true,
           prompt: "关掉「车夫帮忙」绕一圈，木人还指南吗？",
           options: ["还指着南", "指歪了"],
           answer: 1,

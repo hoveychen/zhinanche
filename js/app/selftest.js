@@ -146,6 +146,16 @@ export async function selftest({ app, course, world, input }) {
           const shown = visible(document.querySelector(`[data-control="${id}"]`));
           if (shown !== st.controls.includes(id)) problems.push(`control ${id} ${shown ? "shown" : "hidden"}`);
         }
+        const t = step.task;
+        // guess first, then watch: nothing plays until the question is answered
+        const guess = t?.kind === "choose" && t.guess === true;
+        if (guess) {
+          if (app.playing) problems.push("plays before the guess");
+          if (world.holdHands.walking) problems.push("walks before the guess");
+          const opts = [...document.querySelectorAll(".task.choose .option")];
+          /** @type {HTMLElement} */ (opts[t.answer]).click();
+          if (!document.querySelector(".task.choose.passed")) problems.push("right answer not accepted");
+        }
         if (step.scene?.play) {
           if (!app.player) problems.push("play did not start");
           app.finishPlayback();
@@ -154,8 +164,7 @@ export async function selftest({ app, course, world, input }) {
         }
         if (document.documentElement.scrollWidth > window.innerWidth + 1) problems.push(`page scrolls sideways (${document.documentElement.scrollWidth} > ${window.innerWidth})`);
         problems.push(...navProblems());
-        const t = step.task;
-        if (t?.kind === "choose") {
+        if (t?.kind === "choose" && !guess) {
           const opts = [...document.querySelectorAll(".task.choose .option")];
           /** @type {HTMLElement} */ (opts[t.answer]).click();
           if (!document.querySelector(".task.choose.passed")) problems.push("right answer not accepted");

@@ -93,7 +93,7 @@ export const LESSONS_EN = {
         task: { prompt: "Make the two kids walk a lap", done: "One lap done!" },
       },
       {
-        text: "Count their footprints.\n\nThey finished the lap together. The inside circle is small; the outside circle is big.",
+        text: "They walk one lap together. The inside circle is small; the outside circle is big.\n\nMake a guess first, then count their footprints.",
         task: {
           prompt: "Who walked further?",
           options: ["The kid on the inside", "The kid on the outside", "Both the same"],
@@ -130,7 +130,7 @@ export const LESSONS_EN = {
       { text: "The <span class=\"l\">left wheel</span> turns one gear, and the <span class=\"r\">right wheel</span> turns another.\n\nWhen a wheel turns once, its gear turns once too. But the two gears turn in opposite directions." },
       { text: "Between those two gears sit some small gears. The small gears ride on a carrier, and the wooden man stands on that carrier.\n\nWhen the chariot drives straight, both wheels turn the same amount. The two sides cancel out: the carrier stays still, and so does the man." },
       {
-        text: "When the chariot turns, the outside wheel turns more.\n\nThose extra turns swing the carrier, and the man on it, <b>backwards</b>.",
+        text: "When the chariot turns, the outside wheel turns more.\n\nThose extra turns swing the carrier round, and the man on it. But which way?",
         task: {
           prompt: "The chariot turns left. Which way does the man turn on top of it?",
           options: ["Left as well", "Right, back the other way", "He doesn't move"],
@@ -172,7 +172,7 @@ export const LESSONS_EN = {
       { text: "Going straight, both small flat wheels are lifted up, and the man stays still.\n\nOn a turn, the <b>pole</b> (the long bar at the front, where the animal is hitched) swings to one side, and the outside small wheel drops down. That links the outside road wheel to the big flat wheel." },
       { text: "When a road wheel turns once, all 24 teeth of its upright wheel push past. That turns the small flat wheel twice, and the big flat wheel half a turn.\n\nOn a right-angle turn, the outside wheel turns half a turn. The big flat wheel moves 12 teeth — a quarter turn. That's exactly what the <em>History of Song</em> says." },
       {
-        text: "Later, people did the maths and found Yan Su's chariot had a catch: on every turn, the inside wheel has to <b>stay still</b> while the chariot swings round it.\n\nThe driver had to steer just like that, or the man wouldn't point true. This time <b>Driver helps</b> is already off, and the chariot drives a big, sloppy circle.",
+        text: "Later, people did the maths and found Yan Su's chariot had a catch: on every turn, the inside wheel has to <b>stay still</b> while the chariot swings round it.\n\nThe driver had to steer just like that, or the man wouldn't point true. This time <b>Driver helps</b> is already off, and the chariot will drive a big, sloppy circle.",
         task: {
           prompt: "With “Driver helps” off, does the man still point south after a lap?",
           options: ["Still south", "He's pointing the wrong way"],

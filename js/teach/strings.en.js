@@ -95,6 +95,7 @@ export const STR_EN = {
     askGo: (i) => `Lesson ${i + 1} →`,
     stepsLabel: (k, n) => `Step ${k} of ${n}`,
     replay: "Watch again",
+    guessNote: "Make a guess. Then you'll see it happen.",
     walk: "Walk them round",
     navLabel: "Steps",
     back: "Back",
