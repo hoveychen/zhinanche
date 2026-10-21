@@ -261,7 +261,7 @@ export const LESSONS = [
         scene: { view: "above", highlight: ["bigFlat", "figure"] },
       },
       {
-        text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得准。这一回，「车夫帮忙」已经关掉了，车要随便绕一个大圈。",
+        text: "后来的人算了算，发现燕肃的车有个条件：拐弯时，里边的车轮要<b>停住</b>，车绕着它转。\n\n车夫得这样小心赶车，木人才指得差不多准。这一回，「车夫帮忙」已经关掉了，车要随便绕一个大圈。",
         scene: { reset: true, assist: false, view: "above", trails: true, highlight: [], play: "circle", controls: ["assist", "reset"] },
         task: {
           kind: "choose",
@@ -269,9 +269,25 @@ export const LESSONS = [
           prompt: "关掉「车夫帮忙」绕一圈，木人还指南吗？",
           options: ["还指着南", "指歪了"],
           answer: 1,
-          right: "对，燕肃的车要靠车夫配合才准。把「车夫帮忙」打开，再按「再看一遍」，比一比。",
+          right: "对，燕肃的车要靠车夫配合。把「车夫帮忙」打开，再按「再看一遍」，比一比。",
           wrong: "看看木人最后指着哪边？",
         },
+      },
+      {
+        text: "车夫帮忙时，木人也不是<b>一点不差</b>。这回车夫很小心，拐了三个弯。看看木人最后指着哪儿？\n\n小平轮抬着的时候，立子轮还跟着车轮转。小平轮再落下去，齿不一定正对着齿缝，要挤一挤才落进去。这一挤，大平轮就被拨动一点点，木人也歪了一点点。",
+        scene: { reset: true, mechanism: "song", assist: true, xray: false, view: "above", trails: true, highlight: [], play: "pivotZigzag", controls: ["reset"] },
+        task: {
+          kind: "choose",
+          prompt: "车夫帮忙时，木人为什么还会歪一点点？",
+          options: ["小平轮落下时，齿要重新对上", "车轮做得太大了", "木人站不稳"],
+          answer: 0,
+          right: "对！每拐一次弯，齿就要重新对一次，每次差一点点。拐的弯多了，木人就慢慢偏了。",
+          wrong: "看小平轮落下去的时候，齿正好对着齿缝吗？",
+        },
+      },
+      {
+        text: "所以真造这种车，得让小平轮稳稳落进齿缝：给齿轮上油，把齿顶削尖一点，再用铁坠子或插销把小平轮压住。吴德仁的车，两个小平轮上就各挂着一个铁坠子。\n\n后来的差动式，齿轮一直咬在一起，从来不抬起、不落下，就没有这个麻烦。",
+        scene: { reset: true, xray: true, view: "gears", trails: false, highlight: ["smallL", "smallR", "bigFlat"], controls: [] },
       },
       {
         text: "吴德仁的车齿轮更多，大平轮有 100 个齿。\n\n可书里没写清这些齿轮是怎么一个接一个的。到今天，还没人能确定。",

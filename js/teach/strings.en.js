@@ -43,8 +43,8 @@ export const STR_EN = {
   },
 
   asks: [
-    { q: "Does it ever drift?", a: "Build one wheel a hair too big, or let one slip, and the man slowly points the wrong way.", lesson: 6, step: 2 },
-    { q: "Is this really how they built it?", a: "A Song-dynasty history book describes one design; a 20th-century engineer guessed another. You can drive both.", lesson: 5, step: 1 },
+    { q: "Does it ever drift?", a: "Build one wheel a hair too big, or let one slip, and the man slowly points the wrong way. The Song dynasty chariot drifts a little too, after many turns.", lesson: 6, step: 2 },
+    { q: "Is this really how they built it?", a: "A Song-dynasty history book describes one design; a 20th-century engineer guessed another. You can drive both — the Song one drifts a little after many turns.", lesson: 5, step: 1 },
   ],
 
   stage: {
@@ -143,7 +143,7 @@ export const STR_EN = {
     assistBlock: "Driving the Song chariot",
     assist: "Driver helps",
     assistOff: "Only works with the Song dynasty gears.",
-    assistOn: "On every turn the driver holds the inside wheel still and swings the chariot round it.",
+    assistOn: "On every turn the driver holds the inside wheel still and swings the chariot round it. Each turn the teeth have to line up again and land a tiny bit off, so after many turns the man drifts a few degrees.",
     assistNone: "The driver stops helping — the chariot turns any old way.",
     faults: "Flaws",
     faultsBlock: "Is it built true?",
