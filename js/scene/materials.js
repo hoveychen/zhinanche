@@ -90,6 +90,7 @@ export function loadTextures(renderer, level) {
  * @property {number} [sheen]
  * @property {number} scale texture tiles per chi
  * @property {"grain" | "roof"} [project]
+ * @property {number} [mural] the band of the box's painting atlas (0 top) laid once over the whole sheet (muralUVs)
  * @property {false} [ao] false: never takes the baked occlusion atlas (a colour that must stay clean)
  */
 
@@ -103,6 +104,12 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   peg: { color: 0xe6c690, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
   // The red box, railings, pillars: cinnabar lacquer (赤質).
   lacquer: { color: 0xa82a1d, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
+  // The box's paintings (宋史: 兩箱畫青龍、白虎，四面畫花鳥): plain lacquer red (a
+  // one-texel map, dressChariot) till the painting atlas is in (photoMurals),
+  // under a thinner coat than the box's.
+  mural_dragon: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: 0 },
+  mural_tiger: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: 1 },
+  mural_flowers: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: 2 },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
   // The wheels: red lacquer worn thinner than the box's, the grain showing more.
   wheel: { color: 0x962c1e, map: "woodSoft", roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.4, scale: 0.8 },
@@ -291,6 +298,47 @@ export function faceUVs(geo, scale, mode, seed) {
 }
 
 /**
+ * UVs laying one band of the painting atlas (tools/assets/build_murals.py:
+ * three bands, top to bottom) over a thin sheet on the outside of the box:
+ * u to the right as seen from outside, v up, the sheet's extent to the band's.
+ * @param {THREE.BufferGeometry} geo @param {number} band
+ */
+export function muralUVs(geo, band) {
+  const pos = geo.getAttribute("position");
+  if (!pos) return;
+  geo.computeBoundingBox();
+  const box = /** @type {THREE.Box3} */ (geo.boundingBox);
+  const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  // the sheet is thinnest across; it faces away from the chariot's middle
+  const N = size.x < size.z ? new THREE.Vector3(Math.sign(mid.x), 0, 0) : new THREE.Vector3(0, 0, Math.sign(mid.z));
+  const U = new THREE.Vector3(0, 1, 0).cross(N);
+  const lo = Math.min(box.min.dot(U), box.max.dot(U)), span = Math.abs(size.dot(U));
+  const inset = 1.5 / 2048;
+  const v0 = 1 - (band + 1) / 3 + inset, v1 = 1 - band / 3 - inset;
+  const uv = new Float32Array(pos.count * 2);
+  const P = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    P.fromBufferAttribute(pos, i);
+    uv[i * 2] = (P.dot(U) - lo) / span;
+    uv[i * 2 + 1] = v0 + ((P.y - box.min.y) / size.y) * (v1 - v0);
+  }
+  geo.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+}
+
+/**
+ * Put the box's paintings (one atlas, photo.js murals()) on its painted sheets:
+ * the painting under the lacquer's coat, its colour as painted.
+ * @param {Iterable<THREE.Mesh>} meshes @param {THREE.Texture} atlas
+ */
+export function photoMurals(meshes, atlas) {
+  for (const o of meshes) {
+    const m = /** @type {THREE.MeshPhysicalMaterial} */ (o.material);
+    if (RECIPES[m.name]?.mural === undefined) continue;
+    m.map = atlas;
+  }
+}
+
+/**
  * Put the photographed wood (photo.js) on whatever wears the procedural
  * bare wood: the boards, hubs, spokes and pegs. It is a near-white
  * multiplier like the procedural one, so the role colours (and the rig's
@@ -337,6 +385,8 @@ export function photoIron(meshes, set) {
 
 /** @type {THREE.Texture | null} a white aoMap standing in until the atlas is up (so nothing recompiles then) */
 let aoBlank = null;
+/** @type {THREE.Texture | null} the box's lacquer red standing in for its paintings until they are up */
+let muralBlank = null;
 
 /**
  * The baked occlusion atlas (blender/scripts/build_chariot.py bake()) on one
@@ -376,7 +426,8 @@ export function dressChariot(root, tex) {
     // the planar grain goes over uv
     const atlasUV = o.geometry.getAttribute("uv");
     if (atlasUV) o.geometry.setAttribute("uv1", atlasUV);
-    faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
+    if (r.mural !== undefined) muralUVs(o.geometry, r.mural);
+    else faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
     const shade = SHADED.has(src.name) ? shadeOf(o) : null;
     const key = shade === null ? src.name : `${src.name}.${shade}`;
     let m = made.get(key);
@@ -384,6 +435,14 @@ export function dressChariot(root, tex) {
       const pm = makeMaterial(shade === null ? r : { ...r, color: shade }, tex);
       pm.name = src.name;
       if (r.ao !== false && atlasUV) pm.aoMap = aoBlank;
+      if (r.mural !== undefined) {
+        if (!muralBlank) {
+          muralBlank = new THREE.DataTexture(new Uint8Array([0xa8, 0x2a, 0x1d, 255]), 1, 1);
+          muralBlank.colorSpace = THREE.SRGBColorSpace;
+          muralBlank.needsUpdate = true;
+        }
+        pm.map = muralBlank;
+      }
       m = pm;
       made.set(key, m);
     }

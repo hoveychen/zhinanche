@@ -33,6 +33,10 @@ COLORS = {
     "marker": "#ff2340",
     "iron": "#3b3d42",
     "rope": "#c9b07a",
+    # the box's paintings (materials.js lays them over these): 青龍 left, 白虎 right, 花鳥 front and back
+    "mural_dragon": "#b8382c",
+    "mural_tiger": "#b8382c",
+    "mural_flowers": "#b8382c",
     "trim": "#2f6b55",       # the figure's collar, cuffs, sash and stole: mineral green (石绿)
     "robe": "#d1362e",
     "skin": "#f3cfa6",

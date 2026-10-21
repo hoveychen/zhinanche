@@ -325,23 +325,48 @@ def railing(mb, x0, x1, y0, y1, z0, h, step=0.9, post=0.08, mat="lacquer"):
             mb.beam((ax, ay, zr), (bx, by, zr), s, s, mat)
 
 
-def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="eave"):
+def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="eave", mural=None, heart=None):
     """The painted grid of squares on a red panel (卤簿图): thin strips on the panel's face.
-    axis 'y': panel in an x-z plane (u = x, w = z); 'x': panel in a y-z plane (u = y, w = z)."""
+    axis 'y': panel in an x-z plane (u = x, w = z); 'x': panel in a y-z plane (u = y, w = z).
+    mural: a role for the painting under the strips (a thin sheet on the panel over the grid's
+    area: materials.js lays the painting over it, one picture per square); heart = (i0, i1, j0, j1):
+    heart: the middle cells left open for one bigger picture (the strips stop at its edges)."""
     nu, nw = max(1, round((u1 - u0) / step)), max(1, round((w1 - w0) / step))
+
+    def strip(ua, ub, wa, wb):
+        if axis == "y":
+            mb.box((ua, depth0, wa), (ub, depth1, wb), mat)
+        else:
+            mb.box((depth0, ua, wa), (depth1, ub, wb), mat)
+
+    U = lambda i: u0 + (u1 - u0) * i / nu  # noqa: E731
+    Wz = lambda j: w0 + (w1 - w0) * j / nw  # noqa: E731
+    # the heart: the middle half of the cells along, all but the top and bottom row
+    i0, i1, j0, j1 = (nu // 4, nu - nu // 4, 1, nw - 1) if heart else (0, 0, 0, 0)
     for i in range(nu + 1):
-        u = u0 + (u1 - u0) * i / nu
-        lo, hi = (u - bar / 2, w0), (u + bar / 2, w1)
-        if axis == "y":
-            mb.box((lo[0], depth0, lo[1]), (hi[0], depth1, hi[1]), mat)
+        u = U(i)
+        if i0 < i < i1:   # through the heart: only above and below it
+            strip(u - bar / 2, u + bar / 2, w0, Wz(j0))
+            strip(u - bar / 2, u + bar / 2, Wz(j1), w1)
         else:
-            mb.box((depth0, lo[0], lo[1]), (depth1, hi[0], hi[1]), mat)
+            strip(u - bar / 2, u + bar / 2, w0, w1)
     for j in range(nw + 1):
-        w = w0 + (w1 - w0) * j / nw
-        if axis == "y":
-            mb.box((u0, depth0, w - bar / 2), (u1, depth1, w + bar / 2), mat)
+        w = Wz(j)
+        if j0 < j < j1:
+            strip(u0, U(i0), w - bar / 2, w + bar / 2)
+            strip(U(i1), u1, w - bar / 2, w + bar / 2)
         else:
-            mb.box((depth0, u0, w - bar / 2), (depth1, u1, w + bar / 2), mat)
+            strip(u0, u1, w - bar / 2, w + bar / 2)
+    if mural:
+        # on the panel's face (the depth nearer the middle), under the strips
+        d = min(depth0, depth1, key=abs)
+        e = 0.004 if d > 0 else -0.004
+        da, db = sorted((d, d + e))
+        if axis == "y":
+            mb.box((u0, da, w0), (u1, db, w1), mural)
+        else:
+            mb.box((da, u0, w0), (db, u1, w1), mural)
+        print(f"MURAL {mural} cells {nu} x {nw} heart {heart} size {u1 - u0:.3f} x {w1 - w0:.3f}")
 
 
 def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts, extra_frame=None):
@@ -387,7 +412,9 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
         holes = [(h[0], h[1], *tuple(sorted((sy * h[2], sy * h[3])))) for h in [*floor_holes, wheel_slot]]
         for u0, u1, w0, w1 in board_rects(bx0, bx1, yf0, yf1, holes):
             mb.box((u0, w0, bz0), (u1, w1, bz0 + 0.1), "lacquer")
-        lattice(mb, "y", bx0 + 0.25, bx1 - 0.25, bz0 + 0.25, bz1 - 0.25, *sorted((sy * by, sy * (by + 0.05))))
+        # 宋史 輿服志: 赤質，兩箱畫青龍、白虎，四面畫花鳥 (the dragon left, the tiger right: 0008)
+        lattice(mb, "y", bx0 + 0.25, bx1 - 0.25, bz0 + 0.25, bz1 - 0.25, *sorted((sy * by, sy * (by + 0.05))),
+                mural="mural_dragon" if side == "L" else "mural_tiger", heart=True)
         o = mb.build(f"body.side.{side}", (0, 0, 0), root)
         set_teach(o, "shell", "左车箱" if side == "L" else "右车箱", SHELL_EXPLODE[f"body.side.{side}"])
     pole_hole = [(-0.25, 0.25, POLE_Z - 0.22, POLE_Z + 0.22)]
@@ -398,7 +425,7 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
             mb.box((xa, u0, w0), (xb, u1, w1), "lacquer")
         mb.box((bxa, -by, bz0), (bxb, by, bz1), "lacquer")
         face = (bxb, bxb + 0.05) if name == "body.end.F" else (bxa - 0.05, bxa)
-        lattice(mb, "x", -by + 0.25, by - 0.25, bz0 + 0.25, bz1 - 0.25, *face)
+        lattice(mb, "x", -by + 0.25, by - 0.25, bz0 + 0.25, bz1 - 0.25, *face, mural="mural_flowers")
         for py in (-by, by):   # corner posts
             mb.box((min(bxa, bxb) - 0.06, py - 0.1, bz0 - 0.05), (max(bxa, bxb) + 0.06, py + 0.1, bz1), "lacquer")
         o = mb.build(name, (0, 0, 0), root)

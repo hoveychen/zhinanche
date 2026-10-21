@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Environment, SetShadow, contactShadow } from "./environment.js";
 import { Courtyard } from "./courtyard.js";
 import { dressGround, makeGround, photoGround } from "./ground.js";
-import { chariotAO, dressChariot, loadTextures, photoIron, photoWood } from "./materials.js";
+import { chariotAO, dressChariot, loadTextures, photoIron, photoMurals, photoWood } from "./materials.js";
 import { meanOf } from "./photo.js";
 import { AGE_ORIGIN, age } from "./aging.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
@@ -104,6 +104,8 @@ export class Look {
     this.woodPhoto = null;
     /** @type {import("./photo.js").PhotoSet | null} the photographed rusty iron, once it is up */
     this.ironPhoto = null;
+    /** @type {THREE.Texture | null} the box's paintings, once they are up */
+    this.muralTex = null;
     /** @type {Map<string, Promise<THREE.Texture | null>>} each chariot's baked occlusion atlas, by mechanism */
     this.atlases = new Map();
     /** @type {PostFX | null} */
@@ -175,6 +177,7 @@ export class Look {
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
       iron: safe("iron", this.photos.surface("iron", { full: [512, 512, 512], lite: [512, 512, 512] })),
       trees: safe("trees", this.photos.trees()),
+      murals: safe("murals", this.photos.murals()),
     };
     // A sky decoded before the textures are made (the usual case) goes up at
     // once and is in the environment map's first bake; one that comes later
@@ -219,6 +222,10 @@ export class Look {
         this.ironPhoto = s;
         photoIron(this.chariotMeshes, s);
       }),
+      put("murals", sets.murals, (s) => {
+        this.muralTex = s;
+        photoMurals(this.chariotMeshes, s);
+      }),
       this.yardReady.then(() => Promise.all([
         put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
         put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
@@ -248,6 +255,7 @@ export class Look {
     this.chariotMeshes.push(...meshes);
     if (this.woodPhoto) photoWood(meshes, this.woodPhoto, await this.chariotTex);
     if (this.ironPhoto) photoIron(meshes, this.ironPhoto);
+    if (this.muralTex) photoMurals(meshes, this.muralTex);
     /** @type {string | undefined} */
     let mechanism;
     root.traverse((o) => (mechanism ??= o.userData.mechanism));

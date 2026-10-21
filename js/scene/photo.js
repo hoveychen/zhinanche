@@ -316,6 +316,16 @@ export class Photos {
   }
 
   /**
+   * The paintings on the chariot's box, one atlas for both chariots
+   * (tools/assets/build_murals.py). Fetched after the sky like the surfaces.
+   * @returns {Promise<THREE.Texture>}
+   */
+  async murals() {
+    await this.skyDone;
+    return this.#load(`chariot-murals-${this.level === "lite" ? 1024 : 2048}.webp`, { colour: true, repeat: false, mips: true });
+  }
+
+  /**
    * A baked occlusion atlas for one chariot (blender/scripts/build_chariot.py
    * writes chariot-<mechanism>-ao.webp next to the scans): read on the GLB's
    * own UVs, so no repeat. Fetched after the sky like the surfaces.
