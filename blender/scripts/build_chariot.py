@@ -528,6 +528,11 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
     px0, px1, py = tx0 - 0.15, tx1 + 0.15, ty + 0.15
     for u0, u1, w0, w1 in board_rects(px0, px1, -py, py, [(s - 0.3, s + 0.3, -0.3, 0.3)]):
         mb.box((u0, w0, pz), (u1, w1, pz + 0.1), "wood")
+    # a lacquered drum over the shaft's square hole (seen from above, the hole showed black
+    # round the lotus seat), its gilt top just under the seat; the bore clears shaft and collar
+    h = L.shaft_top - 0.32 - 0.015 - (pz + 0.1)
+    mb.revolve((s, 0, pz + 0.1), (0, 0, 1), [(0.2, 0.0), (0.47, 0.0), (0.47, 0.05), (0.36, h - 0.015), (0.2, h - 0.015)], "lacquer", n=24, ref=(1, 0, 0))
+    mb.revolve((s, 0, pz + 0.1), (0, 0, 1), [(0.2, h - 0.015), (0.37, h - 0.015), (0.37, h), (0.2, h)], "gold", n=24, ref=(1, 0, 0))
     railing(mb, px0 + 0.05, px1 - 0.05, -py + 0.05, py - 0.05, pz + 0.1, 0.7, step=0.7)
     for cx in (px0 + 0.1, px1 - 0.1):
         for cy in (-py + 0.1, py - 0.1):
