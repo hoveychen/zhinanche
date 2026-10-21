@@ -301,8 +301,10 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
   padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line); background: var(--paper-2);
 }
-.panel-nav .primary { min-width: 120px; padding: 0 20px; white-space: nowrap; }
-.panel-nav .plain { white-space: nowrap; }
+.panel-nav .primary { min-width: 120px; padding: 0 14px 0 20px; white-space: nowrap; }
+.panel-nav .plain { padding: 0 18px 0 12px; white-space: nowrap; }
+.panel-nav .primary, .panel-nav .plain { gap: 4px; }
+.panel-nav .icon { width: 20px; height: 20px; }
 .panel-nav > * { flex: none; }
 /* the cue is the one that gives way in a narrow bar ("Next lesson" in English):
    its words go before the arrow does, and the bar never runs off the panel */
@@ -580,6 +582,10 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .task-prompt { margin-bottom: 8px; font-size: 18px; line-height: 1.45; }
   .options { gap: 8px; }
   .option { padding: 6px 14px; font-size: 17px; line-height: 1.35; }
+  .panel-nav { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+  .panel-nav .primary { min-width: 0; padding: 0 10px 0 16px; }
+  .panel-nav .plain { padding: 0 14px 0 8px; }
+  .panel-nav .icon { width: 18px; height: 18px; }
 }
 
 /* Smaller HUD on tablets and portrait. */
