@@ -63,6 +63,11 @@ export class Look {
     this.chariotMeshes = [];
     /** @type {PostFX | null} */
     this.postfx = null;
+    /** stepping down off post-processing, once its programs are compiled */
+    /** @type {Promise<void> | null} */
+    this.dropping = null;
+    /** after that step: what was compiled for the passes only is compiled again (set by the world) */
+    this.onDrop = () => {};
     /** @type {Promise<void> | null} */
     this.postfxLoading = null;
     this.governor = pick.forced ? null : new FrameGovernor(this.quality, (q) => this.setQuality(q));
@@ -211,11 +216,12 @@ export class Look {
    * screen made programs the frames never used). The programs are made at
    * once; the promise waits for them to finish.
    * @param {THREE.Object3D} o
+   * @param {boolean} [screen] for the screen even with post-processing (about to drop it)
    */
-  compile(o) {
+  compile(o, screen = false) {
     const { renderer, scene, camera } = this.host;
     const was = renderer.getRenderTarget();
-    if (this.postfx) renderer.setRenderTarget(this.postfx.composer.readBuffer);
+    renderer.setRenderTarget(this.postfx && !screen ? this.postfx.composer.readBuffer : null);
     const done = renderer.compileAsync(o, camera, scene).catch(() => {});
     renderer.setRenderTarget(was);
     return done;
@@ -247,6 +253,24 @@ export class Look {
 
   /** Step to a tier (the governor calls this when frames are slow). @param {Quality} q */
   setQuality(q) {
+    if (!SETTINGS[q].postfx && this.postfx) {
+      // Without the passes every program is drawn to the screen, not into
+      // their buffer: a new program each (tone mapping and colour space are
+      // part of it). Made all at once on the next frame, they froze the view
+      // for 1–1.7 s a few seconds in, just as a child set off driving. They
+      // are compiled in the background first; the passes draw on meanwhile.
+      this.dropping ??= this.compile(this.host.scene, true).then(() => {
+        this.dropping = null;
+        this.#setQuality(q);
+        this.onDrop();
+      });
+      return;
+    }
+    this.#setQuality(q);
+  }
+
+  /** @param {Quality} q */
+  #setQuality(q) {
     this.quality = q;
     document.body.dataset.quality = q;
     const s = SETTINGS[q];

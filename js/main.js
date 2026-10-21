@@ -70,6 +70,10 @@ function stopDrawing(restore) {
   keepView = false;
 }
 const app = new App(world, input);
+world.busy = () => {
+  const c = input.command();
+  return c.fwd !== 0 || c.turn !== 0;
+};
 app.onPause((on) => {
   pauseBtn.classList.toggle("on", on);
   pauseBtn.setAttribute("aria-pressed", String(on));

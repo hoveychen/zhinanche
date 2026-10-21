@@ -68,6 +68,15 @@ export class World {
     // sky, sun, courtyard, materials, post-processing, quality tiers
     this.look = new Look(this);
     this.sun = this.look.sun;
+    // stepping down off post-processing changes every program: what was
+    // compiled ahead for the passes (x-ray, the chariot not on show) is
+    // compiled again for the screen
+    this.look.onDrop = () => {
+      void this.#idle()
+        .then(() => this.warmXray()).then(() => Promise.all(Object.values(this.rigs)
+        .filter((rig) => rig !== this.rig)
+        .map((rig) => Promise.all([this.look.precompile(rig.root), this.#xrayPrograms(rig)]))));
+    };
 
     this.ring = new CompassRing();
     scene.add(this.ring.group);
@@ -107,6 +116,8 @@ export class World {
     this.trailsOn = true;
     this.time = 0;
     this.focus = { x: 0, z: 0, heading: Math.PI / 2 };
+    /** someone is driving: background work waits (set by the page) */
+    this.busy = () => false;
     /** the HUD's margins over the view, for framing routes (set by the page) */
     /** @type {(low?: boolean) => Insets} low: only what sits in the lower part of the view */
     this.hudInsets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
@@ -156,14 +167,26 @@ export class World {
     const other = this.mechanism === "song" ? "differential" : "song";
     // x-ray warmed up first (the chariot on show), then the other chariot:
     // a failure shows when it is picked; compiled now, so showing it doesn't stall
+    // each step waits while the chariot is being driven: one costs up to a
+    // couple of hundred ms on a slow tablet, a stutter as a child sets off
     const go = () => this.warmXray()
+      .then(() => this.#idle())
       .then(() => this.ensure(other))
-      .then((rig) => Promise.all([this.look.precompile(rig.root), this.#xrayPrograms(rig)]), () => {});
+      .then((rig) => this.#idle().then(() => Promise.all([this.look.precompile(rig.root), this.#xrayPrograms(rig)])), () => {});
     // after the first frames
-    setTimeout(() => {
-      if (typeof requestIdleCallback === "function") requestIdleCallback(go, { timeout: 3000 });
-      else go();
-    }, 1500);
+    setTimeout(() => void this.#idle().then(go), 1500);
+  }
+
+  /** Resolves once the browser is idle and no one is driving. @returns {Promise<void>} */
+  #idle() {
+    return new Promise((ok) => {
+      const wait = () => {
+        if (this.busy()) setTimeout(wait, 500);
+        else if (typeof requestIdleCallback === "function") requestIdleCallback(() => (this.busy() ? wait() : ok()), { timeout: 3000 });
+        else ok();
+      };
+      wait();
+    });
   }
 
   /**
@@ -217,6 +240,7 @@ export class World {
       ...rig.spinners.flatMap((sp) => (sp.arc ? [sp.arc.group] : [])),
     ];
     for (const kind of kinds) {
+      while (this.busy()) await new Promise((ok) => setTimeout(ok, 500));
       await new Promise((ok) => requestAnimationFrame(ok));
       if (this.rig !== rig || this.#lookState.xray || this.explode > 0) return;
       const st = this.#lookState;
