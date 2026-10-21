@@ -123,6 +123,8 @@ export const STR_EN = {
     south: "S",
     onSouth: "Pointing due south",
     offSouth: (deg) => `${deg}° off south`,
+    onSouthShort: "Due south",
+    offSouthShort: (deg) => `${deg}° off`,
     num: (chi) => m(chi),
     unit: "m",
     sub: (_chi) => "",

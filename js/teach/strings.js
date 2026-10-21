@@ -149,6 +149,10 @@ export const STR = {
     onSouth: "木人指着正南",
     /** @param {number} deg */
     offSouth: (deg) => `木人偏离正南 ${deg}°`,
+    /** the same on a phone held upright, where the dial's card must stay small */
+    onSouthShort: "指着正南",
+    /** @param {number} deg */
+    offSouthShort: (deg) => `偏了 ${deg}°`,
     /** the big number, from chi @param {number} chi */
     num: (chi) => fmt(chi),
     unit: "尺",

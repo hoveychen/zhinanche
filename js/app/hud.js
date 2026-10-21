@@ -9,6 +9,8 @@ import { icon } from "./icons.js";
 /** Degrees off south still shown as "pointing south". Same as the ground ring. */
 const OK_DEG = 1;
 const DEG = 180 / Math.PI;
+/** A phone held upright: the dial's words are cut short, or they widen its card over the chariot. */
+const NARROW = typeof matchMedia === "function" ? matchMedia("(orientation: portrait) and (max-width: 600px)") : null;
 
 export class Dial {
   constructor() {
@@ -79,7 +81,8 @@ export class Dial {
     this.cart.setAttribute("transform", `rotate(${(rot - heading * DEG).toFixed(2)})`);
     const ok = Math.abs(errorDeg) < OK_DEG;
     const deg = Math.round(Math.abs(errorDeg));
-    const t = ok ? S().hud.onSouth : S().hud.offSouth(deg);
+    const hud = S().hud, short = NARROW?.matches ?? false;
+    const t = ok ? (short ? hud.onSouthShort : hud.onSouth) : short ? hud.offSouthShort(deg) : hud.offSouth(deg);
     if (t !== this.lastText) {
       this.text.textContent = t;
       this.lastText = t;
