@@ -93,7 +93,7 @@ const VERT_MAIN = /* glsl */ `
 
 const FRAG_PARS = /* glsl */ `
 uniform float treeGain;
-uniform sampler2D setShadowMap;
+uniform sampler2DShadow setShadowMap;
 uniform mat4 setShadowMatrix;
 uniform float setShadowTexel;
 uniform float setShadowOn;
@@ -109,7 +109,7 @@ float treeShade() {
   float z = p.z - 0.002;
   float lit = 0.0;
   for (int i = -1; i <= 1; i += 2) for (int j = -1; j <= 1; j += 2) {
-    lit += step(z, texture2D(setShadowMap, p.xy + vec2(float(i), float(j)) * 1.5 * setShadowTexel).r);
+    lit += texture(setShadowMap, vec3(p.xy + vec2(float(i), float(j)) * 1.5 * setShadowTexel, z));
   }
   // the frames hold sun and sky together: in a wall's shadow, roughly the sky's share
   return mix(0.45, 1.0, lit / 4.0);

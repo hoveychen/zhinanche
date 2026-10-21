@@ -82,6 +82,7 @@ export class Look {
     this.env = new Environment(renderer, scene, { shadowSize: s.shadowSize, clouds: true });
     // Sun shadows of the courtyard, baked once it exists (see render).
     this.setShadow = new SetShadow(this.quality === "lite" ? 1024 : 2048, 240);
+    this.setShadow.init(renderer);
     // Sky occlusion of the courtyard, baked with the shadows (?debug=nobao: not baked)
     this.bakedAO = new BakedAO(this.quality === "lite" ? 512 : 1024, 240);
     this.ground = makeGround();

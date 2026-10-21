@@ -300,7 +300,12 @@ export class SetShadow {
     this.camera = cam;
     this.rt = new THREE.WebGLRenderTarget(size, size, { depthBuffer: true });
     this.rt.depthTexture = new THREE.DepthTexture(size, size, THREE.UnsignedIntType);
-    this.rt.depthTexture.minFilter = this.rt.depthTexture.magFilter = THREE.NearestFilter;
+    // looked up with the hardware's depth compare, filtered: every tap is a
+    // 2×2 bilinear blend of lit and shaded, so a shadow's edge runs smoothly
+    // between texels (with plain nearest taps the low sun stretched each texel
+    // into a visible block, the trees' shadows a mosaic on the walls)
+    this.rt.depthTexture.minFilter = this.rt.depthTexture.magFilter = THREE.LinearFilter;
+    this.rt.depthTexture.compareFunction = THREE.LessEqualCompare;
     /** world → shadow map [0, 1]³, for the courtyard at the origin */
     this.base = new THREE.Matrix4()
       .set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
@@ -313,6 +318,20 @@ export class SetShadow {
       setShadowOn: { value: 0 },
     };
     this.offset = new THREE.Vector3();
+  }
+
+  /**
+   * Make the map a depth texture at once (cleared: all lit), so a material
+   * patched before the bake is drawn with a shadow sampler that has one (an
+   * empty slot gets a colour texture, and the draw is dropped).
+   * @param {THREE.WebGLRenderer} renderer
+   */
+  init(renderer) {
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.rt);
+    renderer.clear();
+    renderer.setRenderTarget(prev);
+    this.uniforms.setShadowMap.value = this.rt.depthTexture;
   }
 
   /**
@@ -389,7 +408,7 @@ export class SetShadow {
         .replace(
           "#include <common>",
           `#include <common>
-          uniform sampler2D setShadowMap;
+          uniform sampler2DShadow setShadowMap;
           uniform mat4 setShadowMatrix;
           uniform float setShadowTexel;
           uniform float setShadowOn;
@@ -402,7 +421,7 @@ export class SetShadow {
             float z = p.z - 0.0004;
             float lit = 0.0;
             for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
-              lit += step(z, texture2D(setShadowMap, p.xy + vec2(float(i), float(j)) * setShadowTexel).r);
+              lit += texture(setShadowMap, vec3(p.xy + vec2(float(i), float(j)) * setShadowTexel, z));
             }
             return lit / 9.0;
           }`,
