@@ -80,3 +80,11 @@ path = "images/lessons/taiwan-museum-gears.jpg"
 precedence = "override"
 SPDX-FileCopyrightText = "2014 SSR2000 (Wikimedia Commons)"
 SPDX-License-Identifier = "CC-BY-SA-3.0"
+
+# Icons: Tabler Icons (outline set), copied by tools/vendor.mjs (pnpm vendor)
+# from the npm package @tabler/icons; keeps its LICENSE.
+[[annotations]]
+path = "vendor/tabler-icons/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2020-2026 Paweł Kuna (Tabler Icons)"
+SPDX-License-Identifier = "MIT"

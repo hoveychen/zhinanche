@@ -2,7 +2,8 @@
 // driving. The player shows a step's text, picture and task, applies its scene
 // directive, and ticks the task off when its check passes.
 
-import { h, s } from "./dom.js";
+import { h } from "./dom.js";
+import { icon } from "./icons.js";
 import { S, bind, lessons } from "../i18n.js";
 import { stateAt } from "./directive.js";
 import { checkPassed } from "./checks.js";
@@ -69,7 +70,7 @@ export class Course {
     this.held = null;
     // In the nav bar, in place of the step count, so it never covers the task.
     this.cue = h("button", { type: "button", class: "more-cue", hidden: true, onclick: () => this.#reveal(true) }, [
-      /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M12 21 L4 12 H9 V3 H15 V12 H20 Z" })]))),
+      icon("arrow-down"),
       bind(h("span"), (s) => s.ui.moreBelow),
     ]);
     // Free driving on a phone: the panel is a sheet under the 3D view that
@@ -288,14 +289,14 @@ export class Course {
     }
     this.replayBtn = null;
     if (step.scene?.play) {
-      this.replayBtn = h("button", { type: "button", class: "plain replay", hidden: this.held !== null, onclick: () => this.app.replay() }, [h("span", { text: t.replay })]);
+      this.replayBtn = h("button", { type: "button", class: "plain replay", hidden: this.held !== null, onclick: () => this.app.replay() }, [icon("repeat"), h("span", { text: t.replay })]);
       parts.push(this.replayBtn);
     }
     this.walkBtn = null;
     if (stateAt(lesson.steps, this.step).demo === "holdHands") {
       // a guess first: walking them now would give the answer away
       const held = this.held !== null;
-      this.walkBtn = h("button", { type: "button", class: "primary walk", "data-demo": "walk", disabled: held, onclick: () => this.app.world.holdHands.walk() }, [h("span", { text: held ? t.walkAfterGuess : t.walk })]);
+      this.walkBtn = h("button", { type: "button", class: "primary walk", "data-demo": "walk", disabled: held, onclick: () => this.app.world.holdHands.walk() }, [icon("walk"), h("span", { text: held ? t.walkAfterGuess : t.walk })]);
       parts.push(this.walkBtn);
     }
     this.doTask = null;
@@ -313,10 +314,10 @@ export class Course {
     this.tools.lead(tool);
     const last = this.step === n - 1;
     const nav = h("nav", { class: "panel-nav", "aria-label": t.navLabel }, [
-      h("button", { type: "button", class: "plain", disabled: this.step === 0 && this.lesson === 0, onclick: () => this.back(), text: t.back }),
+      h("button", { type: "button", class: "plain", disabled: this.step === 0 && this.lesson === 0, onclick: () => this.back() }, [icon("chevron-left"), h("span", { text: t.back })]),
       h("span", { class: "step-count", text: `${this.step + 1} / ${n}` }),
       this.cue,
-      h("button", { type: "button", class: "primary", "data-focus": "next", onclick: () => this.next(), text: !last ? t.next : this.lesson < lessons().length - 1 ? t.nextLesson : t.toc }),
+      h("button", { type: "button", class: "primary", "data-focus": "next", onclick: () => this.next() }, [h("span", { text: !last ? t.next : this.lesson < lessons().length - 1 ? t.nextLesson : t.toc }), icon("chevron-right")]),
     ]);
     this.#show(h("article", { class: "lesson" }, parts), nav, null, keep);
   }
@@ -359,7 +360,7 @@ export class Course {
     if (this.replayBtn) this.replayBtn.hidden = false;
     if (this.walkBtn) {
       this.walkBtn.disabled = false;
-      /** @type {HTMLElement} */ (this.walkBtn.firstElementChild).textContent = S().course.walk;
+      /** @type {HTMLElement} */ (this.walkBtn.querySelector("span")).textContent = S().course.walk;
     }
   }
 
