@@ -42,5 +42,21 @@
       "page": "https://polyhaven.com/a/rusty_metal_04",
       "use": "the chariot's ironwork: hub bands, axle caps and linchpins, straps, the shaft's point and collar (materials.js)"
     }
+  },
+  "models": {
+    "pine": {
+      "id": "pine_tree_01",
+      "res": "1k",
+      "author": "Rico Cilliers (modeling), Rob Tuytel (photography)",
+      "page": "https://polyhaven.com/a/pine_tree_01",
+      "use": "pines in and beyond the courtyard, rendered to impostors (build_trees.py)"
+    },
+    "fir": {
+      "id": "fir_tree_01",
+      "res": "1k",
+      "author": "Rico Cilliers (modeling), Rob Tuytel (photography)",
+      "page": "https://polyhaven.com/a/fir_tree_01",
+      "use": "dense dark conifers beyond the walls, rendered to impostors (build_trees.py)"
+    }
   }
 }

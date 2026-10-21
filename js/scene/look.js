@@ -122,6 +122,9 @@ export class Look {
     const tex = loadTextures(renderer, s.textures);
     /** the photographed sky and surfaces, coming in after the first picture */
     this.photos = new Photos(renderer, s.textures);
+    /** every photographed set asked for is in (or failed) */
+    this.photosIn = false;
+    document.body.dataset.photoState = "loading";
     /** @type {Promise<Textures>} */
     this.chariotTex = tex.chariot;
     /** @type {Promise<Textures>} */
@@ -136,8 +139,22 @@ export class Look {
     void this.#loadPhotos();
   }
 
-  /** Swap each photographed set in as it is uploaded (sky first: it is the smallest). */
+  /**
+   * Swap the photographed sets in, then mark the picture final: body
+   * [data-photo-state=in], and the still-picture average may say settled
+   * (postfx.js). A set that fails counts as in (it stays procedural).
+   */
   async #loadPhotos() {
+    try {
+      await this.#swapPhotos();
+    } finally {
+      this.photosIn = true;
+      document.body.dataset.photoState = "in";
+    }
+  }
+
+  /** Swap each photographed set in as it is uploaded (sky first: it is the smallest). */
+  async #swapPhotos() {
     const done = (/** @type {string} */ part) => {
       const now = (document.body.dataset.photo ?? "").split(" ").filter(Boolean);
       now.push(part);
@@ -154,8 +171,10 @@ export class Look {
       ground: safe("ground", this.photos.surface("ground", { full: [1024, 1024, 1024], lite: [1024, 1024, 512] })),
       plaster: safe("plaster", this.photos.surface("plaster", { full: [1024, 1024, 512], lite: [512, 512, 256] })),
       roof: safe("roof", this.photos.surface("roof", { full: [1024, 512, 512], lite: [512, 512, 256] })),
+      dougong: safe("dougong", this.photos.surface("dougong", { full: [320, 320, 320], lite: [160, 160, 160] })),
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
       iron: safe("iron", this.photos.surface("iron", { full: [512, 512, 512], lite: [512, 512, 512] })),
+      trees: safe("trees", this.photos.trees()),
     };
     // A sky decoded before the textures are made (the usual case) goes up at
     // once and is in the environment map's first bake; one that comes later
@@ -168,7 +187,16 @@ export class Look {
       }
       return false;
     });
+    const first = safe("ground (small)", this.photos.firstGround());
     const tex = await this.texReady;
+    const stone = meanOf(tex.stone);
+    // The small paving goes down at once, normally before the first picture
+    // (World.load waits for the courtyard too), so the floor never jumps from
+    // the procedural slabs to the photo: the full set only sharpens it.
+    let groundFull = false;
+    void first.then((s) => {
+      if (s && !groundFull) photoGround(this.ground, s, stone);
+    });
     /** @param {string} name @param {Promise<any>} p @param {(s: any) => unknown} on */
     const put = async (name, p, on) => {
       const got = await p;
@@ -179,7 +207,10 @@ export class Look {
     };
     await Promise.all([
       early.then((was) => (was ? undefined : put("sky", sky, (s) => this.env.setPhoto(s)))),
-      put("ground", sets.ground, (s) => photoGround(this.ground, s, meanOf(tex.stone))),
+      put("ground", sets.ground, (s) => {
+        groundFull = true;
+        photoGround(this.ground, s, stone);
+      }),
       put("wood", sets.wood, async (s) => {
         this.woodPhoto = s;
         photoWood(this.chariotMeshes, s, await this.chariotTex);
@@ -191,6 +222,8 @@ export class Look {
       this.yardReady.then(() => Promise.all([
         put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
         put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
+        put("dougong", sets.dougong, (s) => this.yard?.photo("dougong", s)),
+        put("trees", sets.trees, (s) => this.yard?.trees?.set(s.cards, s.atlases)),
       ])),
     ]);
     this.photos.close();
@@ -281,7 +314,13 @@ export class Look {
     const tex = this.sceneTex ?? (await this.texReady);
     yard.dress(tex);
     yard.age(tex.clouds);
+    // The trees' small atlases (they come with the sky): on before the shadows
+    // are baked, so the trees cast theirs, and in the first picture.
+    yard.trees?.shadeFrom(this.setShadow);
+    const trees = await this.photos.firstTrees().catch((err) => console.warn("trees unavailable", err));
+    if (trees) yard.trees?.set(trees.cards, trees.atlases);
     const gate = scene.getObjectByName("landmark");
+    if (gate) yard.dressGate(gate);
     for (const m of Object.values(yard.materials)) {
       this.setShadow.patch(m);
       if (m !== yard.materials.hills) this.bakedAO.patch(m);
@@ -456,6 +495,7 @@ export class Look {
         this.postfx = new PostFX(renderer, scene, camera, () => controls.target, {
           signature: () => this.#signature(),
           jitter: (k) => this.#jitterSun(k),
+          ready: () => this.photosIn,
         });
       } catch (err) {
         console.warn("post-processing unavailable", err);
