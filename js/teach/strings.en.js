@@ -197,7 +197,6 @@ export const STR_EN = {
       "车架": "Frame",
       "车辕": "Pole (the animal is hitched here)",
       "车轴": "Axle",
-      "屋顶": "Roof",
       "木人": "The wooden man",
       "竖轴（木人站在顶上）": "Upright shaft (the man stands on top)",
       "左车轮": "Left wheel",
