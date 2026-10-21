@@ -33,7 +33,7 @@ def _segments(route):
     return state
 
 
-def schedule(route, mechanism, dt):
+def schedule(route, mechanism, dt, opts=None):
     """Time-parameterise a route. Returns dict of arrays on the physics time grid."""
     wl, wr = np.asarray(route["wheelL"]), np.asarray(route["wheelR"])
     state = _segments(route) if mechanism == "song" else np.zeros(len(wl), int)
@@ -52,7 +52,8 @@ def schedule(route, mechanism, dt):
             t0 = t
             t_raise = t0 + DWELL["settle"]
             t_lower = t_raise + (DWELL["raise_"] if cur else 0.0)
-            t_end = t_lower + (DWELL["lower"] if s else 0.0) + DWELL["after"]
+            lower = opts.dwell_lower if opts and opts.dwell_lower is not None else DWELL["lower"]
+            t_end = t_lower + (lower if s else 0.0) + DWELL["after"]
             events.append(dict(t0=t0, t_raise=t_raise, t_lower=t_lower, t_end=t_end, up=cur, down=s, step=i))
             t = t_end
             kt.append(t); kl.append(kl[-1]); kr.append(kr[-1])
@@ -108,7 +109,7 @@ def run(route, mechanism, root, opts=None, record_video=None, max_time=None, ver
     m = mujoco.MjModel.from_xml_string(xml)
     d = mujoco.MjData(m)
     dt = m.opt.timestep
-    sch = schedule(route, mechanism, dt)
+    sch = schedule(route, mechanism, dt, opts)
     if max_time:
         for k in ("t", "pl", "pr", "vl", "vr", "engaged"):
             sch[k] = sch[k][: int(max_time / dt)]
@@ -136,9 +137,10 @@ def run(route, mechanism, root, opts=None, record_video=None, max_time=None, ver
     # target lift state per side over time
     events = sch["events"]
     down = {"L": False, "R": False}
+    seated = {"L": False, "R": False}  # down and once fully home (for Opts.latch)
 
     nrec = max(1, int(round(1.0 / (REC_HZ * dt))))
-    rec = {k: [] for k in ("t", "fig", "fig_kin", "head", "liftL", "liftR", "tqL", "tqR", "pen", "ncon")}
+    rec = {k: [] for k in ("t", "fig", "fig_kin", "head", "pl", "pr", "liftL", "liftR", "tqL", "tqR", "pen", "ncon")}
     unintended = {}
     pen_max = 0.0
     pen_where = None
@@ -159,6 +161,7 @@ def run(route, mechanism, root, opts=None, record_video=None, max_time=None, ver
             ev = events[ev_i]
             if ev["up"]:
                 down["L" if ev["up"] == 1 else "R"] = False
+                seated["L" if ev["up"] == 1 else "R"] = False
             if tt >= ev["t_lower"]:
                 if ev["down"]:
                     down["L" if ev["down"] == 1 else "R"] = True
@@ -175,6 +178,12 @@ def run(route, mechanism, root, opts=None, record_video=None, max_time=None, ver
             for s in ("L", "R"):
                 qa_, va_ = lift[s]
                 if down[s]:
+                    if d.qpos[qa_] < 0.002:
+                        seated[s] = True
+                    if opts.latch and seated[s]:  # pinned at its working height: no force can lift it
+                        d.qpos[qa_], d.qvel[va_] = 0.0, 0.0
+                        d.qfrc_applied[va_] = 0.0
+                        continue
                     f = -opts.clutch_push
                 else:
                     f = small_mass[s] * 9.81 + 4000 * (info["lift"] - d.qpos[qa_]) - 300 * d.qvel[va_]
@@ -204,6 +213,8 @@ def run(route, mechanism, root, opts=None, record_video=None, max_time=None, ver
             rec["fig"].append(d.qpos[qa["f"]])
             rec["fig_kin"].append(fig_kin[i])
             rec["head"].append(heading[i])
+            rec["pl"].append(sch["pl"][i])
+            rec["pr"].append(sch["pr"][i])
             rec["liftL"].append(d.qpos[lift["L"][0]] if lift else 0.0)
             rec["liftR"].append(d.qpos[lift["R"][0]] if lift else 0.0)
             rec["tqL"].append(tq_acc[0])
@@ -248,7 +259,7 @@ def metrics(res, route=None):
         torque_max=float(np.max(res["tqL"]) if len(res["tqL"]) else 0), torque_max_R=float(np.max(res["tqR"]) if len(res["tqR"]) else 0),
         unintended=res["unintended"],
     )
-    # jumps: error changing by more than half the figure gear's pitch within 0.2 s
+    # jumps: the largest change of the error within 0.2 s (rattle and skips alike)
     if info["mechanism"] == "song":
         pitch = 360.0 / info["ratio"]["big"]
     else:
@@ -257,7 +268,27 @@ def metrics(res, route=None):
     jumps = np.abs(err[lag:] - err[:-lag])
     out["jump_max"] = float(jumps.max()) if len(jumps) else 0.0
     out["fig_pitch_deg"] = pitch
-    out["skips"] = int(np.sum((jumps[1:] > pitch / 2) & (jumps[:-1] <= pitch / 2))) if len(jumps) > 1 else 0
+    # skips: a lasting step. The error's 1 s running median is compared with itself 1 s
+    # later; a step of more than 3/4 of the figure-side pitch that is still there 3 s on
+    # counts once. Rattle inside the backlash comes back, and its swing (crossing the
+    # backlash from one flank to the other) stays under that.
+    w = REC_HZ
+    if len(err) > 4 * w:
+        med = np.array([np.median(err[max(0, i - w // 2): i + w // 2 + 1]) for i in range(len(err))])
+        step = med[w:] - med[:-w]
+        skips, i = [], 0
+        while i < len(step):
+            if abs(step[i]) > 0.75 * pitch:
+                j = min(i + 3 * w, len(med) - 1)
+                if abs(med[j] - med[i]) > 0.75 * pitch:
+                    skips.append((float(t[i + w // 2]), float(med[j] - med[i])))
+                i += 2 * w
+            else:
+                i += 1
+        out["skips"] = len(skips)
+        out["skip_list"] = skips
+    else:
+        out["skips"], out["skip_list"] = 0, []
     # clutch engagements
     eng = []
     if info["mechanism"] == "song":

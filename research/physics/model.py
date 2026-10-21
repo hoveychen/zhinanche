@@ -53,7 +53,10 @@ class Opts:
         self.height = None  # old layout only: tooth length as a fraction of pitch (§6.3: 1.0)
         self.thickness = None  # old layout only: thickness, chi at the Song pitch (§6.3: 0.2)
         self.tip_clear = 0.0  # old layout only: rim this far below the tooth root (chi)
-        self.chamfer = 0.0  # chi, 45 deg cut on the tip edges and the long edges
+        self.chamfer = 0.0  # chi, 45 deg cut on the tip edges and the long edges (capped at 0.45 x tip width)
+        # gear keys whose teeth get a roof: the faces that meet when a small flat wheel drops
+        # (top and bottom of a flat wheel's tooth) cut at 45 deg to a ridge along the tooth
+        self.ridge = ()
         self.friction = 0.4  # wood on wood, sliding
         self.timestep = 0.0005  # s
         self.solref = 0.002  # s, contact time constant
@@ -61,6 +64,8 @@ class Opts:
         self.figure_damping = 0.5  # N m s / rad
         self.free_friction = 0.05  # N m, other free gears (small flat wheels, side gears, pinions)
         self.clutch_push = 50.0  # N, the pole's push lowering a small flat wheel (plus its own weight)
+        self.dwell_lower = None  # s the chariot waits after letting a wheel down (sim.DWELL: 0.5)
+        self.latch = False  # once a lowered wheel is fully home, pin it there (a latch; sim.py holds the slide)
         for k, v in kw.items():
             if not hasattr(self, k):
                 raise KeyError(k)
@@ -211,13 +216,23 @@ def _m(v):
     return tuple(x * CHI for x in v)
 
 
-def _tooth_mesh(name, L, w_root, w_tip, t, c):
-    """Convex tooth, long axis local x (root at -L/2, tip at +L/2), width y (tapering), thickness z."""
+def _tooth_mesh(name, L, w_root, w_tip, t, c, ridge=False):
+    """Convex tooth, long axis local x (root at -L/2, tip at +L/2), width y (tapering), thickness z.
+    ridge: the +-z faces become 45 deg roofs meeting at a ridge on the centre line."""
     def hw(x):
         return (w_root + (w_tip - w_root) * (x + L / 2) / L) / 2
 
     ht = t / 2
     pts = []
+    if ridge:
+        for x in (-L / 2, L / 2):
+            h = hw(x)
+            r = min(h, ht * 0.9)
+            for sz in (-1, 1):
+                pts += [(x, -h, sz * (ht - r)), (x, h, sz * (ht - r)), (x, 0.0, sz * ht)]
+        verts = " ".join(_f(*_m(p)) for p in pts)
+        return f'<mesh name="{name}" vertex="{verts}"/>'
+
     for x in (-L / 2, L / 2 - c):
         for sy in (-1, 1):
             for sz in (-1, 1):
@@ -254,10 +269,11 @@ def build(root, mechanism, opts=None):
         tooth_info[key] = dict(n=g["n"], r=g["r"], pitch_len=t["pitch_len"], w_pitch=t["w_pitch"], root_w=t["root_w"],
                                tip_w=t["tip_w"], length=t["length"], thick=t["thick"], backlash=t["backlash"],
                                chamfer=c, kind=g["kind"], rim=g["rim"])
-        box = c == 0 and abs(t["root_w"] - t["tip_w"]) < 1e-9
+        ridge = key in opts.ridge
+        box = c == 0 and not ridge and abs(t["root_w"] - t["tip_w"]) < 1e-9
         mesh_name = f"tooth_{mechanism}_{key}"
         if not box:
-            assets.append(_tooth_mesh(mesh_name, t["length"], t["root_w"], t["tip_w"], t["thick"], c))
+            assets.append(_tooth_mesh(mesh_name, t["length"], t["root_w"], t["tip_w"], t["thick"], c, ridge))
         off = _sub(g["center"], body_center)
         u, ax = _norm(g["u"]), _norm(g["axis"])
         v = _cross(ax, u)
