@@ -4,7 +4,7 @@
 // set is ready, then the materials swap texture objects. A material keeps
 // the same texture slots throughout, so the swap compiles nothing.
 //
-// Files are fetched and decoded off the main thread (createImageBitmap), then
+// Files are fetched and decoded off the main thread (photo.worker.js), then
 // the GPU work is spread out, one job per frame (tick): each texture's upload,
 // then the swap itself. No frame pays for a whole set, and a set goes on only
 // once all of it is uploaded. (On a 4×-throttled CPU a 1024² upload with
@@ -63,13 +63,15 @@ export function meanOf(tex) {
   return new THREE.Color(sum[0] / n, sum[1] / n, sum[2] / n);
 }
 
+/** @typedef {{image: ImageBitmap | HTMLImageElement, flipY: boolean}} Decoded */
+
 /**
- * Fetch and decode an image, flipped as three.js flips an <img> (so normal
- * maps keep their sense).
+ * Fetch and decode an image here, on the main thread, flipped as three.js
+ * flips an <img> (so normal maps keep their sense): where there's no worker.
  * @param {URL} url
- * @returns {Promise<{image: ImageBitmap | HTMLImageElement, flipY: boolean}>}
+ * @returns {Promise<Decoded>}
  */
-async function decode(url) {
+async function decodeHere(url) {
   if (typeof createImageBitmap === "function") {
     try {
       const blob = await (await fetch(url)).blob();
@@ -83,6 +85,54 @@ async function decode(url) {
   img.src = url.href;
   await img.decode();
   return { image: img, flipY: true };
+}
+
+/** Decodes in photo.worker.js; an image it can't do is done here instead. */
+class Decoder {
+  constructor() {
+    /** @type {Map<number, (image: ImageBitmap | undefined) => void>} */
+    this.waiting = new Map();
+    this.next = 0;
+    /** @type {Worker | null} */
+    this.worker = null;
+    try {
+      this.worker = new Worker(new URL("./photo.worker.js", import.meta.url), { type: "module" });
+      this.worker.onmessage = (e) => {
+        this.waiting.get(e.data.id)?.(e.data.image);
+        this.waiting.delete(e.data.id);
+      };
+      this.worker.onerror = () => this.close();
+    } catch {
+      this.worker = null;
+    }
+  }
+
+  /**
+   * @param {URL} url
+   * @param {"high" | "auto"} [priority]
+   * @returns {Promise<Decoded>}
+   */
+  async decode(url, priority = "auto") {
+    const w = this.worker;
+    if (w) {
+      const id = this.next++;
+      /** @type {ImageBitmap | undefined} */
+      const image = await new Promise((done) => {
+        this.waiting.set(id, done);
+        w.postMessage({ id, url: url.href, priority });
+      });
+      if (image) return { image, flipY: false };
+    }
+    return decodeHere(url);
+  }
+
+  /** No more images: the worker goes (any still waiting are done here). */
+  close() {
+    this.worker?.terminate();
+    this.worker = null;
+    for (const done of this.waiting.values()) done(undefined);
+    this.waiting.clear();
+  }
 }
 
 export class Photos {
@@ -100,6 +150,16 @@ export class Photos {
     this.manifest = fetch(new URL("manifest.json", ROOT))
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
+    // The sky is asked for at once, not after the manifest, and the surfaces
+    // wait for it: on a 4×-throttled CPU it then beat the procedural textures
+    // into the reflection map's first bake (6 runs in 6; it used to lose by
+    // 0.1–0.2 s and cost a second bake, ~12 ms, among the first frames shown).
+    // Names as build_photo.py writes them.
+    this.decoder = new Decoder();
+    /** @type {Promise<Decoded[]>} */
+    this.skyFiles = Promise.all([`sky-bg-${level === "lite" ? 2048 : 4096}.webp`, "sky-env-1024.webp"].map((f) => this.decoder.decode(new URL(f, ROOT), "high")));
+    /** @type {Promise<unknown>} */
+    this.skyDone = this.skyFiles.catch(() => null);
   }
 
   /**
@@ -116,20 +176,23 @@ export class Photos {
     }));
   }
 
+  /** All photos are in: the decoding worker can go. */
+  close() {
+    this.decoder.close();
+  }
+
   /** Run at most one waiting job. Call once a frame, before drawing. */
   tick() {
     this.jobs.shift()?.();
   }
 
   /**
-   * One texture, decoded, its upload queued (tick).
-   * @param {string} file
+   * A decoded image as a texture, its upload queued (tick).
+   * @param {Decoded} d
    * @param {{colour: boolean, repeat: boolean, mips: boolean}} o
-   * @param {boolean} [wait] resolve once uploaded, not once decoded
-   * @returns {Promise<THREE.Texture>}
+   * @returns {{tex: THREE.Texture, up: Promise<void>}}
    */
-  async #load(file, o, wait = true) {
-    const { image, flipY } = await decode(new URL(file, ROOT));
+  #texture({ image, flipY }, o) {
     const tex = new THREE.Texture(/** @type {any} */ (image));
     tex.flipY = flipY;
     tex.colorSpace = o.colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -140,8 +203,17 @@ export class Photos {
     tex.anisotropy = o.mips ? this.aniso : 1;
     tex.needsUpdate = true;
     // (a texture already drawn with is not uploaded again)
-    const up = this.later(() => this.renderer.initTexture(tex));
-    if (wait) await up;
+    return { tex, up: this.later(() => this.renderer.initTexture(tex)) };
+  }
+
+  /**
+   * One texture, fetched, decoded and uploaded.
+   * @param {string} file
+   * @param {{colour: boolean, repeat: boolean, mips: boolean}} o
+   */
+  async #load(file, o) {
+    const { tex, up } = this.#texture(await this.decoder.decode(new URL(file, ROOT)), o);
+    await up;
     return tex;
   }
 
@@ -154,11 +226,9 @@ export class Photos {
   async sky() {
     const m = await this.manifest;
     if (!m) return null;
-    const s = m.sky;
-    const bg = this.level === "lite" ? "2048" : "4096";
     const opts = { colour: true, repeat: true, mips: false };
-    const [bgTex, envTex] = await Promise.all([this.#load(s.bg.files[bg], opts, false), this.#load(s.env.files["1024"], opts, false)]);
-    return { ...s, bgTex, envTex };
+    const [bgTex, envTex] = (await this.skyFiles).map((d) => this.#texture(d, opts).tex);
+    return { ...m.sky, bgTex, envTex };
   }
 
   /**
@@ -169,6 +239,7 @@ export class Photos {
    */
   async surface(name, sizes) {
     const m = await this.manifest;
+    await this.skyDone;
     const t = m?.textures[name];
     if (!t) return null;
     const [a, n, r] = sizes[this.level];

@@ -62,6 +62,8 @@ export class Look {
     /** resolves once the courtyard is up (not started by waiting on it) */
     this.yardReady = new Promise((r) => (this.yardIsReady = () => r(undefined)));
     this.frames = 0;
+    /** @type {number | undefined} when the first frame was drawn (performance.now) */
+    this.shownAt = undefined;
     /** @type {Textures | null} */
     this.sceneTex = null;
     camera.far = 2600;
@@ -120,7 +122,7 @@ export class Look {
     };
     // A sky decoded before the textures are made (the usual case) goes up at
     // once and is in the environment map's first bake; one that comes later
-    // costs a second bake (~20 ms on a throttled CPU), on a frame of its own.
+    // costs a second bake (~12 ms on a 4×-throttled CPU), on a frame of its own.
     const early = sky.then((s) => {
       if (s && !this.sceneTex) {
         this.env.setPhoto(s, true);
@@ -150,6 +152,7 @@ export class Look {
         put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
       ])),
     ]);
+    this.photos.close();
   }
 
   /** The sun light (its shadow follows the chariot). */
@@ -245,8 +248,13 @@ export class Look {
   render() {
     const { renderer, scene, camera } = this.host;
     if (++this.frames === 3) void this.buildYard();
-    this.governor?.tick(performance.now());
-    this.photos.tick();
+    const now = performance.now();
+    this.governor?.tick(now);
+    // The photos' uploads sit out the first second on show: those frames are
+    // the heaviest (each program's and texture's first draws), and a 5–8 ms
+    // upload on top of one made the longest frame of the drive.
+    this.shownAt ??= now;
+    if (now - this.shownAt > 1000) this.photos.tick();
     // Parts faded out for the x-ray view stop casting shadows, so the gears
     // inside aren't left in the shade of a body you can't see.
     for (const o of this.chariotMeshes) {
