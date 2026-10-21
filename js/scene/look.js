@@ -9,6 +9,7 @@ import { Courtyard } from "./courtyard.js";
 import { dressGround, makeGround } from "./ground.js";
 import { dressChariot, loadTextures } from "./materials.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
+import { Photos } from "./photo.js";
 
 /** @import { Quality } from "./quality.js" */
 /** @import { Textures } from "./materials.js" */
@@ -73,6 +74,9 @@ export class Look {
     this.governor = pick.forced ? null : new FrameGovernor(this.quality, (q) => this.setQuality(q));
     document.body.dataset.quality = this.quality;
     const tex = loadTextures(renderer, s.textures);
+    /** the photographed sky and surfaces, coming in after the first picture */
+    this.photos = new Photos(renderer, s.textures);
+    void this.#loadPhotos();
     /** @type {Promise<Textures>} */
     this.chariotTex = tex.chariot;
     /** @type {Promise<Textures>} */
@@ -84,6 +88,25 @@ export class Look {
       this.env.bake(tex);
       return tex;
     });
+  }
+
+  /** Swap each photographed set in as it is uploaded. */
+  async #loadPhotos() {
+    const done = (/** @type {string} */ part) => {
+      const now = (document.body.dataset.photo ?? "").split(" ").filter(Boolean);
+      now.push(part);
+      document.body.dataset.photo = now.join(" ");
+    };
+    try {
+      const sky = await this.photos.sky();
+      if (sky) {
+        await this.texReady;
+        this.env.setPhoto(sky);
+        done("sky");
+      }
+    } catch (err) {
+      console.warn("photographed sky unavailable", err);
+    }
   }
 
   /** The sun light (its shadow follows the chariot). */
@@ -169,6 +192,7 @@ export class Look {
     const { renderer, scene, camera } = this.host;
     if (++this.frames === 3) void this.buildYard();
     this.governor?.tick(performance.now());
+    this.photos.tick();
     // Parts faded out for the x-ray view stop casting shadows, so the gears
     // inside aren't left in the shade of a body you can't see.
     for (const o of this.chariotMeshes) {
