@@ -105,8 +105,9 @@ const tools = new Tools({
 });
 const dial = new Dial();
 const odo = new Odometer();
-/** tablets and phones: the screens the HUD is set smaller on (css: "Smaller HUD on tablets") */
-const smallHud = matchMedia("(max-width: 1100px), (max-height: 800px)");
+/** touch tablets and phones: free driving starts with the wheel distances folded there
+ * (a laptop window of the same size keeps them open, as they cost it little room) */
+const smallHud = matchMedia("(pointer: coarse), (max-width: 760px)");
 const hint = bind(h("p", { class: "stage-hint", hidden: true }), (s) => s.stage.drawHint);
 // Free driving: go close on the gears (seen through the body) and back.
 const gearsText = h("span", { text: S().free.gearsOn });

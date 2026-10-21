@@ -148,7 +148,7 @@ export const STR_EN = {
     faults: "Flaws",
     faultsBlock: "Is it built true?",
     faultNone: "Just right",
-    faultTrack: "Too wide",
+    faultTrack: "Wheels too wide",
     faultTrackHint: "The two wheels are set a little too far apart",
     faultWheel: "Big left wheel",
     faultWheelHint: "One wheel is a bit bigger than the other",
