@@ -12,6 +12,7 @@ import { meanOf } from "./photo.js";
 import { AGE_ORIGIN, age } from "./aging.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
 import { Photos } from "./photo.js";
+import { BakedAO } from "./bakedao.js";
 
 /** @import { Quality } from "./quality.js" */
 /** @import { Textures } from "./materials.js" */
@@ -71,8 +72,11 @@ export class Look {
     this.env = new Environment(renderer, scene, { shadowSize: s.shadowSize, clouds: true });
     // Sun shadows of the courtyard, baked once it exists (see render).
     this.setShadow = new SetShadow(this.quality === "lite" ? 1024 : 2048, 240);
+    // Sky occlusion of the courtyard, baked with the shadows (?debug=nobao: not baked)
+    this.bakedAO = new BakedAO(this.quality === "lite" ? 512 : 1024, 240);
     this.ground = makeGround();
     this.setShadow.patch(/** @type {THREE.Material} */ (this.ground.material));
+    this.bakedAO.patch(/** @type {THREE.Material} */ (this.ground.material));
     scene.add(this.ground);
     /** where the chariot is: the courtyard, gate and ground ride along */
     this.rider = new THREE.Vector2();
@@ -238,12 +242,16 @@ export class Look {
     yard.dress(tex);
     yard.age(tex.clouds);
     const gate = scene.getObjectByName("landmark");
-    for (const m of Object.values(yard.materials)) this.setShadow.patch(m);
+    for (const m of Object.values(yard.materials)) {
+      this.setShadow.patch(m);
+      if (m !== yard.materials.hills) this.bakedAO.patch(m);
+    }
     gate?.traverse((o) => {
       if (!(o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial)) return;
       const kind = o.material.userData.ageKind;
       if (kind) age(o.material, kind, tex.clouds);
       this.setShadow.patch(o.material);
+      this.bakedAO.patch(o.material);
     });
     yard.group.position.set(this.rider.x, 0, this.rider.y);
     await Promise.all([yard.group, this.ground, ...(gate ? [gate] : [])].map((o) => this.compile(o)));
@@ -254,6 +262,9 @@ export class Look {
     if (hills) hills.visible = false;
     this.setShadow.move(this.rider.x, this.rider.y);
     this.setShadow.bake(renderer, gate ? [yard.group, gate] : [yard.group]);
+    if (new URLSearchParams(location.search).get("debug") !== "nobao") {
+      this.bakedAO.bake(renderer, gate ? [yard.group, gate] : [yard.group], new THREE.Vector3(this.rider.x, 0, this.rider.y));
+    }
     if (hills) hills.visible = true;
     document.body.dataset.scene = "ready";
     this.yardIsReady();
