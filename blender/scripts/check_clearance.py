@@ -10,13 +10,16 @@ every pose. Not tested:
 
 - pairs inside one rigid body (a node with `motion` and its static children, or the
   static body);
-- DESIGNED contacts: journals, keyed parts and the figure on its shaft;
-- MESHING gear pairs in a pose where the two gears are not in their meshing phase. In
-  the differential every pose is in phase (all gear angles are linear in the wheel
-  angles). The Song small flat wheel only turns while it is lowered, but its foot gear
-  turns with the road wheel all the time, so after a straight run the sim lowers it out
-  of phase; those poses are counted and reported (WARN) instead of tested. Raised small
-  wheels are always tested against everything: they must clear in any phase.
+- DESIGNED contacts: journals, keyed parts and the figure on its shaft.
+
+MESHING gear pairs are tested in every pose, and must be in their meshing phase. In the
+differential every pose is (all gear angles are linear in the wheel angles). The Song
+small flat wheel only turns while it is lowered while its foot gear turns with the road
+wheel all the time; js/sim turns it into mesh the moment it is lowered (and the big flat
+wheel into the nearest gap, design/decisions/0007-song-clutch-error.md), so a lowered
+wheel out of phase is a sim regression: it is reported (FAIL) and not tested, unless
+`--all-phases`. Raised small wheels are always tested against everything: they must
+clear in any phase.
 
 Prints one OK/FAIL line per pair that ever comes near (bounding boxes overlap), then a
 last line CLEARANCE_OK or CLEARANCE_FAIL (exit code 0 / 1).
@@ -340,11 +343,11 @@ def sweep(mech, poses, all_phases=False):
     print(f"{mech}: {far} other pairs never come near: OK")
     print(f"{mech}: clutch states swept: " + ", ".join(f"{k} {v}" for k, v in state.items()))
     for k2, n in sorted(skipped.items()):
-        print(f"WARN {mech}: {k2} lowered out of meshing phase in {n} poses (sim lowers the small wheel without aligning its pegs; not tested)")
+        print(f"PHASE {mech}: {k2} lowered out of meshing phase in {n} poses FAIL (js/sim must turn a lowered small wheel into mesh)")
     print(f"{mech}: {len(pairs)} pairs x {len(poses)} poses, {tested} distinct pair tests, {time.time() - t0:.0f} s")
     if not geared:
         print(f"{mech}: GEAR MESHING FAIL (see GEAR lines)")
-    return geared and not fails
+    return geared and not fails and not skipped
 
 
 def main():

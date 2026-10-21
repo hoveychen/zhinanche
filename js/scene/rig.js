@@ -249,13 +249,8 @@ export class Rig {
    * @param {number} dt
    */
   apply(pose, dt) {
-    const g = pose.gears;
-    /** @type {Record<string, number>} */
-    let shown = g;
-    if (this.mechanism === "song") {
-      this.clutch.update(pose.clutch, g, dt);
-      shown = { ...g, ...this.clutch.shown(g) };
-    }
+    const shown = pose.gears;
+    if (this.mechanism === "song") this.clutch.update(pose.clutch, dt);
     const q = new THREE.Quaternion();
     for (const m of this.motions) {
       if (m.motion !== "rotate") continue;
