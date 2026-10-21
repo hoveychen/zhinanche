@@ -510,6 +510,24 @@ body[data-mode="home"] .stage-hook { display: flex; }
 .callout b { display: block; font: 400 23px/1.3 var(--kai); }
 .callout span { font-size: 17px; color: var(--ink-soft); }
 
+/* Words over the scene (js/app/labels.js): placed by script over their
+   anchor, in the style of the HUD's chips; blue / orange for the inside and
+   outside circles, as the left and right wheels are everywhere. */
+.scene-label {
+  position: absolute; left: 0; top: 0; margin: 0; padding: 5px 12px; width: max-content; max-width: 300px;
+  background: rgba(251, 248, 241, 0.96); border: 2px solid var(--wood-mid); border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(60, 40, 20, 0.22);
+  font-weight: 700; font-size: 17px; line-height: 1.3; color: var(--ink);
+  pointer-events: none !important; will-change: transform;
+}
+.scene-label.l { border-color: var(--left); color: var(--left); }
+.scene-label.r { border-color: var(--right); color: var(--right-ink); }
+/* a small tail down to the anchor while the label sits right over it */
+.scene-label.tail::after {
+  content: ""; position: absolute; top: 100%; left: var(--tail-x, 50%); width: 10px; height: 10px; margin: -5px 0 0 -6px;
+  background: inherit; border: solid; border-color: inherit; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+
 /* Tablets on their side (1024x768): the panel is narrow and short, so set the
    lesson a little tighter and the question and its answers come up with the
    text instead of under the fold. */
@@ -660,6 +678,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   /* in a lesson the step's words right under the view say the same, and the view is too short to spare */
   body[data-mode="lesson"] .stage-hint { display: none; }
   .demo-count { top: auto; bottom: 8px; font-size: 15px; padding: 6px 12px; }
+  .scene-label { font-size: 15px; padding: 3px 9px; border-radius: 7px; max-width: 280px; }
 
   .drive-dock { right: 6px; bottom: 6px; gap: 6px; }
   .pad { grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px); gap: 3px; }

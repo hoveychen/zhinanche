@@ -12,6 +12,7 @@ import { S, bind, onLang, applyDocument, langSwitch, lessons } from "./i18n.js";
 import { decodeShare, setupOf } from "./app/share.js";
 import { placeCallout as placeCalloutBox } from "./app/callout.js";
 import { ShareButton } from "./app/sharelink.js";
+import { SceneLabels } from "./app/labels.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -291,17 +292,34 @@ function placeCallout() {
   if (performance.now() > pinned.until) return hideCallout();
   const p = world.project(pinned.node.localToWorld(pinned.local.clone()));
   if (p.behind) return hideCallout();
-  const o = overlay.getBoundingClientRect();
-  const controls = [];
-  // the dial's words can run wider than the dial on a phone
-  for (const el of [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote]) {
-    const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0) controls.push({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
-  }
-  const at = placeCalloutBox(p, { w: callout.offsetWidth, h: callout.offsetHeight }, { w: overlay.clientWidth, h: overlay.clientHeight }, controls);
+  const at = placeCalloutBox(p, { w: callout.offsetWidth, h: callout.offsetHeight }, { w: overlay.clientWidth, h: overlay.clientHeight }, hudBoxes(true));
   callout.style.left = `${at.x}px`;
   callout.style.top = `${at.y}px`;
 }
+
+/**
+ * What sits on the 3D view and must stay uncovered, px within the overlay.
+ * @param {boolean} [labels] the scene labels too (for the part callout)
+ */
+function hudBoxes(labels = false) {
+  const o = overlay.getBoundingClientRect();
+  const boxes = [];
+  // the dial's words can run wider than the dial on a phone
+  /** @type {HTMLElement[]} */
+  const els = [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote];
+  if (labels) els.push(.../** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(".scene-label")));
+  else els.push(callout);
+  for (const el of els) {
+    if (el.hidden) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) boxes.push({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
+  }
+  return boxes;
+}
+
+// ---------- words over the scene (the compass, the inside and outside circles) ----------
+
+const labels = new SceneLabels(overlay, [...world.holdHands.labels, ...world.compass.labels], (p) => world.project(p), () => hudBoxes());
 
 // ---------- frame loop ----------
 
@@ -316,6 +334,7 @@ function frame(/** @type {number} */ now) {
     world.animate(0);
     world.cam.update(dt, world.camFocus());
   } else world.animate(dt);
+  labels.update();
   hudClock += dt;
   if (hudClock > 1 / 30) {
     hudClock = 0;
