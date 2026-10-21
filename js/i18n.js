@@ -11,6 +11,7 @@ import { STR } from "./teach/strings.js";
 import { STR_EN } from "./teach/strings.en.js";
 import { LESSONS } from "./teach/lessons.js";
 import { LESSONS_EN } from "./teach/lessons.en.js";
+import { icon } from "./app/icons.js";
 
 /** @import { Strings } from "./teach/strings.js" */
 /** @import { Lesson, LessonText } from "./teach/types.js" */
@@ -169,7 +170,7 @@ export function langSwitch() {
   const b = document.createElement("button");
   b.type = "button";
   b.className = "lang-btn";
-  bind(b, (s) => s.bar.langButton);
+  b.append(icon("language"), bind(document.createElement("span"), (s) => s.bar.langButton));
   bind(b, (s) => s.bar.langLabel, "aria-label");
   bind(b, (s) => s.bar.langLabel, "title");
   bind(b, (s) => (s.page.htmlLang === "en" ? "zh-CN" : "en"), "lang");

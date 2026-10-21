@@ -1,7 +1,8 @@
 // The "复制链接" button on the 3D view in free driving: puts the chariot, its
 // switches and the route drawn into a link (js/app/share.js) and copies it.
 
-import { h, s } from "./dom.js";
+import { h } from "./dom.js";
+import { icon } from "./icons.js";
 import { S, bind, getLang, onLang } from "../i18n.js";
 import { shareHref } from "./share.js";
 
@@ -43,11 +44,8 @@ export class ShareButton {
     this.text = h("span", { text: S().share.copy });
     /** @type {ReturnType<typeof setTimeout> | undefined} */
     this.timer = undefined;
-    this.el = bind(h("button", { type: "button", class: "share-btn", onclick: () => this.press(setup()) }, [
-      /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [
-        s("path", { class: "i-link", d: "M10 14 a4 4 0 0 0 5.7 0 l3-3 a4 4 0 0 0 -5.7 -5.7 l-1 1 M14 10 a4 4 0 0 0 -5.7 0 l-3 3 a4 4 0 0 0 5.7 5.7 l1 -1" }),
-        s("path", { class: "i-done", d: "M5 12.5 L10 17.5 L19 7" }),
-      ]))),
+    this.el = bind(h("button", { type: "button", class: "bar-btn share-btn", onclick: () => this.press(setup()) }, [
+      icon("link", "i-link"), icon("check", "i-done"),
       this.text,
     ]), (t) => t.share.hint, "title");
     onLang(() => {

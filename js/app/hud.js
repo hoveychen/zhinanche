@@ -4,6 +4,7 @@
 
 import { h, s } from "./dom.js";
 import { S, bind, onLang } from "../i18n.js";
+import { icon } from "./icons.js";
 
 /** Degrees off south still shown as "pointing south". Same as the ground ring. */
 const OK_DEG = 1;
@@ -109,7 +110,7 @@ export class Odometer {
     this.el = bind(h("div", { class: "hud-odo", role: "button", tabindex: "0", "aria-expanded": "true" }, [
       h("div", { class: "odo-cols" }, [this.l.el, this.r.el]),
       this.diff,
-      h("span", { class: "odo-fold", "aria-hidden": "true" }),
+      icon("chevron-down", "odo-fold"),
     ]), (str) => str.hud.odoLabel, "aria-label");
     const fold = () => {
       const folded = this.el.classList.toggle("folded");
