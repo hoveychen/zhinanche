@@ -62,7 +62,11 @@ def shrink(pre, w):
 
 def bleed(rgb, alpha, passes):
     """Spread colour into the clear texels (each pass: the mean of coloured neighbours)."""
-    have = alpha > 1e-3
+    # from the solid texels only: a thin edge's own colour (unpremultiplied, it is mostly
+    # sky lit through the needles' rim) came out pale, and spread outwards it drew a light
+    # line round every clump wherever the card is filtered; the edges take their solid
+    # neighbours' colour instead (their coverage stays in the alpha)
+    have = alpha > 0.5
     rgb = np.where(have[..., None], rgb, 0)
     # what is left is filled with the solid foliage's mean (the thin edges are lighter)
     solid = alpha > 0.7

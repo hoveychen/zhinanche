@@ -8,7 +8,8 @@
 
 import * as THREE from "three";
 import { S as strings, canvasFont, onLang } from "../i18n.js";
-import { Eaves, UV_PER_CHI } from "./eaves.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { Bucket, hipRoof } from "./courtyard.js";
 
 /** How far south of the chariot the gate stands (chi). */
 export const LANDMARK_DISTANCE = 105;
@@ -60,33 +61,6 @@ function plaqueTexture() {
 }
 
 /**
- * A roof seen from the front: flat eaves that sweep up at both ends, a ridge
- * on top. Width w, along x, centred; depth d along z.
- * @param {number} w @param {number} d @param {number} hgt
- */
-function roofGeometry(w, d, hgt) {
-  const s = new THREE.Shape();
-  const half = w / 2;
-  s.moveTo(-half + 1.2, 0);
-  s.lineTo(half - 1.2, 0);
-  s.quadraticCurveTo(half - 0.2, 0, half + 0.6, hgt * 0.55);
-  s.lineTo(half - 1.6, hgt * 0.45);
-  s.lineTo(half - 2.6, hgt);
-  s.lineTo(-half + 2.6, hgt);
-  s.lineTo(-half + 1.6, hgt * 0.45);
-  s.lineTo(-half - 0.6, hgt * 0.55);
-  s.quadraticCurveTo(-half + 0.2, 0, -half + 1.2, 0);
-  const geo = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
-  geo.translate(0, 0, -d / 2);
-  // the courtyard's roof tiles: u in chi along the eave as on its roofs (so
-  // the rows meet the tile ends), v a little stretched (the face stands for
-  // a slope seen from in front)
-  const uv = geo.getAttribute("uv");
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * UV_PER_CHI, uv.getY(i) * UV_PER_CHI * 1.6);
-  return geo;
-}
-
-/**
  * A lintel carrying the bracket band (courtyard.js bracketBand, build_photo.py
  * dougong_band) on its front and back: u counts sets, whole ones across.
  * @param {number} w @param {number} h @param {number} d
@@ -124,12 +98,15 @@ export class Landmark {
       g.add(mesh);
       return mesh;
     };
-    const eaves = new Eaves();
-    /** a roof (roofGeometry) at x, y and the tile ends along its front eave @param {number} w @param {number} d @param {number} h @param {number} x @param {number} y */
+    // The roofs are real hip roofs (庑殿顶), sloping back as well as to the
+    // sides, built as the courtyard builds its halls' (tile rows down each
+    // slope, tile ends and rafter ends along every eave): drawn as a profile
+    // pushed back, their fronts stood upright and the tiles read as a row of
+    // upright ribs.
+    const b = new Bucket();
+    /** a roof w wide, d deep and h high, its eaves at x, y @param {number} w @param {number} d @param {number} h @param {number} x @param {number} y */
     const roof = (w, d, h, x, y) => {
-      add(roofGeometry(w, d, h), tile, x, y, 0);
-      // the straight part of the eave; the ends sweep up
-      eaves.eave((a) => new THREE.Vector3(x + a, y, -d / 2), new THREE.Vector3(0, 0, -1), -w / 2 + 1.4, w / 2 - 1.4, { fascia: true, rafters: true });
+      hipRoof(b, "tile", { cx: x, cz: 0, hx: w / 2, hz: d / 2, y0: y, y1: y + h, lift: 0.7, ridge: 0.34, eaves: { fascia: true, rafters: true } });
     };
     // Three bays: a tall middle one between the inner pillars, lower ones at the sides.
     const inner = 8, outer = 19, hi = 25, lo = 17, P = 1.7;
@@ -139,16 +116,20 @@ export class Landmark {
       for (const x of [inner, outer]) add(new THREE.BoxGeometry(P + 1.4, 2.4, P + 1.4), stone, sx * x, 1.2, 0);
       // side bay: lintel and roof
       add(bracketBeam(outer - inner + P, 1.6, 1.2), beamM, sx * (inner + outer) / 2, lo - 2.2, 0);
-      roof(outer - inner + 5, 4.4, 2.8, sx * (inner + outer) / 2, lo - 1.2);
+      roof(outer - inner + 5, 5.2, 2.8, sx * (inner + outer) / 2, lo - 1.2);
     }
     // middle bay: two lintels with the plaque between, and the high roof
     add(bracketBeam(inner * 2 + P, 1.6, 1.4), beamM, 0, hi - 2.6, 0);
     add(new THREE.BoxGeometry(inner * 2 + P, 1.3, 1.4), red, 0, hi - 15.2, 0);
-    roof(inner * 2 + 7, 5, 3.6, 0, hi - 1.6);
-    const tg = eaves.tiles.geometry(), rg = eaves.trim.geometry();
-    if (tg) add(tg, tile, 0, 0, 0);
-    if (rg) add(rg, trim, 0, 0, 0);
-    add(new THREE.BoxGeometry(inner * 2 - 2, 0.5, 0.6), gold, 0, hi + 2.1, 0);
+    roof(inner * 2 + 7, 6, 3.6, 0, hi - 1.6);
+    b.addEaves();
+    /** @type {Record<string, THREE.Material>} */
+    const byKey = { tile, eave: trim };
+    for (const [key, list] of b.parts) {
+      const indexed = list.every((geo) => geo.index);
+      const geo = mergeGeometries(indexed ? list : list.map((x) => (x.index ? x.toNonIndexed() : x)), false);
+      if (geo) add(geo, byKey[key], 0, 0, 0);
+    }
     const PL = 11;
     const plaque = add(new THREE.PlaneGeometry(PL, PL), new THREE.MeshBasicMaterial({ map: plaqueTexture() }), 0, hi - 3.6 - PL / 2 - 0.2, -0.8);
     // face north, towards the chariot (a plane faces +z)

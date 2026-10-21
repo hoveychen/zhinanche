@@ -27,23 +27,39 @@ export const SETTINGS = {
 };
 
 /**
- * The starting tier.
+ * @typedef {object} Device
+ * @property {boolean} coarse a touch screen is the way in (phones, tablets of any size)
+ * @property {number} shortSide the screen's short side, CSS px
+ * @property {boolean} saveData
+ * @property {number} [cores] navigator.hardwareConcurrency, where told
+ * @property {number} [memory] navigator.deviceMemory (GB), where told
+ */
+
+/**
+ * The starting tier. High only for a desktop or laptop that isn't small:
+ * every touch-first device starts at medium, a big tablet too (a 12.9-inch
+ * iPad's short side is 1024 CSS px, and it was put on high; on an M4 desktop
+ * high at DPR 2 already had a 95th-percentile frame of 25 ms). The governor
+ * can step down further from either.
  * @param {string} search location.search
- * @param {{coarse: boolean, shortSide: number, saveData: boolean}} device
+ * @param {Device} device
  * @returns {{quality: Quality, forced: boolean}}
  */
 export function pickQuality(search, device) {
   const q = new URLSearchParams(search).get("quality");
   if (q === "high" || q === "medium" || q === "lite") return { quality: q, forced: true };
   if (device.saveData) return { quality: "lite", forced: false };
-  // Phones and tablets start one step down; the governor can go further.
-  if (device.coarse && device.shortSide < 900) return { quality: "medium", forced: false };
+  if (device.coarse) return { quality: "medium", forced: false };
+  // a small laptop or a Chromebook: few cores or little memory
+  if ((device.cores && device.cores <= 4) || (device.memory && device.memory < 4)) return { quality: "medium", forced: false };
   return { quality: "high", forced: false };
 }
 
 /**
  * Watches frame intervals and asks for a lower tier when the median frame
- * stays slower than `slowMs` (default ≈ 48 fps) over a window. Waits after
+ * stays slower than `slowMs` (default ≈ 48 fps) over a window, or when one
+ * frame in ten or more takes over 1.6 × that (≈ 30 fps: the view judders
+ * though the median looks fine). Waits after
  * start and after every change so loading and shader compiles don't count.
  * Never steps back up (no flip-flopping).
  */
@@ -77,8 +93,9 @@ export class FrameGovernor {
     if (this.dts.length < this.window) return;
     const sorted = [...this.dts].sort((a, b) => a - b);
     const median = sorted[sorted.length >> 1];
+    const p90 = sorted[Math.floor(sorted.length * 0.9)];
     this.dts = [];
-    if (median <= this.slowMs) return;
+    if (median <= this.slowMs && p90 <= this.slowMs * 1.6) return;
     const i = TIERS.indexOf(this.quality);
     if (i >= TIERS.length - 1) {
       this.enabled = false;
