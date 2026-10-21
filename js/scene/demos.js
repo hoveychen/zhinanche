@@ -16,6 +16,9 @@ import { S, canvasFont, onLang } from "../i18n.js";
  * @property {THREE.Object3D} anchor
  * @property {(s: Strings) => string} text
  * @property {"l" | "r" | ""} side the left-wheel blue or the right-wheel orange, or neither
+ * @property {boolean} [beside] level with the anchor, on the side away from the
+ *   other such labels (two children one behind the other: labels stacked over
+ *   them pointed at the wrong one)
  */
 
 /** @param {number} robe colour */
@@ -77,8 +80,8 @@ export class HoldHands {
     this.group.add(this.labelIn, this.labelOut);
     /** @type {SceneLabel[]} */
     this.labels = [
-      { anchor: this.labelIn, text: (t) => t.scene.inner, side: "l" },
-      { anchor: this.labelOut, text: (t) => t.scene.outer, side: "r" },
+      { anchor: this.labelIn, text: (t) => t.scene.inner, side: "l", beside: true },
+      { anchor: this.labelOut, text: (t) => t.scene.outer, side: "r", beside: true },
     ];
     /** @type {(() => void) | null} */
     this.onLap = null;
@@ -152,9 +155,9 @@ export class HoldHands {
     const mid = (R_IN + R_OUT) / 2;
     this.arms.position.set(Math.cos(a) * mid, 2.1 + bob, -Math.sin(a) * mid);
     this.arms.rotation.y = a;
-    // just over each child's head
-    this.labelIn.position.set(Math.cos(a) * R_IN, 4.1 + bob, -Math.sin(a) * R_IN);
-    this.labelOut.position.set(Math.cos(a) * R_OUT, 4.1 + bob, -Math.sin(a) * R_OUT);
+    // each child's head (the labels sit beside it)
+    this.labelIn.position.set(Math.cos(a) * R_IN, 3.15 + bob, -Math.sin(a) * R_IN);
+    this.labelOut.position.set(Math.cos(a) * R_OUT, 3.15 + bob, -Math.sin(a) * R_OUT);
   }
 
   /** Radius that frames the demo. */

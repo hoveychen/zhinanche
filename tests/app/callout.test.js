@@ -35,3 +35,11 @@ test("near the top edge it goes below the point instead of over it", () => {
   const p = placeCallout({ x: 500, y: 40 }, size, view, []);
   assert.ok(p.y >= 40, JSON.stringify(p));
 });
+
+test("a label asked to sit beside its point does, level with it, on the side asked for", () => {
+  const size = { w: 80, h: 30 }, view = { w: 1000, h: 800 };
+  const l = placeCallout({ x: 500, y: 400 }, size, view, [], 30, "left");
+  const r = placeCallout({ x: 500, y: 400 }, size, view, [], 30, "right");
+  assert.ok(l.x + size.w <= 500 - 20 && Math.abs(l.y + size.h / 2 - 400) < 2, JSON.stringify(l));
+  assert.ok(r.x >= 500 + 20 && Math.abs(r.y + size.h / 2 - 400) < 2, JSON.stringify(r));
+});
