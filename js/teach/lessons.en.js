@@ -165,7 +165,7 @@ export const LESSONS_EN = {
         task: { prompt: "Switch to “Song dynasty”", done: "This is Yan Su's design." },
       },
       {
-        text: "Beside each wheel stands an upright wheel with 24 teeth.\n\nOn each side there's a small flat wheel with 12 teeth. In the middle is the big flat wheel, with 48 teeth. Its shaft runs up through the roof, and the wooden man stands on top.",
+        text: "Beside each wheel stands an upright wheel with 24 teeth.\n\nOn each side there's a small flat wheel with 12 teeth. In the middle is the big flat wheel, with 48 teeth. Its shaft runs up through the platform on top, and the wooden man stands on it.",
         task: {
           prompt: "How many teeth does the big flat wheel have?",
           options: ["12", "24", "48"],

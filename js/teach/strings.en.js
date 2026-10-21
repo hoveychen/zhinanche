@@ -182,7 +182,7 @@ export const STR_EN = {
 
   parts: {
     teeth: (n) => `${n} teeth`,
-    pegs: (n) => `; inside it, a ring of ${n} wooden pegs that grip the small gears`,
+    pegs: (n) => `; inside it, a ring of ${n} upright teeth that grip the small gears`,
     names: {
       // both chariots
       "差动式：现代人猜的": "Differential chariot: a modern guess",

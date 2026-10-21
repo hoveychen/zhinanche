@@ -87,6 +87,7 @@ SPDX-License-Identifier = "CC-BY-SA-3.0"
 #   large_grey_tiles - Rob Tuytel
 #   red_plaster_weathered, clay_roof_tiles_02 - Amal Kumar
 #   dark_wood - Dimitrios Savva, Dario Barresi, Rico Cilliers
+#   rusty_metal_04 - Amal Kumar
 [[annotations]]
 path = ["assets/photo/*.webp"]
 precedence = "override"
@@ -100,6 +101,14 @@ SPDX-License-Identifier = "CC0-1.0"
 path = ["assets/photo/roof-*.webp", "assets/photo/dougong-*.webp"]
 precedence = "override"
 SPDX-FileCopyrightText = ["2026 zhinanche contributors", "Poly Haven (polyhaven.com): Amal Kumar"]
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+# The chariots' occlusion atlases, baked by blender/scripts/build_chariot.py from
+# this project's own models (content, like the GLBs).
+[[annotations]]
+path = ["assets/photo/chariot-*-ao-*.webp"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 zhinanche contributors"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
 
 # Icons: Tabler Icons (outline set), copied by tools/vendor.mjs (pnpm vendor)

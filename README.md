@@ -107,7 +107,8 @@ LICENSES/             许可证全文
 **为教学放大或简化的：**
 
 - 差动式的全部尺寸（齿数、和燕肃车相同的轮径与轮距）都是本项目自定。
-- 车身外形、栏杆、木人造型只为好看、好读，不是考据结果。
+- 车轮、轴和齿轮按古制重建：30 根两段辐、腰鼓形牙、长毂加铁箍、轮碟、锥轴軎辖、伏兔，出自《考工记》及鄭注、秦陵二号铜车的实测（按轮径折算）和《营造法式》；齿是径向方块齿、穿辋打楔，出自浙江木齿轮实物（Hommel 1937）、《农书》和《天工开物》。宋代文献对辐数、毂、牙一字未提，所以这些是「按古制推定」，不是宋代实物；毂为了给齿轮室让位比古制短。见[决策 0006](design/decisions/0006-cad-level-chariot.md)和[考据报告](research/cad-level/REPORT.md)。
+- 车身外形按《宋史》的词（赤质、重台、勾阑、镂拱、香囊、仙人、单辕凤首）和《大驾卤簿图书》的画，尺寸借同为宋代指南车的吴德仁本；彩画没画。木人造型只为好看、好读。
 - 故障演示里的尺寸误差和打滑（轮距大 10%、一个轮子大 5%、打滑 20%）故意放大，让偏差几步之内就能看出来。真车的误差小得多，但会在长路上一点点攒起来。
 - 宋尺取 0.31 米，只用于界面上换算「米」。
 - 庭院、牌楼和天空是布景，不是某座真实宫殿的复原。天空、地砖、墙、瓦、车木用的是实拍扫描（Poly Haven，CC0），做旧、阴影和天光遮蔽是程序生成或在加载时烘焙的，只为看起来像实拍；见[决策 0004](design/decisions/0004-realtime-photo-look.md)。
@@ -120,7 +121,8 @@ LICENSES/             许可证全文
 - 代码：[Apache-2.0](LICENSE)
 - 课件文字、3D 模型、参数、文档：[CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt)
 - three.js：MIT
-- 天空和材质扫描：Poly Haven，CC0（`tools/assets/build_photo.py` 下载并压缩）
+- 天空和材质扫描：Poly Haven，CC0（`tools/assets/build_photo.py` 下载并压缩）；车上的铁件用 rusty_metal_04（Amal Kumar）
+- 车的遮蔽图集（`assets/photo/chariot-*-ao-*.webp`）：由本项目的模型烘焙，CC BY-SA 4.0（`pnpm build:model`）
 - 树模型：Poly Haven 的 pine_tree_01、fir_tree_01（Rico Cilliers 建模，Rob Tuytel 摄影），CC0（`tools/assets/fetch_models.py` 下载，`blender/scripts/render_impostors.py` 渲成贴片）
 - 屋瓦和斗拱贴图：本项目自绘的高度场，叠 Poly Haven 扫描（clay_roof_tiles_02、灰泥）的颗粒，CC BY-SA 4.0（`tools/assets/build_photo.py`）
 - 课件图片：逐文件标注。三才图会（公有领域）；Andy Dingley 摄的伦敦科学博物馆模型（CC BY 3.0）；SSR2000 摄的台湾国立自然科学博物馆齿轮（CC BY-SA 3.0）

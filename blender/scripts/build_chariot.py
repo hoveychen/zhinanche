@@ -6,7 +6,7 @@
 Without --mechanism (or with "all") both files are written to assets/chariot-<m>.glb.
 Node names and extras follow docs/model-contract.md; the gear layout and the running
 gear's positions are lib/layout.py (dimensions in params "gear", "wheel", "body") and are
-explained in docs/model-notes.md and design/decisions/0005-cad-level-chariot.md.
+explained in docs/model-notes.md and design/decisions/0006-cad-level-chariot.md.
 Blender frame: +X forward, +Y left, +Z up, 1 unit = 1 chi; the glTF exporter turns it
 into Y-up with -Z = left.
 """

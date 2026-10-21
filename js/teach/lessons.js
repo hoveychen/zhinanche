@@ -241,7 +241,7 @@ export const LESSONS = [
         task: { kind: "do", prompt: "换成「宋史式」", check: "switchedToSong", done: "这就是燕肃的造法。" },
       },
       {
-        text: "每个车轮旁边，立着一个齿轮，叫立子轮，有 24 个齿。\n\n两边各有一个小平轮，有 12 个齿。中间的大平轮有 48 个齿。它的竖轴通到车顶，木人就站在轴上。",
+        text: "每个车轮旁边，立着一个齿轮，叫立子轮，有 24 个齿。\n\n两边各有一个小平轮，有 12 个齿。中间的大平轮有 48 个齿。它的竖轴穿过车顶的平台，木人就站在轴顶上。",
         scene: { reset: true, mechanism: "song", xray: true, view: "gears", highlight: ["footL", "footR", "smallL", "smallR", "bigFlat"] },
         task: {
           kind: "choose",
