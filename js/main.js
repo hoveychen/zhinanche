@@ -105,6 +105,8 @@ const tools = new Tools({
 });
 const dial = new Dial();
 const odo = new Odometer();
+/** tablets and phones: the screens the HUD is set smaller on (css: "Smaller HUD on tablets") */
+const smallHud = matchMedia("(max-width: 1100px), (max-height: 800px)");
 const hint = bind(h("p", { class: "stage-hint", hidden: true }), (s) => s.stage.drawHint);
 // Free driving: go close on the gears (seen through the body) and back.
 const gearsText = h("span", { text: S().free.gearsOn });
@@ -172,6 +174,10 @@ const course = new Course(app, tools, byId("panel"), {
       b.setAttribute("aria-current", on ? "page" : "false");
     }
     document.body.dataset.mode = mode;
+    // free driving on a tablet or phone: the wheel distances start folded to
+    // their one line, so the view's corners are not all cards; a lesson that
+    // shows them is there to be read, so they open
+    odo.setFolded(mode === "free" && smallHud.matches);
   },
 });
 for (const b of document.querySelectorAll("[data-go]")) {

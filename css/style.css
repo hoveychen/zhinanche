@@ -435,11 +435,10 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
   position: absolute; left: var(--hud-gap); bottom: var(--hud-gap); width: 232px; padding: 10px 14px;
   cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
-/* folds with a tap; folded, only the line under the bars is left */
+/* folds with a tap (free driving on tablets and phones starts folded); folded,
+   just the two wheels' numbers on one line: no empty bars */
 .odo-fold { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; color: var(--ink-2); }
 .hud-odo.folded { width: auto; min-height: var(--tap); padding: 8px 32px 8px 14px; display: flex; align-items: center; }
-.hud-odo.folded .odo-cols { display: none; }
-.hud-odo.folded .odo-diff { margin: 0; }
 .hud-odo.folded .odo-fold { top: calc(50% - 9px); transform: rotate(180deg); }
 .odo-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .odo-col { display: flex; flex-direction: column; align-items: center; }
@@ -848,3 +847,12 @@ body[data-mode="home"] .stage-hook { display: flex; }
   body[data-mode="free"][data-sheet="closed"] .sheet-grip { display: none; }
   body[data-mode="free"] .sheet-handle { min-height: 44px; font-size: 15px; border-radius: 0; }
 }
+
+/* the wheel distances folded (after the layouts above, which set them out unfolded) */
+.hud-odo.folded .odo-cols { display: flex; align-items: baseline; gap: var(--sp-4); }
+.hud-odo.folded .odo-col { display: flex; flex-direction: row; align-items: baseline; gap: 6px; }
+.hud-odo.folded .odo-name { order: -1; font-size: var(--fs-s); }
+.hud-odo.folded .odo-read { line-height: 1.2; }
+.hud-odo.folded .odo-read .num { font-size: var(--fs-m); }
+.hud-odo.folded .odo-read .unit { font-size: var(--fs-xs); }
+.hud-odo.folded .odo-bar, .hud-odo.folded .odo-read .m, .hud-odo.folded .odo-diff { display: none; }

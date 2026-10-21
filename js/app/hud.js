@@ -112,10 +112,7 @@ export class Odometer {
       this.diff,
       icon("chevron-down", "odo-fold"),
     ]), (str) => str.hud.odoLabel, "aria-label");
-    const fold = () => {
-      const folded = this.el.classList.toggle("folded");
-      this.el.setAttribute("aria-expanded", String(!folded));
-    };
+    const fold = () => this.setFolded(!this.el.classList.contains("folded"));
     this.el.addEventListener("click", fold);
     this.el.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -124,6 +121,12 @@ export class Odometer {
       }
     });
     this.scale = 10;
+  }
+
+  /** @param {boolean} folded */
+  setFolded(folded) {
+    this.el.classList.toggle("folded", folded);
+    this.el.setAttribute("aria-expanded", String(!folded));
   }
 
   /** @param {number} distL signed chi @param {number} distR */
