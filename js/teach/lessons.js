@@ -17,6 +17,11 @@ const PICTURES = {
     alt: "一辆木头做的指南车模型，车顶站着伸手的木人。这个模型按差动式做的",
     credit: "伦敦科学博物馆的指南车模型（差动式）。摄影：Andy Dingley，CC BY 3.0，Wikimedia Commons",
   },
+  sinan: {
+    src: "images/lessons/sinan.svg",
+    alt: "一块方方的铜盘，中间放着一把黑色的磁石勺子，勺柄指着盘边的红色记号，那边是南",
+    credit: "司南示意图：磁石勺放在铜盘上，勺柄指南。本站绘制，CC BY-SA 4.0",
+  },
   gears: {
     src: "images/lessons/taiwan-museum-gears.jpg",
     alt: "指南车模型里面的一组齿轮，叠在一根竖轴旁边",
@@ -52,20 +57,21 @@ export const LESSONS = [
         picture: PICTURES.sancai,
       },
       {
-        text: "指南车是指南针吗？\n\n<b>不是！</b>指南针里有一根磁针。是磁铁让它指南。\n\n指南车里<b>没有磁铁</b>，只有木头齿轮。",
+        text: "指南车是指南针吗？\n\n车旁边那个就是<b>指南针</b>。它里面有一根磁针，是磁铁让它指南。\n\n指南车也能指南。它里面也藏着磁铁吗？",
         scene: { demo: "compass", view: "overview" },
         task: {
           kind: "choose",
-          prompt: "指南车靠什么指南？",
+          prompt: "猜一猜：指南车靠什么指南？",
           options: ["磁铁", "齿轮", "风"],
           answer: 1,
-          right: "答对了！它是一台齿轮机器。",
-          wrong: "它里面没有磁铁哦。再想想？",
+          right: "答对了！指南车里没有一块磁铁，只有木头齿轮。它是一台齿轮机器。",
+          wrong: "不是哦。秘密藏在车厢里，再猜一次？",
         },
       },
       {
-        text: "古书里还有一种「司南」。人们认为，它是用磁石做的小勺子。\n\n指南车又叫「司南车」。名字很像，可是完全不一样：司南靠磁石，指南车靠齿轮。",
+        text: "古书里还有一种「司南」。人们认为，它是用磁石做的小勺子，放在光滑的盘子上。勺子转一转停下来，勺柄就指着南。\n\n指南车又叫「司南车」。名字很像，可是完全不一样：司南靠磁石，指南车靠齿轮。",
         scene: { demo: null },
+        picture: PICTURES.sinan,
       },
       {
         text: "那它为什么能指南？\n\n秘密藏在车厢里。按一下「透视」，看看里面有什么。",

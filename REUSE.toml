@@ -49,6 +49,13 @@ precedence = "override"
 SPDX-FileCopyrightText = "脫脫等 (宋史, 1345); 沈約 (宋書, 488); 蕭子顯 (南齊書) - public domain, via zh.wikisource.org"
 SPDX-License-Identifier = "LicenseRef-PublicDomain"
 
+# Lesson picture drawn for this project (lesson 1 step 5): no third-party material.
+[[annotations]]
+path = "images/lessons/sinan.svg"
+precedence = "override"
+SPDX-FileCopyrightText = "2026 zhinanche contributors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
 # Lesson pictures: resized copies of Wikimedia Commons files, licence and
 # author checked with the Commons API (imageinfo, extmetadata) on 2026-10-20.
 
