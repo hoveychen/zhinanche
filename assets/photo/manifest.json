@@ -83,6 +83,23 @@
    },
    "arm": {}
   },
+  "iron": {
+   "id": "rusty_metal_04",
+   "mean": [
+    0.8242,
+    0.5236,
+    0.3911
+   ],
+   "albedo": {
+    "512": "iron-albedo-512.webp"
+   },
+   "normal": {
+    "512": "iron-normal-512.webp"
+   },
+   "arm": {
+    "512": "iron-arm-512.webp"
+   }
+  },
   "dougong": {
    "id": "baked: build_photo.py dougong_band",
    "mean": [

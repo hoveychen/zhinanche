@@ -217,7 +217,7 @@ export const STR = {
     /** @param {number} n */
     teeth: (n) => `${n} 个齿`,
     /** @param {number} n */
-    pegs: (n) => `；中间一圈 ${n} 根木销，咬着小齿轮`,
+    pegs: (n) => `；中间一圈 ${n} 个立齿，咬着小齿轮`,
     /**
      * Display names by the GLB's own (Chinese) label; a label missing here is
      * shown as it is in the GLB.

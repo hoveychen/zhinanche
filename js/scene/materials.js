@@ -90,6 +90,7 @@ export function loadTextures(renderer, level) {
  * @property {number} [sheen]
  * @property {number} scale texture tiles per chi
  * @property {"grain" | "roof"} [project]
+ * @property {false} [ao] false: never takes the baked occlusion atlas (a colour that must stay clean)
  */
 
 /** Role (GLB material name) → recipe. Colours are sRGB. */
@@ -100,17 +101,20 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   wood_dark: { color: 0x5e3a24, map: "wood", roughness: 0.6, clearcoat: 0.15, clearcoatRoughness: 0.45, normal: 0.5, scale: 1 },
   // Pegs (the gear teeth): pale boxwood, smooth from wear.
   peg: { color: 0xe6c690, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
-  // Railings, pillars: cinnabar lacquer.
+  // The red box, railings, pillars: cinnabar lacquer (赤質).
   lacquer: { color: 0xa82a1d, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
-  // Roof: dark glazed tiles.
-  roof: { color: 0x354044, map: "tiles", roughness: 0.68, normal: 0.9, scale: 0.55, project: "roof" },
+  // The wheels: red lacquer worn thinner than the box's, the grain showing more.
+  wheel: { color: 0x962c1e, map: "woodSoft", roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.4, scale: 0.8 },
+  // The wheels' marker spoke: yellow lacquer.
+  mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8 },
   // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
-  blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },
-  orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6 },
+  blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
+  orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
   // Centre train, shaft and the figure's base: cast brass.
   gold: { color: 0xe6c98c, map: "metal", roughness: 0.2, metalness: 1, normal: 0.2, scale: 0.8 },
-  marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1 },
+  marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1, ao: false },
+  // Hub bands, caps, linchpins, straps, the shaft's point: forged iron; the photographed rust goes over it (photoIron)
   iron: { color: 0x55565a, map: "metal", roughness: 0.62, metalness: 0.9, normal: 0.5, scale: 1.2 },
   rope: { color: 0xb59a68, map: "wood", roughness: 0.95, normal: 1, scale: 3, sheen: 0.4 },
   robe: { color: 0xb3241c, map: "woodSoft", roughness: 0.6, sheen: 0.7, normal: 0.2, scale: 2 },
@@ -280,6 +284,47 @@ export function photoWood(meshes, set, tex) {
 }
 
 /**
+ * Put the photographed rusty iron (photo.js, Poly Haven rusty_metal_04) on
+ * the ironwork: its colour is a near-white tint, so the role's grey stays
+ * under it, and its arm map says where the rust (dull, not metal) is.
+ * The roughness and metalness slots are new to the material, so it compiles
+ * once more; one material, on a frame of its own (look.js).
+ * @param {Iterable<THREE.Mesh>} meshes @param {import("./photo.js").PhotoSet} set
+ */
+export function photoIron(meshes, set) {
+  for (const t of [set.albedo, set.normal, set.arm]) t?.repeat.setScalar(1);
+  for (const o of meshes) {
+    const m = /** @type {THREE.MeshPhysicalMaterial} */ (o.material);
+    if (m.name !== "iron") continue;
+    m.map = set.albedo;
+    m.normalMap = set.normal;
+    if (set.arm) {
+      m.roughnessMap = set.arm;
+      m.metalnessMap = set.arm;
+      m.roughness = 1;
+      m.metalness = 1;
+    }
+  }
+}
+
+/** @type {THREE.Texture | null} a white aoMap standing in until the atlas is up (so nothing recompiles then) */
+let aoBlank = null;
+
+/**
+ * The baked occlusion atlas (blender/scripts/build_chariot.py bake()) on one
+ * chariot's meshes, read through the GLB's own UVs (uv1 here; see dressChariot).
+ * @param {Iterable<THREE.Mesh>} meshes @param {THREE.Texture} atlas @param {string} mechanism only that chariot's meshes
+ */
+export function chariotAO(meshes, atlas, mechanism) {
+  atlas.channel = 1;
+  for (const o of meshes) {
+    if (o.userData.mechanism !== mechanism) continue;
+    const m = /** @type {THREE.MeshPhysicalMaterial} */ (o.material);
+    if (m.aoMap) m.aoMap = atlas;
+  }
+}
+
+/**
  * Swap the GLB's flat colours for the realistic materials. Call before the
  * Rig is made (it clones each mesh's material for its own looks).
  * @param {THREE.Object3D} root the GLB scene
@@ -288,19 +333,30 @@ export function photoWood(meshes, set, tex) {
 export function dressChariot(root, tex) {
   /** @type {Map<string, THREE.Material>} */
   const made = new Map();
+  if (!aoBlank) {
+    aoBlank = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    aoBlank.channel = 1;
+    aoBlank.needsUpdate = true;
+  }
   root.traverse((o) => {
     if (!(o instanceof THREE.Mesh)) return;
     const src = /** @type {THREE.Material} */ (o.material);
     const r = RECIPES[src.name];
     if (!r) return;
     o.geometry = o.geometry.clone();
+    // the GLB's UVs are the baked atlas's: kept as uv1 (the aoMap channel),
+    // the planar grain goes over uv
+    const atlasUV = o.geometry.getAttribute("uv");
+    if (atlasUV) o.geometry.setAttribute("uv1", atlasUV);
     faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
     const shade = src.name === "blue" || src.name === "orange" ? shadeOf(o) : null;
     const key = shade === null ? src.name : `${src.name}.${shade}`;
     let m = made.get(key);
     if (!m) {
-      m = makeMaterial(shade === null ? r : { ...r, color: shade }, tex);
-      m.name = src.name;
+      const pm = makeMaterial(shade === null ? r : { ...r, color: shade }, tex);
+      pm.name = src.name;
+      if (r.ao !== false && atlasUV) pm.aoMap = aoBlank;
+      m = pm;
       made.set(key, m);
     }
     o.material = m;

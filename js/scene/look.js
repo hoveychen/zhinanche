@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Environment, SetShadow, contactShadow } from "./environment.js";
 import { Courtyard } from "./courtyard.js";
 import { dressGround, makeGround, photoGround } from "./ground.js";
-import { dressChariot, loadTextures, photoWood } from "./materials.js";
+import { chariotAO, dressChariot, loadTextures, photoIron, photoWood } from "./materials.js";
 import { meanOf } from "./photo.js";
 import { AGE_ORIGIN, age } from "./aging.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
@@ -102,6 +102,10 @@ export class Look {
     this.chariotMeshes = [];
     /** @type {import("./photo.js").PhotoSet | null} the photographed wood, once it is up */
     this.woodPhoto = null;
+    /** @type {import("./photo.js").PhotoSet | null} the photographed rusty iron, once it is up */
+    this.ironPhoto = null;
+    /** @type {Map<string, Promise<THREE.Texture | null>>} each chariot's baked occlusion atlas, by mechanism */
+    this.atlases = new Map();
     /** @type {PostFX | null} */
     this.postfx = null;
     /** @type {THREE.Vector3 | null} the sun's place while it is moved for a still picture */
@@ -169,6 +173,7 @@ export class Look {
       roof: safe("roof", this.photos.surface("roof", { full: [1024, 512, 512], lite: [512, 512, 256] })),
       dougong: safe("dougong", this.photos.surface("dougong", { full: [320, 320, 320], lite: [160, 160, 160] })),
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
+      iron: safe("iron", this.photos.surface("iron", { full: [512, 512, 512], lite: [512, 512, 512] })),
       trees: safe("trees", this.photos.trees()),
     };
     // A sky decoded before the textures are made (the usual case) goes up at
@@ -210,6 +215,10 @@ export class Look {
         this.woodPhoto = s;
         photoWood(this.chariotMeshes, s, await this.chariotTex);
       }),
+      put("iron", sets.iron, (s) => {
+        this.ironPhoto = s;
+        photoIron(this.chariotMeshes, s);
+      }),
       this.yardReady.then(() => Promise.all([
         put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
         put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
@@ -238,6 +247,35 @@ export class Look {
     });
     this.chariotMeshes.push(...meshes);
     if (this.woodPhoto) photoWood(meshes, this.woodPhoto, await this.chariotTex);
+    if (this.ironPhoto) photoIron(meshes, this.ironPhoto);
+    /** @type {string | undefined} */
+    let mechanism;
+    root.traverse((o) => (mechanism ??= o.userData.mechanism));
+    if (mechanism) {
+      for (const o of meshes) o.userData.mechanism = mechanism;
+      void this.#atlas(mechanism, meshes);
+    }
+  }
+
+  /**
+   * The chariot's baked occlusion atlas (one file per mechanism, fetched once)
+   * onto its meshes, on a frame of its own once it is uploaded.
+   * @param {string} mechanism @param {THREE.Mesh[]} meshes
+   */
+  async #atlas(mechanism, meshes) {
+    let p = this.atlases.get(mechanism);
+    if (!p) {
+      p = this.photos.atlas(mechanism).catch((err) => {
+        console.warn("baked occlusion unavailable", err);
+        return null;
+      });
+      this.atlases.set(mechanism, p);
+    }
+    const atlas = await p;
+    if (!atlas) return;
+    await this.photos.later(() => chariotAO(meshes, atlas, mechanism));
+    const now = (document.body.dataset.photo ?? "").split(" ").filter(Boolean);
+    if (!now.includes("ao")) document.body.dataset.photo = [...now, "ao"].join(" ");
   }
 
   /** Contact shadow under the chariot. @param {THREE.Object3D} holder */

@@ -182,13 +182,14 @@ export const STR_EN = {
 
   parts: {
     teeth: (n) => `${n} teeth`,
-    pegs: (n) => `; inside it, a ring of ${n} wooden pegs that grip the small gears`,
+    pegs: (n) => `; inside it, a ring of ${n} upright teeth that grip the small gears`,
     names: {
       // both chariots
       "差动式：现代人猜的": "Differential chariot: a modern guess",
       "宋史式：燕肃的车": "Song dynasty chariot: Yan Su's design",
-      "下层平台和栏杆": "Lower deck and railing",
-      "上层平台": "Upper deck",
+      "齿轮室的顶板": "Gear room's ceiling",
+      "重台（上层箱体和镂拱）": "Upper tier (the second box and its bracket band)",
+      "顶上的平台和勾阑（仙人站在这里）": "Top platform and railing (the immortal stands here)",
       "前车厢板": "Front panel",
       "后车厢板": "Back panel",
       "左侧车厢板": "Left side panel",
@@ -196,7 +197,6 @@ export const STR_EN = {
       "车架": "Frame",
       "车辕": "Pole (the animal is hitched here)",
       "车轴": "Axle",
-      "屋顶": "Roof",
       "木人": "The wooden man",
       "竖轴（木人站在顶上）": "Upright shaft (the man stands on top)",
       "左车轮": "Left wheel",

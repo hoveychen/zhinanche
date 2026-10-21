@@ -15,11 +15,12 @@ from mathutils import Vector
 
 # Base colours (sRGB hex). Left train blue, right train orange, centre gold, markers red.
 COLORS = {
-    "peg": "#e8c99a",        # light wood pegs
-    "wood": "#b07a45",       # body boards, frame
-    "wood_dark": "#6e4527",  # spokes, hubs, axle
-    "lacquer": "#b8382c",    # railings, pillars
-    "roof": "#3f4f57",       # roof tiles
+    "peg": "#e8c99a",        # light hardwood gear teeth (the role keeps its old name)
+    "wood": "#b07a45",       # frame, deck, pole: oiled elm
+    "wood_dark": "#6e4527",  # hubs, gear rims and spokes, axle: darker wood
+    "lacquer": "#b8382c",    # the red box, railings, pillars (赤質)
+    "wheel": "#a2301f",      # the wheels' red lacquer, a shade darker than the box
+    "mark": "#f0c93a",       # the wheels' marker spoke (yellow, reads against the red)
     "eave": "#7a2a1f",
     "blue": "#2f6fd6",
     "orange": "#f08a24",
@@ -152,6 +153,51 @@ class MB:
             d1 = b1 * math.cos(t1) + b2 * math.sin(t1)
             quad = [c + d0 * r_in - a * (t / 2), c + d0 * r_out - a * (t / 2), c + d1 * r_out - a * (t / 2), c + d1 * r_in - a * (t / 2)]
             self.prism(quad, a * t, mat)
+
+    def revolve(self, c, axis, profile, mat, n=24, ref=None, phase=0.0, seam_every=0, seam=0.0):
+        """Solid of revolution: a convex profile [(r, a)] (r from the axis, a along it,
+        measured from c) swept round `axis` as n convex wedges. With seam_every, every
+        seam_every-th wedge boundary is left open by `seam` radians (a joint line)."""
+        c, a = V(c), V(axis).normalized()
+        if ref is None:
+            b1, b2 = basis(a)
+        else:
+            b1 = V(ref).normalized()
+            b2 = a.cross(b1).normalized()
+
+        def poly(th):
+            d = b1 * math.cos(th) + b2 * math.sin(th)
+            return [c + d * r + a * h for r, h in profile]
+
+        for i in range(n):
+            t0, t1 = phase + 2 * math.pi * i / n, phase + 2 * math.pi * (i + 1) / n
+            if seam_every:
+                if i % seam_every == 0:
+                    t0 += seam
+                if (i + 1) % seam_every == 0:
+                    t1 -= seam
+            self.frustum(poly(t0), poly(t1), mat)
+
+    def bar(self, p0, s0, p1, s1, mat, up=(0, 0, 1), chamfer=0.0):
+        """Tapered bar from p0 (section s0 = (w, h)) to p1 (section s1); h runs along
+        `up` where possible. chamfer > 0 cuts the four corners (an octagonal section)."""
+        p0, p1 = V(p0), V(p1)
+        d = (p1 - p0).normalized()
+        s = d.cross(V(up))
+        if s.length < 1e-6:
+            s = d.cross(Vector((1, 0, 0)))
+        s.normalize()
+        u = s.cross(d).normalized()
+
+        def sect(p, w, h):
+            if chamfer <= 0:
+                return [p + s * sx * (w / 2) + u * ux * (h / 2) for sx, ux in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+            cw, ch = min(chamfer, w / 2 * 0.99), min(chamfer, h / 2 * 0.99)
+            pts = [(-w / 2 + cw, -h / 2), (w / 2 - cw, -h / 2), (w / 2, -h / 2 + ch), (w / 2, h / 2 - ch),
+                   (w / 2 - cw, h / 2), (-w / 2 + cw, h / 2), (-w / 2, h / 2 - ch), (-w / 2, -h / 2 + ch)]
+            return [p + s * x + u * y for x, y in pts]
+
+        self.frustum(sect(p0, *s0), sect(p1, *s1), mat)
 
     def frustum(self, lo, hi, mat):
         """Convex solid between two parallel polygons with the same vertex count (or apex)."""

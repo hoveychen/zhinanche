@@ -344,8 +344,11 @@ export class CameraRig {
         return this.#aimBox(box, off, best.d, best.ins);
       }
       case "wheels": {
-        const target = local(0, 2.8, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.32, 0.3), this.fit(5.5)) };
+        // The box (9.5 wide) hangs over the wheels (at local ±3): from the
+        // chariot's middle only their lower halves show, so look at the right
+        // wheel from outside it, low and a little from behind.
+        const target = local(0, 2, 3.2);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-0.55, 0.18, 1), this.fit(4)) };
       }
       case "figure": {
         // the figure is drawn big here (js/scene/rig.js FIGURE_SCALE)

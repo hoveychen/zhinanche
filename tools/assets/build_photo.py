@@ -68,6 +68,8 @@ SKY_MEDIAN = 0.32
 #   multiplier  light and dark only, a little warm, near white (mean ~0.72 linear):
 #               it multiplies the chariot's role colours as the procedural wood did,
 #               so materials.js and the rig's highlight colours stay as they are
+#   tint        like multiplier (near white, contrast softened) but keeping the scan's
+#               own colour: rust stays brown under the role's iron grey
 #   rows        palace tile rows baked from a height field, the scan for grain (tile_rows)
 TEXTURES = {
     # ground also at 256: fetched with the sky, so the very first picture already has it
@@ -75,6 +77,8 @@ TEXTURES = {
     "plaster": ((1024, 512), (1024, 512), (512, 256), "colour"),
     "roof": ((1024, 512), (512,), (512, 256), "rows"),
     "wood": ((1024, 512), (1024, 512), (), "multiplier"),
+    # the ironwork is small: 512 is plenty, and its arm map carries the rust (metal 0) vs iron (metal 1)
+    "iron": ((512,), (512,), (512,), "tint"),
 }
 
 # The tile rows (chi): one texture is TILE_SPAN square, TILE_ROWS rows of round tiles
@@ -451,6 +455,11 @@ def build_texture(name, meta, cache, manifest):
         # grain contrast a little softer than the scan's (dark wood has deep figure)
         g = np.exp(np.log(np.maximum(g / g.mean(), 1e-3)) * 0.7)
         lin = np.clip(g[..., None] * 0.72 * np.array([1.0, 0.93, 0.85], np.float32), 0, 1)
+        albedo = Image.fromarray(to_srgb8(lin))
+    elif mode == "tint":
+        g = lum(lin)
+        g2 = np.exp(np.log(np.maximum(g / g.mean(), 1e-3)) * 0.7) * 0.72
+        lin = np.clip(lin * (g2 / np.maximum(g, 1e-4))[..., None], 0, 1)
         albedo = Image.fromarray(to_srgb8(lin))
     out = {"id": meta["id"], "mean": [round(float(v), 4) for v in lin.reshape(-1, 3).mean(0)], "albedo": {}, "normal": {}, "arm": {}, **extra}
     for s in a_sizes:

@@ -6,10 +6,11 @@ Node names and `extras` in the GLB files are an API. Renaming a node is a breaki
 
 | File | Contents |
 |---|---|
-| `assets/chariot-differential.glb` | Body + wheels + Lanchester-style differential + figure |
-| `assets/chariot-song.glb` | Body + wheels + Yan Su (1027) clutch gear train + figure |
+| `assets/chariot-differential.glb` | Running gear + body + Lanchester-style differential + figure |
+| `assets/chariot-song.glb` | Running gear + body + Yan Su (1027) clutch gear train + figure |
+| `assets/photo/chariot-<mechanism>-ao-{1024,512}.webp` | The chariot's baked occlusion atlas (see *UVs and the baked atlas*) |
 
-Both are built by `blender/scripts/build_chariot.py -- --mechanism differential|song --out PATH` from `params/chariot.json` (`pnpm build:model`).
+Both are built by `pnpm build:model` (`blender/scripts/build_chariot.py`, from `params/chariot.json` through `blender/scripts/lib/layout.py`), which writes the two GLBs and bakes their atlases; `-- --mechanism differential|song --out PATH` builds one, `--no-bake` skips the bake. The build is reproducible byte for byte.
 
 ## Units and axes
 
@@ -51,20 +52,23 @@ The figure: node `figure` rotates with `pose.figureRel`, which already includes 
 
 ## Required node names
 
-All nodes are children of root `chariot`.
+All nodes are children of root `chariot`. The root's extras carry `mechanism` (`"differential"` / `"song"`) and a `label`.
 
 | Node | Mechanism | Motion |
 |---|---|---|
-| `body.*`: `body.frame`, `body.pole`, `body.side.L/R`, `body.end.F/B`, `body.deck`, `body.tier`, `body.roof` (+ `body.axle` in song) | both | static |
-| `wheel.L`, `wheel.R` | both | rotate `wheelL` / `wheelR` |
-| `figure` (immortal with outstretched arm) + `figure.shaft` | both | rotate `figure` (shaft: `figure` too) |
-| `diff.sideA`, `diff.sideB` (each including its driving horizontal gear) | differential | rotate `sideA` / `sideB` |
+| `body.frame` (sills, 伏兔, posts, deck beams, the shaft's step bearing), `body.pole` (辕, yoke bar and phoenix head), `body.side.L/R`, `body.end.F/B` (gear-room boards and the red box walls), `body.deck` (gear room's ceiling), `body.tier` (重台 with the 鏤拱 band and both eaves), `body.top` (platform, 勾闌, 香囊) | both | static |
+| `body.axle` (the through axle with caps and linchpins) | song | static |
+| `wheel.L`, `wheel.R` (felloe, 30 spokes, hub with its bands, ridges and bore sleeves) + child `wheel.L/R.marker` (the yellow marker spoke) | both | rotate `wheelL` / `wheelR` |
+| `figure` (immortal with outstretched arm) + `figure.shaft` (with its squared section, iron point, collar and pedestal) | both | rotate `figure` (shaft: `figure` too) |
+| `diff.sideA`, `diff.sideB` (each a horizontal gear with its ring of upright teeth) | differential | rotate `sideA` / `sideB` |
 | `diff.carrier`, `diff.pinion.0`, `diff.pinion.1` (pinions are children of carrier) | differential | rotate `carrier`; pinions `pinion` about their own axle |
-| `diff.crown.L`, `diff.crown.R` (gear fixed to each road wheel) | differential | rotate `wheelL` / `wheelR` |
-| `song.foot.L`, `song.foot.R` | song | rotate `footL` / `footR` |
+| `diff.crown.L`, `diff.crown.R` (gear fixed to each road wheel, with that wheel's half axle, cap and linchpin) | differential | rotate `wheelL` / `wheelR` |
+| `song.foot.L`, `song.foot.R` (riding the hubs' inner segments) | song | rotate `footL` / `footR` |
 | `song.small.L`, `song.small.R` | song | rotate `smallL` / `smallR` (child of a `song.smallLift.L/R` node that has the `lift` motion) |
 | `song.bigFlat` | song | rotate `bigFlat` |
 | `song.roller.L`, `song.roller.R` (辕端横木下小轮 and the linkage) | song | lift with clutch (visual only) |
+
+Every gear node has a child `<node>.marker` (its marker tooth). `js/scene/rig.js` STAGES order the parts by these names when the chariot is taken apart; `body.top` goes first.
 
 ### Teaching extras on every mesh node
 
@@ -72,16 +76,27 @@ All nodes are children of root `chariot`.
 { "group": "shell" | "chassis" | "wheel" | "gear" | "figure", "explode": [dx, dy, dz], "label": "中心大平轮", "teeth": 48 }
 ```
 
-- `shell`: everything that hides the gears (roof, side boards, railings). X-ray draws it (and `body.frame`) as a faint wireframe; explode moves it away while it fades out.
+- `shell`: everything that hides the gears (the box's side and end boards, the deck, the tier, the top platform). X-ray draws it (and `body.frame`) as a faint wireframe; explode moves it away while it fades out. `chassis`: frame, pole, axle; stays in place.
 - `explode`: offset in chi, used at explode = 1, applied to the node's position in its parent's frame. Only direct children of `chariot` carry a non-zero offset; deeper nodes (pinions, small flat wheels, markers) are `[0, 0, 0]` and move with their parent. Gears separate vertically so that the meshing stays readable.
-- `label`: Chinese name shown in callouts. `teeth`: tooth count, used by the "count the teeth" tasks.
-- Every gear has one **marker tooth** in a contrasting colour (child mesh `<node>.marker`, static relative to its gear), so children can follow a gear round and count turns. The wheels also have a red marker spoke (`wheel.L.marker`, `wheel.R.marker`).
-- `diff.sideA` / `diff.sideB` each hold two peg rings: `teeth` counts the horizontal gear driven by the crown wheel (42 / 18), `sideTeeth` the 16 upright pegs that mesh with the pinions.
+- `label`: Chinese name shown in callouts (English names: `js/teach/strings.en.js` `parts.names`). `teeth`: tooth count, used by the "count the teeth" tasks and by `tests/model.test.js`, which derives the ratio pointing south needs from these counts, the wheel diameter and the track.
+- Every gear has one **marker tooth** in a contrasting colour (child mesh `<node>.marker`, static relative to its gear), so children can follow a gear round and count turns. The wheels have a yellow marker spoke (`wheel.L.marker`, `wheel.R.marker`).
+- `diff.sideA` / `diff.sideB` each hold two rings of teeth: `teeth` counts the horizontal gear driven by the crown wheel (42 / 18), `sideTeeth` the 16 upright teeth that mesh with the pinions.
 - Song meshing phase: at all-zero angles every pair is in mesh. A lowered small flat wheel is in mesh only while `(smallR − 2·footR)`, `(smallL + 2·footL)` and `(small + 4·bigFlat)` are multiples of 30°. js/sim does not keep this when it lowers a wheel after a straight run (see `docs/model-notes.md`).
+
+## Materials
+
+Each mesh's glTF material name is a *role* (`wood`, `wood_dark`, `wheel`, `mark`, `lacquer`, `eave`, `peg`, `marker`, `blue`, `orange`, `gold`, `iron`, `rope`, `robe`, `skin`, `hat`); `js/scene/materials.js` RECIPES swap each role for the page's own material, and the GLB's flat colours are never shown. `blue` / `orange` (left / right train) and `marker` must stay clean colours: they take no photographed grain colour and no occlusion.
+
+## UVs and the baked atlas
+
+- `TEXCOORD_0` of every mesh is the **baked occlusion atlas's** UV: the whole chariot unwrapped into one square (`build_chariot.py unwrap()`, deterministic). The page keeps it as `uv1` and lays its own planar grain UVs over `uv` (`materials.js dressChariot`).
+- `build_chariot.py bake()` writes ambient occlusion × dust (upward faces a little darker) into `assets/photo/chariot-<mechanism>-ao-{1024,512}.webp` (Cycles, fixed seed). The page reads it as the `aoMap` of the wooden, lacquered, brass and iron roles once it arrives (`data-photo` gains `ao`); lite takes the 512. It only darkens indirect light, so wear that lightens an edge is not expressible this way (`design/decisions/0006-cad-level-chariot.md`).
+- The atlas is read top row first (glTF convention): `photo.js` decodes it without the flip it applies to tiled scans.
 
 ## Geometry rules
 
-- Gear teeth are wooden pegs (Song style, the text gives tooth pitch 3 寸), modelled as real teeth with the documented counts so children can count them. Pitch radii follow params: foot gear ⌀2.4, small flat ⌀1.2, big flat ⌀4.8 chi.
-- Differential: pitch radii must make the wheel→side gear ratio exactly 1 (`params.differential.inputRatio`) and the senses match the table above. Report the final layout in `docs/model-notes.md`.
-- Clearance: in every pose sampled from `js/sim/scenarios.js`, meshing pairs touch only where designed and no other pair intersects (`pnpm check:model`). Meshing pairs are tested in every pose in which they are in phase (all differential poses; Song poses with the wheel raised, or lowered in phase).
-- Budget: under 120 k triangles per GLB (classroom tablets). Use flat-shaded low-poly wood with vertex colours or simple materials. No textures larger than 1024².
+- Gear teeth are **radial block teeth** of hardwood (`params/chariot.json` `gear`: trapezoid section 0.11 at the root, 0.06 at the tip, let through the rim with a tenon showing inside), modelled with the documented counts so children can count them. All gears share one circular pitch, π×2.4/24 ≈ 0.314 chi (宋史 「齒間相去三寸」), except the differential's inner ring-and-pinion set (0.236). Pitch radii follow params: foot gear ⌀2.4, small flat ⌀1.2, big flat ⌀4.8 chi.
+- Differential: pitch radii must make the wheel→side gear ratio exactly D / track (`js/sim/params.js` DIFF.inputRatio, from the tooth counts) and the senses match the table above. Report the final layout in `docs/model-notes.md`.
+- Running gear from params `wheel` (30 two-part spokes, hollow-section felloe in 15 joints, 1.6° dish, 2.4-long waisted hub, tapered axle arms with caps and linchpins, 伏兔 under the sills) and body from params `body` (the red box 9.5 wide over the wheels; the gear room between the hubs' inner ends). The layout asserts that the gear room's boards clear the hubs, that the Song foot gears sit on the hubs between their inner ends and the spokes, and that the differential's left crown wheel clears both.
+- Clearance and meshing: in every pose sampled from `js/sim/scenarios.js`, meshing pairs touch only where designed and no other pair intersects (`pnpm check:model`, `CLEARANCE_OK`). Meshing pairs are tested in every pose in which they are in phase (all differential poses; Song poses with the wheel raised, or lowered in phase). At rest every meshing pair must also pass the `GEAR` lines: pitch circles touching (centre distance = r1 + r2 for parallel axes), each gear's teeth at least half a tooth height into the other's gaps, tooth tips clear of the other's rim (top clearance > 0), and a gap between tooth flanks.
+- Budget (`tests/model.test.js`): under 120 k triangles and 5 MB per GLB (classroom tablets; now about 29 k and 1.9 MB). No textures larger than 1024².
