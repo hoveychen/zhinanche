@@ -60,8 +60,14 @@ const BODY = { r: 5, h: 8 };
 const TOP_TIP = 30;
 const TOP_SPARE = 1.1;
 
-/** The close view over the chariot frames the ground this far round it (x, z) and the figure up to its head (the big figure: js/scene/rig.js). */
-const ABOVE = { x: 10, z: 8 };
+/**
+ * The close view over the chariot frames the ground this far round it (x;
+ * north and south, the south seal of the ring included: js/scene/ground.js)
+ * and the figure up to its head (the big figure: js/scene/rig.js), looking
+ * from the west, a little south, 33° up.
+ */
+const ABOVE = { x: 6, north: 7, south: 11.2 };
+const ABOVE_DIR = new THREE.Vector3(-1, 0.66, 0.2).normalize();
 const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
 
 /** Views close in on the works on purpose: they may look from inside the body. */
@@ -327,21 +333,24 @@ export class CameraRig {
         return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.6, 0.25), this.fit(3.6)) };
       }
       case "above": {
-        // Close over the chariot, north up, tipped so the figure reads as a
-        // figure; set in the part of the view the HUD leaves free (beside it,
-        // or above and below it: whichever leaves the chariot bigger). What
-        // must fit is the ground round the chariot (its wheel tracks) and the
-        // figure up its pole: in a wide, short view the figure's head is
-        // what reaches the top edge first.
-        const tip = THREE.MathUtils.degToRad(32);
-        const off = new THREE.Vector3(0, Math.cos(tip), Math.sin(tip));
-        const box = new THREE.Box3(new THREE.Vector3(f.x - ABOVE.x, 0, f.z - ABOVE.z), new THREE.Vector3(f.x + ABOVE.x, FIGURE_TOP, f.z + ABOVE.z));
+        // Over the chariot from its sunlit west side, a little south of west,
+        // tipped a third of the way up from the ground: low enough that the
+        // near wheel shows under the box (the box overhangs the wheels by
+        // 1.75; from higher up, or from the front, it hides them), high
+        // enough that the two wheel tracks lie apart, one in front of the
+        // chariot, one behind. The world keeps still (north to the left, the
+        // gate to the right), so the figure is seen to keep pointing south
+        // as the chariot turns. Framed: the ground round the chariot with the
+        // south seal of the ring, and the figure up its pole, set in the part
+        // of the view the HUD leaves free (beside it, or above and below it:
+        // whichever leaves the chariot bigger).
+        const box = new THREE.Box3(new THREE.Vector3(f.x - ABOVE.x, 0, f.z - ABOVE.north), new THREE.Vector3(f.x + ABOVE.x, FIGURE_TOP, f.z + ABOVE.south));
         let best = { d: Infinity, ins: this.insets() };
         for (const ins of this.bands()) {
-          const d = this.#fitBox(box, off, ins, 0.4);
+          const d = this.#fitBox(box, ABOVE_DIR, ins, 0.4);
           if (d < best.d * 0.95) best = { d, ins };
         }
-        return this.#aimBox(box, off, best.d, best.ins);
+        return this.#aimBox(box, ABOVE_DIR, best.d, best.ins);
       }
       case "wheels": {
         // The box (9.5 wide) hangs over the wheels (at local ±3): from the
