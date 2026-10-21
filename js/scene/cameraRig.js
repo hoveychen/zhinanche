@@ -126,6 +126,8 @@ export class CameraRig {
     /** the HUD's margins over the lower part of the view, where the chase view has the chariot (set by the world) */
     /** @type {() => Insets} */
     this.lowInsets = () => this.insets();
+    /** how much of the view's height a sheet pulled up over it covers (set by the world) */
+    this.cover = () => 0;
     /** the ways to keep clear of the HUD: beside it, or above and below it (set by the world) */
     /** @type {() => Insets[]} */
     this.bands = () => [this.insets()];
@@ -299,6 +301,14 @@ export class CameraRig {
         // other), set it where the HUD leaves the most room, further back if
         // it must be.
         const round = new THREE.Box3(new THREE.Vector3(f.x - CHASE_ROOM, 0, f.z - CHASE_ROOM), new THREE.Vector3(f.x + CHASE_ROOM, FIGURE_TOP, f.z + CHASE_ROOM));
+        // A sheet pulled up over the view (free driving on a phone): the
+        // picture is moved up into what still shows (World #liftOver), so
+        // keep the chariot and the figure whole in that, further back.
+        const c = Math.min(this.cover(), 0.7);
+        if (c > 0.05) {
+          const none = { left: 0, right: 0, top: 0, bottom: 0 };
+          return this.#aimBox(round, dir, Math.max(d, this.#fitBox(round, dir, { ...none, top: c / 2, bottom: c / 2 }, 0.25)), none);
+        }
         let best = { d: this.#fitBox(round, dir, ins, 0.25), ins };
         if (best.d > d) {
           for (const b of this.bands()) {

@@ -772,7 +772,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
 
   body[data-mode="free"] { --peek: 52px; }
   body[data-mode="free"] .sheet-handle { font-size: 15px; }
-  body[data-mode="free"] .panel { max-height: 66%; }
+  body[data-mode="free"] .panel { max-height: 58%; }
 }
 
 /* ---------- portrait screens and phones: the two wheels' distances lie down ---------- */

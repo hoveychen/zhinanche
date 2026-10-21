@@ -39,6 +39,8 @@ export class World {
   #lookState = { xray: false, highlight: [] };
   #figureBig = true;
   #viewed = false;
+  /** the sheet's cover when the chase view last framed for it */
+  #coverAt = 0;
 
   /** @param {HTMLElement} host */
   constructor(host) {
@@ -135,6 +137,7 @@ export class World {
     this.lift = 0;
     this.cam.bands = () => this.hudBands();
     this.cam.lowInsets = () => this.hudInsets(true);
+    this.cam.cover = () => this.cover();
 
     this.raycaster = new THREE.Raycaster();
     this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -448,6 +451,12 @@ export class World {
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
     this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works" || this.cam.view === "pair"), dt);
     this.cam.update(dt, this.camFocus());
+    // a sheet pulled up or put away: the chase view frames afresh for what shows
+    const c = this.cover();
+    if (Math.abs(c - this.#coverAt) > 0.05) {
+      this.#coverAt = c;
+      if (this.cam.view === "follow" && this.cam.atPreset && !this.cam.glide) this.cam.setView("follow", this.camFocus());
+    }
     this.#liftOver(dt);
   }
 
