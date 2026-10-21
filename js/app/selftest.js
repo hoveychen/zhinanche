@@ -4,7 +4,7 @@
 // scrolling, and each task can be done through the real controls. Results go
 // to the console and to window.__selftest / body[data-selftest].
 
-import { LESSONS } from "../teach/lessons.js";
+import { S, lessons } from "../i18n.js";
 import { ALL_CONTROLS } from "./directive.js";
 
 /** @import { App } from "./app.js" */
@@ -22,6 +22,37 @@ function visible(el) {
   if (el.closest("[hidden]")) return false;
   const r = el.getBoundingClientRect();
   return r.width > 0 && r.height > 0;
+}
+
+/**
+ * The step's nav bar, at its widest: with the "往下看" cue on (whether this
+ * step needs it at this size or not), every button sits inside the bar and
+ * no button's words are cut short.
+ * @returns {string[]}
+ */
+function navProblems() {
+  const nav = document.querySelector(".panel-nav");
+  const cue = nav?.querySelector(".more-cue");
+  if (!(nav instanceof HTMLElement) || !(cue instanceof HTMLElement)) return [];
+  const wasHidden = cue.hidden, wasOn = nav.classList.contains("cue-on");
+  cue.hidden = false;
+  nav.classList.add("cue-on");
+  /** @type {string[]} */
+  const out = [];
+  const box = nav.getBoundingClientRect();
+  for (const el of nav.children) {
+    if (!visible(el)) continue;
+    const r = el.getBoundingClientRect();
+    const name = el.textContent?.trim() || el.className;
+    if (r.left < box.left - 1 || r.right > box.right + 1) out.push(`nav "${name}" runs out of the bar`);
+    // the cue may drop its words before its arrow; buttons may not
+    if (el !== cue && el.scrollWidth > el.clientWidth + 1) out.push(`nav "${name}" is cut short`);
+  }
+  const words = cue.querySelector("span");
+  if (words && words.scrollWidth > words.clientWidth + 1) out.push(`nav cue "${words.textContent}" is cut short`);
+  cue.hidden = wasHidden;
+  nav.classList.toggle("cue-on", wasOn);
+  return out;
 }
 
 /**
@@ -76,16 +107,16 @@ export async function selftest({ app, course, world, input }) {
       app.followRoute(pts);
       for (let i = 0; i < 4000 && app.follow; i++) app.tick(0.05);
     },
-    opened: () => clickText("拆开"),
-    xrayOn: () => clickText("透视"),
-    switchedToSong: () => clickText("宋史式"),
+    opened: () => clickText(S().tools.apart),
+    xrayOn: () => clickText(S().tools.xray),
+    switchedToSong: () => clickText(S().tools.song),
     madeItDrift: () => {
-      clickText("轮距太宽");
+      clickText(S().tools.faultTrack);
       hold(["up", "left"], 3);
     },
     fixedDrift: () => {
-      clickText("造得刚好");
-      clickText("不打滑");
+      clickText(S().tools.faultNone);
+      clickText(S().tools.noSlip);
     },
     playedDemo: () => {
       click("[data-demo=walk]");
@@ -95,6 +126,7 @@ export async function selftest({ app, course, world, input }) {
 
   /** @type {{at: string, ok: boolean, problems: string[]}[]} */
   const results = [];
+  const LESSONS = lessons();
   for (let li = 0; li < LESSONS.length; li++) {
     const lesson = LESSONS[li];
     for (let si = 0; si < lesson.steps.length; si++) {
@@ -114,15 +146,37 @@ export async function selftest({ app, course, world, input }) {
           const shown = visible(document.querySelector(`[data-control="${id}"]`));
           if (shown !== st.controls.includes(id)) problems.push(`control ${id} ${shown ? "shown" : "hidden"}`);
         }
+        const t = step.task;
+        // guess first, then watch: nothing plays until the question is answered
+        const guess = t?.kind === "choose" && t.guess === true;
+        if (guess) {
+          if (app.playing) problems.push("plays before the guess");
+          if (world.holdHands.walking) problems.push("walks before the guess");
+          // nothing on the page plays it before the guess either ("walk them round")
+          const walk = document.querySelector("[data-demo=walk]");
+          if (walk instanceof HTMLButtonElement && visible(walk)) {
+            walk.click();
+            if (!walk.disabled || world.holdHands.walking) problems.push("walk button gives the guess away");
+          }
+          const opts = [...document.querySelectorAll(".task.choose .option")];
+          /** @type {HTMLElement} */ (opts[t.answer]).click();
+          if (!document.querySelector(".task.choose.passed")) problems.push("right answer not accepted");
+          if (walk instanceof HTMLButtonElement && walk.disabled) problems.push("walk button still off after the guess");
+        }
         if (step.scene?.play) {
+          // a step opening close on the figure holds its route till the camera is out
+          if (app.waiting) {
+            if (!world.cam.opening) problems.push("play waits with no opening to wait for");
+            app.play(app.waiting);
+          }
           if (!app.player) problems.push("play did not start");
           app.finishPlayback();
           if (app.player && !app.player.done) problems.push("play did not finish");
           if (!Number.isFinite(app.chariot.pose().errorDeg)) problems.push("pose is not finite");
         }
         if (document.documentElement.scrollWidth > window.innerWidth + 1) problems.push(`page scrolls sideways (${document.documentElement.scrollWidth} > ${window.innerWidth})`);
-        const t = step.task;
-        if (t?.kind === "choose") {
+        problems.push(...navProblems());
+        if (t?.kind === "choose" && !guess) {
           const opts = [...document.querySelectorAll(".task.choose .option")];
           /** @type {HTMLElement} */ (opts[t.answer]).click();
           if (!document.querySelector(".task.choose.passed")) problems.push("right answer not accepted");

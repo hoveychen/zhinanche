@@ -1,7 +1,11 @@
 // Lesson part ids (PartId in js/teach/types.js) → GLB node names
 // (docs/model-contract.md). A part missing from the current mechanism is
 // simply not there (e.g. "sideA" on the Song chariot). No three.js here, so
-// tests/scene/parts.test.js checks it against the GLB files.
+// tests/scene/parts.test.js checks it against the GLB files. The GLB labels
+// are Chinese; other languages map them to display names in their strings
+// table (parts.names).
+
+import { S } from "../i18n.js";
 
 /** @import { PartId } from "../teach/types.js" */
 
@@ -39,9 +43,11 @@ export function ownerOf(name) {
  * @returns {{title: string, detail: string}}
  */
 export function partCaption(extras) {
-  const title = extras.label ?? "";
+  const t = S().parts;
+  const label = extras.label ?? "";
+  const title = t.names[label] ?? label;
   let detail = "";
-  if (extras.teeth) detail = `${extras.teeth} 个齿`;
-  if (extras.teeth && extras.sideTeeth) detail += `；中间一圈 ${extras.sideTeeth} 根木销，咬着小齿轮`;
+  if (extras.teeth) detail = t.teeth(extras.teeth);
+  if (extras.teeth && extras.sideTeeth) detail += t.pegs(extras.sideTeeth);
   return { title, detail };
 }

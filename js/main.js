@@ -7,8 +7,13 @@ import { DriveInput } from "./app/drive.js";
 import { Tools } from "./app/tools.js";
 import { Course } from "./app/course.js";
 import { Dial, Odometer } from "./app/hud.js";
-import { byId, h } from "./app/dom.js";
-import { LESSONS } from "./teach/lessons.js";
+import { byId, h, s } from "./app/dom.js";
+import { S, bind, onLang, applyDocument, langSwitch, lessons } from "./i18n.js";
+import { decodeShare, setupOf } from "./app/share.js";
+import { placeCallout as placeCalloutBox } from "./app/callout.js";
+import { ShareButton } from "./app/sharelink.js";
+import { SceneLabels } from "./app/labels.js";
+import { hasSlip } from "./app/directive.js";
 
 /** @import { Object3D, Vector3 } from "three" */
 
@@ -16,25 +21,141 @@ const stage = byId("stage");
 const glHost = byId("stage-gl");
 const overlay = byId("stage-overlay");
 const loading = byId("loading");
+applyDocument();
+document.querySelector(".bar")?.append(langSwitch());
 
 const world = new World(glHost);
+// the other chariot's model loads in idle time after the first picture (prefetchOther),
+// or at once if it is picked before that
+world.onLoading = (on, err) => {
+  loading.hidden = !on && !err;
+  if (err) {
+    loading.textContent = S().ui.modelFailed;
+    loading.classList.add("error");
+  }
+};
+/** the view before "draw a road" went up above the ground, to go back to after */
+/** @type {import("./app/directive.js").SceneState["view"] | null} */
+let viewBeforeDraw = null;
+/** set while leaving the drawing for another view, which then is not undone */
+let keepView = false;
 const input = new DriveInput({
   onDraw: (on) => {
     world.controls.enabled = !on;
     stage.classList.toggle("drawing", on);
-    hint.hidden = !on;
-    if (on && app.state.view !== "top") app.direct({ view: "top" });
+    syncHint();
+    if (on) {
+      viewBeforeDraw = app.state.view;
+      if (app.state.view !== "top") app.direct({ view: "top" });
+      return;
+    }
+    const back = viewBeforeDraw;
+    viewBeforeDraw = null;
+    // a lesson step taking the draw button away sets its own view
+    if (!keepView && back && back !== "top" && app.state.view === "top" && app.state.controls.includes("draw")) app.direct({ view: back });
   },
-  onDrive: () => app.takeOver(),
+  onDrive: () => {
+    stopDrawing(false);
+    app.takeOver();
+  },
 });
+/**
+ * Leave "draw a road": the chariot set off on the road, or the child moved on
+ * to something else (driving by hand, X-ray, the gears).
+ * @param {boolean} restore go back to the view from before the drawing
+ */
+function stopDrawing(restore) {
+  if (!input.drawOn) return;
+  keepView = !restore;
+  input.setDraw(false);
+  keepView = false;
+}
 const app = new App(world, input);
-const tools = new Tools({ direct: (d) => app.direct(d), resetChariot: () => app.resetChariot() });
+world.busy = () => {
+  const c = input.command();
+  return c.fwd !== 0 || c.turn !== 0;
+};
+app.onPause((on) => {
+  pauseBtn.classList.toggle("on", on);
+  pauseBtn.setAttribute("aria-pressed", String(on));
+  pauseText.textContent = on ? S().ui.resume : S().ui.pause;
+  pausedNote.hidden = !on;
+  stage.classList.toggle("paused", on);
+});
+window.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+  // Space on a control reached with the keyboard presses that control;
+  // anything else (a button only clicked with the mouse keeps the focus) pauses.
+  if (t instanceof HTMLElement && t !== document.body && t.matches(":focus-visible") && t.closest("button, [role=button], a")) return;
+  e.preventDefault();
+  app.setPaused(!app.paused);
+});
+const tools = new Tools({
+  direct: (d) => {
+    stopDrawing(d.view === undefined);
+    app.direct(d);
+  },
+  resetChariot: () => {
+    stopDrawing(true);
+    app.resetChariot();
+  },
+});
 const dial = new Dial();
 const odo = new Odometer();
-const hint = h("p", { class: "stage-hint", hidden: true, text: "用手指在地上画一条路，松手车就出发" });
+const hint = bind(h("p", { class: "stage-hint", hidden: true }), (s) => s.stage.drawHint);
+// Free driving: go close on the gears (seen through the body) and back.
+const gearsText = h("span", { text: S().free.gearsOn });
+let xrayBeforeGears = false;
+const gearsBtn = h("button", {
+  type: "button", class: "draw-btn gears-btn", "data-control": "gearsView", "aria-pressed": "false",
+  onclick: () => {
+    stopDrawing(false);
+    const st = app.state;
+    if (st.view === "gears") app.direct({ view: "follow", xray: xrayBeforeGears });
+    else {
+      xrayBeforeGears = st.xray;
+      app.direct({ view: "gears", xray: true });
+    }
+  },
+}, [
+  /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M18.1 9.9 L20.9 9.9 L20.9 14.1 L18.1 14.1 L17.8 14.8 L19.8 16.8 L16.8 19.8 L14.8 17.8 L14.1 18.1 L14.1 20.9 L9.9 20.9 L9.9 18.1 L9.2 17.8 L7.2 19.8 L4.2 16.8 L6.2 14.8 L5.9 14.1 L3.1 14.1 L3.1 9.9 L5.9 9.9 L6.2 9.2 L4.2 7.2 L7.2 4.2 L9.2 6.2 L9.9 5.9 L9.9 3.1 L14.1 3.1 L14.1 5.9 L14.8 6.2 L16.8 4.2 L19.8 7.2 L17.8 9.2 Z M15 12 A3 3 0 1 0 9 12 A3 3 0 1 0 15 12" })]))),
+  gearsText,
+]);
 const demoCount = h("p", { class: "demo-count", hidden: true });
 const callout = h("div", { class: "callout", hidden: true, role: "status" });
-overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [input.drawBtn, input.pad]), hint, demoCount, callout);
+// Home page only (CSS): what to look at, and that the view can be dragged.
+const stageHook = h("div", { class: "stage-hook" }, [
+  bind(h("p", { class: "stage-hook-line" }), (s) => s.stage.hook),
+  h("p", { class: "drag-hint" }, [
+    /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { d: "M4 12 L8 8 V10.5 H16 V8 L20 12 L16 16 V13.5 H8 V16 Z" })]))),
+    bind(h("span"), (s) => s.stage.dragHint),
+  ]),
+]);
+// The global pause: holds the lesson's auto-play, hand driving, a drawn route,
+// the gears and the walking demo; the view can still be dragged round.
+const pauseText = h("span", { text: S().ui.pause });
+const pauseBtn = bind(h("button", { type: "button", class: "pause-btn", "aria-pressed": "false", onclick: () => app.setPaused(!app.paused) }, [
+  /** @type {Node} */ (/** @type {unknown} */ (s("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, [s("path", { class: "i-pause", d: "M6 4 H10 V20 H6 Z M14 4 H18 V20 H14 Z" }), s("path", { class: "i-play", d: "M7 4 L20 12 L7 20 Z" })]))),
+  pauseText,
+]), (s) => s.ui.pauseKey, "title");
+const share = new ShareButton(() => setupOf(app.state, app.drawn));
+const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [bind(h("b"), (s) => s.ui.paused), bind(h("span"), (s) => s.ui.pausedHow)]);
+// the pause note and the drawing hint stack at the top middle, never on top of each other
+// Esc backs out of what the view's own buttons go into: the gears close-up, drawing a road
+addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (input.drawOn) stopDrawing(true);
+  else if (app.state.view === "gears" && !gearsBtn.hidden) gearsBtn.click();
+  else return;
+  e.preventDefault();
+});
+overlay.append(dial.el, odo.el, h("div", { class: "drive-dock" }, [gearsBtn, input.drawBtn, input.pad]), h("div", { class: "stage-notes" }, [pausedNote, hint]), demoCount, callout, stageHook, pauseBtn, share.el, share.status);
+/** The drawing hint shows while a road is wanted: not while one is being drawn or driven. */
+function syncHint() {
+  hint.hidden = !input.drawOn || drawing !== null || app.follow !== null;
+}
 
 const course = new Course(app, tools, byId("panel"), {
   onMode: (mode) => {
@@ -53,26 +174,94 @@ for (const b of document.querySelectorAll("[data-go]")) {
 app.onState((st) => {
   tools.sync(st);
   odo.el.hidden = !st.odometer || st.demo === "holdHands";
+  // its words now, not on the next frame: the view placed next keeps clear of it at its full height
+  if (!odo.el.hidden) odo.update(app.chariot.distL, app.chariot.distR);
   input.pad.hidden = !st.controls.includes("drive");
   input.drawBtn.hidden = !st.controls.includes("draw");
+  gearsBtn.hidden = !st.controls.includes("gearsView");
+  const gears = st.view === "gears";
+  gearsBtn.classList.toggle("on", gears);
+  gearsBtn.setAttribute("aria-pressed", String(gears));
+  gearsText.textContent = gears ? S().free.gearsOff : S().free.gearsOn;
   demoCount.hidden = st.demo !== "holdHands";
   dial.el.hidden = st.demo === "holdHands";
+  world.setIce(hasSlip(st.slip));
   hideCallout();
 });
 world.holdHands.onLap = () => app.tracker.demoLap();
+onLang(() => {
+  pauseText.textContent = app.paused ? S().ui.resume : S().ui.pause;
+  gearsText.textContent = gearsBtn.classList.contains("on") ? S().free.gearsOff : S().free.gearsOn;
+  hideCallout();
+  course.relabel();
+});
 // Routes are framed beside the HUD: each panel on the view takes its side.
-world.hudInsets = () => {
+world.hudInsets = (low = false) => {
   const r = stage.getBoundingClientRect();
   const ins = { left: 0, right: 0, top: 0, bottom: 0 };
   if (!r.width || !r.height) return ins;
-  for (const el of [dial.el, odo.el, input.pad, input.drawBtn]) {
+  for (const el of [dial.el, odo.el, input.pad, input.drawBtn, gearsBtn]) {
     if (el.hidden || el.offsetParent === null) continue;
     const b = el.getBoundingClientRect();
+    // low: only what reaches down beside the chariot in the chase view (not the dial up top)
+    if (low && b.bottom < r.top + r.height * 0.45) continue;
     if ((b.left + b.right) / 2 < r.left + r.width / 2) ins.left = Math.max(ins.left, (b.right - r.left + 8) / r.width);
     else ins.right = Math.max(ins.right, (r.right - b.left + 8) / r.width);
   }
   return ins;
 };
+// A phone's free-driving sheet, pulled up, lies over the bottom of the view.
+world.cover = () => {
+  const r = stage.getBoundingClientRect(), p = byId("panel").getBoundingClientRect();
+  // only a panel over the view (beside it or under it on a wider screen is not)
+  if (!r.height || p.left >= r.right - 1 || p.right <= r.left + 1 || p.top >= r.bottom || p.bottom < r.bottom) return 0;
+  return (r.bottom - Math.max(p.top, r.top)) / r.height;
+};
+// The parts taken apart are framed beside the HUD too, or in the band
+// between what sits along the top (dial, pause) and along the bottom (the
+// drive dock, the odometer), whichever leaves them bigger.
+world.hudBands = () => {
+  const r = stage.getBoundingClientRect();
+  const band = { left: 0, right: 0, top: 0, bottom: 0 };
+  if (!r.width || !r.height) return [world.hudInsets()];
+  /** @type {DOMRect[]} */
+  const boxes = [];
+  for (const el of [dial.el, dial.text, pauseBtn, share.el, odo.el, input.pad, input.drawBtn, gearsBtn]) {
+    if (el.hidden || el.offsetParent === null) continue;
+    const b = el.getBoundingClientRect();
+    if (!b.width || !b.height) continue;
+    boxes.push(b);
+    if ((b.top + b.bottom) / 2 < r.top + r.height / 2) band.top = Math.max(band.top, (b.bottom - r.top + 8) / r.height);
+    else band.bottom = Math.max(band.bottom, (r.bottom - b.top + 8) / r.height);
+  }
+  return [world.hudInsets(), band, freeBox(r, boxes)];
+};
+
+/**
+ * The biggest clear rectangle among the HUD's panels (a crowded HUD, as in
+ * free driving on a tablet, leaves neither a clear column nor a clear band,
+ * but a clear middle), as margins of the view. Biggest: the largest square
+ * that fits in it, then the largest area.
+ * @param {DOMRect} r the view @param {DOMRect[]} boxes the panels over it
+ */
+function freeBox(r, boxes) {
+  const pad = 8;
+  const xs = [r.left, r.right, ...boxes.flatMap((b) => [b.left - pad, b.right + pad])].filter((x) => x >= r.left && x <= r.right);
+  const ys = [r.top, r.bottom, ...boxes.flatMap((b) => [b.top - pad, b.bottom + pad])].filter((y) => y >= r.top && y <= r.bottom);
+  let best = { left: 0, right: 0, top: 0, bottom: 0 }, score = -1;
+  for (const x0 of xs) for (const x1 of xs) {
+    if (x1 <= x0) continue;
+    for (const y0 of ys) for (const y1 of ys) {
+      if (y1 <= y0) continue;
+      const s = Math.min(x1 - x0, y1 - y0) * 1e6 + (x1 - x0) * (y1 - y0);
+      if (s <= score) continue;
+      if (boxes.some((b) => b.left - pad < x1 && b.right + pad > x0 && b.top - pad < y1 && b.bottom + pad > y0)) continue;
+      score = s;
+      best = { left: (x0 - r.left) / r.width, right: (r.right - x1) / r.width, top: (y0 - r.top) / r.height, bottom: (r.bottom - y1) / r.height };
+    }
+  }
+  return best;
+}
 
 // ---------- pointer: draw a route, or tap a part ----------
 
@@ -84,6 +273,9 @@ const canvas = world.renderer.domElement;
 
 canvas.addEventListener("pointerdown", (e) => {
   press = { x: e.clientX, y: e.clientY, t: performance.now() };
+  stage.classList.add("touched");
+  // back to the view: fold the free-driving sheet away (phones)
+  if (document.body.dataset.sheet === "open") course.setSheet(false);
   if (!input.drawOn || !e.isPrimary) return;
   const p = world.groundAt(e.clientX, e.clientY);
   if (!p) return;
@@ -91,6 +283,7 @@ canvas.addEventListener("pointerdown", (e) => {
   app.takeOver();
   drawing = [p];
   world.route.set([toWorld(app.chariot), p]);
+  syncHint();
 });
 canvas.addEventListener("pointermove", (e) => {
   if (!drawing) return;
@@ -108,7 +301,12 @@ const endDraw = () => {
   let len = 0;
   for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
   if (len < 4) world.route.clear();
-  else app.followRoute(pts);
+  else {
+    app.followRoute(pts);
+    // the road is down: back to following the chariot along it
+    stopDrawing(true);
+  }
+  syncHint();
 };
 canvas.addEventListener("pointerup", (e) => {
   if (drawing) {
@@ -148,10 +346,34 @@ function placeCallout() {
   if (performance.now() > pinned.until) return hideCallout();
   const p = world.project(pinned.node.localToWorld(pinned.local.clone()));
   if (p.behind) return hideCallout();
-  const w = overlay.clientWidth;
-  callout.style.left = `${Math.max(8, Math.min(w - callout.offsetWidth - 8, p.x - callout.offsetWidth / 2))}px`;
-  callout.style.top = `${Math.max(8, p.y - callout.offsetHeight - 18)}px`;
+  const at = placeCalloutBox(p, { w: callout.offsetWidth, h: callout.offsetHeight }, { w: overlay.clientWidth, h: overlay.clientHeight }, hudBoxes(true));
+  callout.style.left = `${at.x}px`;
+  callout.style.top = `${at.y}px`;
 }
+
+/**
+ * What sits on the 3D view and must stay uncovered, px within the overlay.
+ * @param {boolean} [labels] the scene labels too (for the part callout)
+ */
+function hudBoxes(labels = false) {
+  const o = overlay.getBoundingClientRect();
+  const boxes = [];
+  // the dial's words can run wider than the dial on a phone
+  /** @type {HTMLElement[]} */
+  const els = [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote];
+  if (labels) els.push(.../** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(".scene-label")));
+  else els.push(callout);
+  for (const el of els) {
+    if (el.hidden) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) boxes.push({ x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height });
+  }
+  return boxes;
+}
+
+// ---------- words over the scene (the compass, the inside and outside circles) ----------
+
+const labels = new SceneLabels(overlay, [...world.holdHands.labels, ...world.compass.labels], (p) => world.project(p), () => hudBoxes());
 
 // ---------- frame loop ----------
 
@@ -161,7 +383,12 @@ function frame(/** @type {number} */ now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   last = now;
   app.tick(dt);
-  world.animate(dt);
+  if (app.paused) {
+    // hold everything that moves by itself; the camera still follows a drag
+    world.animate(0);
+    world.cam.update(dt, world.camFocus());
+  } else world.animate(dt);
+  labels.update();
   hudClock += dt;
   if (hudClock > 1 / 30) {
     hudClock = 0;
@@ -169,33 +396,74 @@ function frame(/** @type {number} */ now) {
     const cam = world.camera.position, tgt = world.controls.target;
     const camBearing = Math.atan2(-(tgt.z - cam.z), tgt.x - cam.x);
     dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
-    if (!odo.el.hidden) odo.update(pose.distL, pose.distR);
-    if (!demoCount.hidden) demoCount.textContent = `里圈走了 ${world.holdHands.steps.in} 步，外圈走了 ${world.holdHands.steps.out} 步`;
+    if (!odo.el.hidden) {
+      odo.update(pose.distL, pose.distR);
+      // a guess-first question about the wheels, or a route whose end the words
+      // tell ("one more turn"): the line that compares them waits
+      odo.diff.hidden = course.tallyHeld;
+    }
+    syncHint();
+    if (!demoCount.hidden) demoCount.textContent = S().stage.demoCount(world.holdHands.steps.in, world.holdHands.steps.out);
     placeCallout();
   }
   world.render();
   requestAnimationFrame(frame);
 }
 
+/**
+ * A shared link (#s=1&…, js/app/share.js): free driving set up as it was,
+ * driving the route that was drawn.
+ * @param {import("./app/share.js").ShareSetup} sh
+ */
+function openShared(sh) {
+  const { route, ...setup } = sh;
+  course.free(setup);
+  if (route) app.driveDrawn(route);
+}
+window.addEventListener("hashchange", () => {
+  const sh = decodeShare(location.hash);
+  if (sh) openShared(sh);
+});
+
 try {
-  await world.load();
-  loading.hidden = true;
+  const shared = decodeShare(location.hash);
+  // load the shared chariot first, not the default one
+  if (shared) world.mechanism = shared.mechanism;
   // ?free opens free driving; ?lesson=N&step=K (1-based) opens a lesson step.
   const q = new URLSearchParams(location.search);
+  const LESSONS = lessons();
   const li = Number(q.get("lesson")) - 1;
-  if (q.has("free")) course.free();
-  else if (Number.isInteger(li) && li >= 0 && li < LESSONS.length) {
-    const k = Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1)));
-    course.open(li, k - 1);
-  }
+  const k = Number.isInteger(li) && li >= 0 && li < LESSONS.length ? Math.min(LESSONS[li].steps.length, Math.max(1, Math.trunc(Number(q.get("step")) || 1))) : 0;
+  // the panel's words need no model: put them up while it loads, in a gap
+  // while the model is fetched and compiled, so they do not hold it up
+  const loaded = world.load();
+  let up = false;
+  const early = () => {
+    if (up) return;
+    up = true;
+    course.preview(shared || q.has("free") ? { mode: "free" } : k ? { mode: "lesson", lesson: li, step: k - 1 } : { mode: "home" });
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(early);
+  else setTimeout(early, 0);
+  await loaded;
+  up = true;
+  loading.hidden = true;
+  course.panel.inert = false;
+  if (shared) openShared(shared);
+  else if (q.has("free")) course.free();
+  else if (k) course.open(li, k - 1);
   else course.home();
   requestAnimationFrame(frame);
+  world.prefetchOther();
+  // ?promo: hand the promo recorder (tools/promo/) the scene to direct; nothing else changes
+  if (q.has("promo")) Object.assign(window, { __promo: { app, world, course } });
   if (q.has("selftest")) {
     const { selftest } = await import("./app/selftest.js");
     await selftest({ app, course, world, tools, input });
   }
 } catch (err) {
-  loading.textContent = "车没能搬出来，请刷新页面再试一次。";
+  loading.removeAttribute("data-i18n");
+  bind(loading, (s) => s.bar.loadFailed);
   loading.classList.add("error");
   throw err;
 }

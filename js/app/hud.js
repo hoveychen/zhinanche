@@ -1,8 +1,9 @@
 // Heads-up displays over the 3D view: the south dial (where the figure points,
-// turned to match the camera like a map) and the two wheels' distances.
+// turned to match the camera like a map, its letters kept upright) and the two
+// wheels' distances, which fold away with a tap.
 
 import { h, s } from "./dom.js";
-import { CHI_IN_METERS } from "../sim/params.js";
+import { S, bind, onLang } from "../i18n.js";
 
 /** Degrees off south still shown as "pointing south". Same as the ground ring. */
 const OK_DEG = 1;
@@ -16,15 +17,19 @@ export class Dial {
       const r1 = d % 90 === 0 ? 70 : 76;
       ticks.push(s("line", { x1: Math.sin(a) * r1, y1: -Math.cos(a) * r1, x2: Math.sin(a) * 82, y2: -Math.cos(a) * 82, class: d % 90 === 0 ? "tick major" : "tick" }));
     }
-    const letter = (/** @type {string} */ t, /** @type {number} */ x, /** @type {number} */ y) => {
-      const el = s("text", { x, y, class: "dir" });
-      el.textContent = t;
+    /** the letters ride round with the rose but are turned back to stay upright */
+    /** @type {{el: SVGElement, x: number, y: number}[]} */
+    this.upright = [];
+    const letter = (/** @type {"north" | "east" | "west"} */ t, /** @type {number} */ x, /** @type {number} */ y) => {
+      const el = bind(s("text", { x, y, class: "dir" }), (str) => str.hud[t]);
+      this.upright.push({ el, x, y });
       return el;
     };
-    const seal = s("g", { class: "seal", transform: "translate(0 58)" }, [s("rect", { x: -17, y: -17, width: 34, height: 34, rx: 3 })]);
-    const nan = s("text", { x: 0, y: 1 });
-    nan.textContent = "南";
-    seal.append(nan);
+    const stamp = s("g", {}, [s("rect", { x: -17, y: -17, width: 34, height: 34, rx: 3 })]);
+    const nan = bind(s("text", { x: 0, y: 1 }), (str) => str.hud.south);
+    stamp.append(nan);
+    const seal = s("g", { class: "seal", transform: "translate(0 58)" }, [stamp]);
+    this.upright.push({ el: stamp, x: 0, y: 0 });
     this.arm = s("g", { class: "arm" }, [
       s("path", { d: "M 6 -5 L 52 -5 L 52 -12 L 74 0 L 52 12 L 52 5 L 6 5 Z" }),
     ]);
@@ -37,7 +42,7 @@ export class Dial {
     this.rose = s("g", { class: "rose" }, [
       ...ticks,
       s("line", { x1: 0, y1: 8, x2: 0, y2: 40, class: "southline" }),
-      letter("北", 0, -55), letter("东", 55, 0), letter("西", -55, 0),
+      letter("north", 0, -55), letter("east", 55, 0), letter("west", -55, 0),
       seal, this.arm,
     ]);
     const svg = s("svg", { viewBox: "-100 -100 200 200", "aria-hidden": "true" }, [
@@ -49,6 +54,10 @@ export class Dial {
     this.text = h("p", { class: "dial-text", "aria-live": "polite" });
     this.el = h("div", { class: "hud-dial", role: "status" }, [/** @type {Node} */ (/** @type {unknown} */ (svg)), this.text]);
     this.lastText = "";
+    this.lastRot = NaN;
+    onLang(() => {
+      this.lastText = "";
+    });
   }
 
   /**
@@ -60,12 +69,16 @@ export class Dial {
   update(figureWorld, heading, errorDeg, camBearing) {
     const rot = camBearing * DEG - 90;
     this.rose.setAttribute("transform", `rotate(${rot.toFixed(2)})`);
+    if (!(Math.abs(rot - this.lastRot) <= 0.05)) {
+      this.lastRot = rot;
+      for (const u of this.upright) u.el.setAttribute("transform", `rotate(${(-rot).toFixed(2)} ${u.x} ${u.y})`);
+    }
     this.arm.setAttribute("transform", `rotate(${(-figureWorld * DEG).toFixed(2)})`);
     // the chariot icon sits outside the rose group, so it gets both rotations
     this.cart.setAttribute("transform", `rotate(${(rot - heading * DEG).toFixed(2)})`);
     const ok = Math.abs(errorDeg) < OK_DEG;
     const deg = Math.round(Math.abs(errorDeg));
-    const t = ok ? "木人指着正南" : `木人偏离正南 ${deg}°`;
+    const t = ok ? S().hud.onSouth : S().hud.offSouth(deg);
     if (t !== this.lastText) {
       this.text.textContent = t;
       this.lastText = t;
@@ -75,33 +88,40 @@ export class Dial {
   }
 }
 
-/** Format chi with one decimal, no "-0.0". @param {number} v */
-const fmt = (v) => {
-  const r = Math.round(v * 10) / 10;
-  return (Object.is(r, -0) ? 0 : r).toFixed(1);
-};
-
 export class Odometer {
   constructor() {
-    /** @param {"l" | "r"} side @param {string} name */
+    /** @param {"l" | "r"} side @param {"wheelL" | "wheelR"} name */
     const col = (side, name) => {
       const fill = h("div", { class: "fill" });
       const num = h("b", { class: "num" });
       const m = h("small", { class: "m" });
       const el = h("div", { class: `odo-col ${side}` }, [
-        h("div", { class: "odo-read" }, [num, h("span", { class: "unit", text: "尺" }), m]),
+        h("div", { class: "odo-read" }, [num, bind(h("span", { class: "unit" }), (str) => str.hud.unit), m]),
         h("div", { class: "odo-bar" }, [h("div", { class: "zero" }), fill]),
-        h("div", { class: "odo-name", text: name }),
+        bind(h("div", { class: "odo-name" }), (str) => str.hud[name]),
       ]);
       return { el, fill, num, m };
     };
-    this.l = col("l", "左轮");
-    this.r = col("r", "右轮");
+    this.l = col("l", "wheelL");
+    this.r = col("r", "wheelR");
     this.diff = h("p", { class: "odo-diff" });
-    this.el = h("div", { class: "hud-odo", role: "group", "aria-label": "两个车轮各走了多远" }, [
+    // A tap folds it down to the one line under the bars (small screens need the room).
+    this.el = bind(h("div", { class: "hud-odo", role: "button", tabindex: "0", "aria-expanded": "true" }, [
       h("div", { class: "odo-cols" }, [this.l.el, this.r.el]),
       this.diff,
-    ]);
+      h("span", { class: "odo-fold", "aria-hidden": "true" }),
+    ]), (str) => str.hud.odoLabel, "aria-label");
+    const fold = () => {
+      const folded = this.el.classList.toggle("folded");
+      this.el.setAttribute("aria-expanded", String(!folded));
+    };
+    this.el.addEventListener("click", fold);
+    this.el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fold();
+      }
+    });
     this.scale = 10;
   }
 
@@ -113,21 +133,24 @@ export class Odometer {
     while (this.scale > 10 && big < this.scale / 4) this.scale /= 2;
     const neg = distL < -0.05 || distR < -0.05;
     this.el.classList.toggle("signed", neg);
+    const t = S().hud;
     for (const [c, v] of /** @type {const} */ ([[this.l, distL], [this.r, distR]])) {
       const f = Math.min(1, Math.abs(v) / this.scale);
-      const pct = neg ? f * 50 : f * 100;
-      c.fill.style.height = `${pct}%`;
-      c.fill.style.bottom = neg && v < 0 ? `${50 - pct}%` : neg ? "50%" : "0";
+      // the bar's length and where it starts, as fractions; CSS lays the bars
+      // out upright or (on phones) lying down
+      const len = neg ? f / 2 : f;
+      c.fill.style.setProperty("--len", len.toFixed(4));
+      c.fill.style.setProperty("--from", (neg && v < 0 ? 0.5 - len : neg ? 0.5 : 0).toFixed(4));
       c.fill.classList.toggle("back", v < -0.05);
-      c.num.textContent = fmt(v);
-      c.m.textContent = `约 ${fmt(v * CHI_IN_METERS)} 米`;
+      c.num.textContent = t.num(v);
+      c.m.textContent = t.sub(v);
     }
     const d = distR - distL;
-    let t = "两个轮子走得一样多";
+    let line = t.same;
     // one forward and one back (spinning on the spot): "more" would be wrong
-    if (Math.min(distL, distR) <= -0.1 && Math.max(distL, distR) >= 0.1) t = "两个轮子朝相反方向走";
-    else if (Math.abs(d) >= 0.1) t = d > 0 ? `右轮比左轮多走 ${fmt(d)} 尺` : `左轮比右轮多走 ${fmt(-d)} 尺`;
-    this.diff.textContent = t;
+    if (Math.min(distL, distR) <= -0.1 && Math.max(distL, distR) >= 0.1) line = t.opposite;
+    else if (Math.abs(d) >= 0.1) line = d > 0 ? t.rightMore(d) : t.leftMore(-d);
+    this.diff.textContent = line;
     this.diff.dataset.side = Math.abs(d) < 0.1 ? "" : d > 0 ? "r" : "l";
   }
 }

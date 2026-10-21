@@ -98,7 +98,7 @@ def wheel(L, side, colour, parent, hub_y=(2.75, 3.3)):
         (marker if k == 0 else mb).beam(p0, p1, 0.1, 0.08, "marker" if k == 0 else "wood_dark", up=(0, 1, 0))
     obj = mb.build(f"wheel.{side}", c, parent)
     set_rotate(obj, f"wheel{side}", (0, 1, 0))
-    set_teach(obj, "wheel", "左车轮" if side == "L" else "右车轮", (0, sy * 2.2, 0))
+    set_teach(obj, "wheel", "左车轮" if side == "L" else "右车轮", (0, sy * 2.8, 0))
     m = marker.build(f"wheel.{side}.marker", c, obj)
     set_teach(m, "wheel", ("左车轮" if side == "L" else "右车轮") + "的记号辐条")
     return obj
@@ -225,13 +225,15 @@ def pole(root, x_rear, length, crossbars):
 # --------------------------------------------------------------------------- figure
 
 
-def figure(L, root):
+def figure(L, root, lift):
+    """lift: how far (chi) the shaft rises when taken apart; the figure rises
+    one chi more, so it comes off the shaft but stays close to the gears."""
     s, z = L.shaft_x, L.shaft_top
     sh = MB()
     sh.cyl((s, 0, L.shaft_bottom), (s, 0, z), L.shaft_r, "gold", n=10)
     shaft = sh.build("figure.shaft", (s, 0, L.shaft_bottom), root)
     set_rotate(shaft, "figure", (0, 0, 1))
-    set_teach(shaft, "figure", "竖轴（木人站在顶上）", (0, 0, 3.0))
+    set_teach(shaft, "figure", "竖轴（木人站在顶上）", (0, 0, lift))
 
     mb = MB()
     c = (s, 0, z)
@@ -239,25 +241,40 @@ def figure(L, root):
     def at(dx, dy, dz):
         return (s + dx, dy, z + dz)
 
-    def octo(r, dz):
-        return [at(r * math.cos(math.pi / 8 + k * math.pi / 4), r * math.sin(math.pi / 8 + k * math.pi / 4), dz) for k in range(8)]
+    def ring(r, dz, n=16, ry=None):
+        ry = r if ry is None else ry
+        return [at(r * math.cos(math.pi / n + k * 2 * math.pi / n), ry * math.sin(math.pi / n + k * 2 * math.pi / n), dz) for k in range(n)]
 
-    mb.disc(at(0, 0, 0.07), (0, 0, 1), 0.32, 0.14, "gold", n=12)
-    mb.frustum(octo(0.3, 0.14), octo(0.17, 0.95), "robe")
-    mb.frustum(octo(0.19, 0.5), octo(0.2, 0.58), "gold")             # belt
-    mb.cyl(at(0.02, 0, 0.84), at(0.72, 0, 0.9), 0.065, "robe", n=8)    # pointing arm (+X)
-    mb.cyl(at(0.72, 0, 0.9), at(0.93, 0, 0.92), 0.04, "skin", n=6)    # hand, finger
-    mb.cyl(at(-0.02, 0.17, 0.86), at(0.06, 0.24, 0.45), 0.06, "robe", n=8)
-    mb.cyl(at(0, 0, 0.94), at(0, 0, 1.02), 0.06, "skin", n=8)
-    mb.frustum(octo(0.11, 1.0), octo(0.14, 1.12), "skin")
-    mb.frustum(octo(0.14, 1.12), octo(0.11, 1.25), "skin")
-    mb.disc(at(0, 0, 1.25), (0, 0, 1), 0.2, 0.03, "hat", n=12)
-    mb.frustum(octo(0.12, 1.26), octo(0.08, 1.43), "hat")
-    for dy in (-0.05, 0.05):                                           # eyes, facing +X
-        mb.box(at(0.125, dy - 0.015, 1.15), at(0.145, dy + 0.015, 1.18), "hat")
-    fig = mb.build("figure", c, root)
+    # Carved and lacquered, rounded like a turned wooden doll: a robe that
+    # flares a little at the hem and rounds over the shoulders, an egg of a
+    # head, a long sleeve to a slender hand that points along +X. Built smooth
+    # (faces under 40° apart shade as one surface; hems, cuffs and caps stay crisp).
+    mb.disc(at(0, 0, 0.07), (0, 0, 1), 0.32, 0.14, "gold", n=24)
+    mb.frustum(ring(0.31, 0.14), ring(0.29, 0.22), "robe")             # hem
+    mb.frustum(ring(0.29, 0.22), ring(0.19, 0.8), "robe")
+    mb.frustum(ring(0.19, 0.8), ring(0.15, 0.9), "robe")               # shoulders
+    mb.frustum(ring(0.15, 0.9), ring(0.08, 0.95), "robe")
+    mb.frustum(ring(0.198, 0.5), ring(0.205, 0.58), "gold")             # belt
+    mb.cyl(at(0.02, 0, 0.84), at(0.56, 0, 0.9), 0.07, "robe", n=12)    # pointing arm (+X), sleeve
+    mb.disc(at(0.58, 0, 0.902), (1, 0, 0.11), 0.085, 0.05, "robe", n=12)  # cuff
+    mb.ellipsoid(at(0.64, 0, 0.905), (0.055, 0.045, 0.045), "skin", n=10, m=6)  # hand
+    mb.cyl(at(0.66, 0, 0.912), at(0.79, 0, 0.925), 0.018, "skin", n=8)  # finger
+    mb.cyl(at(-0.02, 0.17, 0.86), at(0.05, 0.235, 0.5), 0.065, "robe", n=12)  # other arm, hanging
+    mb.ellipsoid(at(0.055, 0.24, 0.46), (0.045, 0.04, 0.05), "skin", n=10, m=6)
+    mb.cyl(at(0, 0, 0.93), at(0, 0, 1.01), 0.055, "skin", n=12)        # neck
+    mb.ellipsoid(at(0, 0, 1.115), (0.122, 0.115, 0.135), "skin", n=20, m=10)  # head
+    mb.ellipsoid(at(0.118, 0, 1.105), (0.022, 0.018, 0.026), "skin", n=8, m=5)  # nose
+    for dy in (-0.048, 0.048):                                          # eyes and brows, facing +X
+        mb.ellipsoid(at(0.109, dy, 1.128), (0.02, 0.017, 0.012), "hat", n=8, m=5)
+        mb.beam(at(0.114, dy - 0.028, 1.152), at(0.114, dy + 0.028, 1.152), 0.014, 0.008, "hat")
+    mb.beam(at(0.112, -0.028, 1.062), at(0.112, 0.028, 1.062), 0.012, 0.008, "robe")  # mouth
+    # a rounded black cap with a band, its crown standing up at the back
+    mb.ellipsoid(at(-0.01, 0, 1.23), (0.135, 0.13, 0.085), "hat", n=20, m=10)
+    mb.ellipsoid(at(-0.035, 0, 1.31), (0.085, 0.085, 0.085), "hat", n=16, m=8)
+    mb.frustum(ring(0.126, 1.175, 20, 0.12), ring(0.132, 1.2, 20, 0.126), "hat")
+    fig = mb.build("figure", c, root, smooth=40)
     set_rotate(fig, "figure", (0, 0, 1))
-    set_teach(fig, "figure", "木人", (0, 0, 8.0))
+    set_teach(fig, "figure", "木人", (0, 0, lift + 1.0))
 
 
 # --------------------------------------------------------------------------- Song
@@ -291,7 +308,7 @@ def build_song(L, root):
         def foot_hub(mb, sy=sy):
             mb.cyl((0, sy * 2.55, L.axle_z), (0, sy * 2.8, L.axle_z), 0.26, "wood_dark", n=10)
 
-        o = peg_wheel(foot, colour, root, f"{side_cn}立子轮", foot.r - L.ded, (0, sy * 1.2, 0), disc="ring", hub=(0.26, 0.1),
+        o = peg_wheel(foot, colour, root, f"{side_cn}立子轮", foot.r - L.ded, (0, sy * 1.4, 0), disc="ring", hub=(0.26, 0.1),
                       spokes=4, ring_w=0.28, extra=foot_hub)
         set_rotate(o, "foot" + side, foot.axis)
 
@@ -305,7 +322,7 @@ def build_song(L, root):
         lift.box((4.48, sy * 1.35 - 0.07, 3.62), (4.62, sy * 1.35 + 0.07, 3.8), "iron")
         lo = lift.build(f"song.smallLift.{side}", sm.center, root)
         set_lift(lo, f"clutch{side}", L.lift)
-        set_teach(lo, "gear", f"{side_cn}小平轮的吊绳（拉起、放下小平轮）", (0, sy * 0.3, 1.0))
+        set_teach(lo, "gear", f"{side_cn}小平轮的吊绳（拉起、放下小平轮）", (0, sy * 0.5, 1.0))
         so = peg_wheel(sm, colour, lo, f"{side_cn}小平轮", sm.r - L.ded, disc="solid", t=0.12, hub=(0.12, 0.22))
         set_rotate(so, "small" + side, sm.axis)
 
@@ -319,9 +336,9 @@ def build_song(L, root):
         set_teach(ro, "gear", f"车辕头上的{side_cn}小轮", (0, 0, 0.6))
 
     big = g["big"]
-    o = peg_wheel(big, "gold", root, "大平轮", big.r - L.ded, (0, 0, 0), disc="ring", t=0.12, hub=(0.3, 0.26), spokes=6, ring_w=0.34)
+    o = peg_wheel(big, "gold", root, "大平轮", big.r - L.ded, (0, 0, 2.0), disc="ring", t=0.12, hub=(0.3, 0.26), spokes=6, ring_w=0.34)
     set_rotate(o, "bigFlat", big.axis)
-    figure(L, root)
+    figure(L, root, 2.6)
 
 
 # --------------------------------------------------------------------------- differential
@@ -349,9 +366,9 @@ def build_differential(L, root):
             mb.cyl(cr.center, (0, sy * 3.3, L.axle_z), 0.16, "wood_dark", n=10)
 
         if side == "L":
-            o = peg_wheel(cr, colour, root, label, cr.r - L.ded, (0, 0.8, -0.6), disc="ring", hub=(0.28, 0.14), extra=half_shaft)
+            o = peg_wheel(cr, colour, root, label, cr.r - L.ded, (0, 1.4, 0), disc="ring", hub=(0.28, 0.14), extra=half_shaft)
         else:
-            o = peg_wheel(cr, colour, root, label, cr.r - L.ded, (0, -0.8, 0.7), disc="solid", hub=(0.24, 0.14), extra=half_shaft)
+            o = peg_wheel(cr, colour, root, label, cr.r - L.ded, (0, -1.4, 2.2), disc="solid", hub=(0.24, 0.14), extra=half_shaft)
         set_rotate(o, "wheel" + side, cr.axis)
 
     ringA, ringB = g["ringA"], g["ringB"]
@@ -361,7 +378,7 @@ def build_differential(L, root):
         mb.ring(sA.center, sA.axis, ringA.r - 0.12, ringA.r + 0.12, L.disc_t, "blue", n=16, ref=sA.u)
         axial_pegs(mb, ringA)
 
-    o = peg_wheel(sA, "blue", root, "左边的平齿轮（下层）", sA.r - L.ded, (0, 0, -0.7), disc="ring", t=L.disc_t, hub=(0.28, 0.2),
+    o = peg_wheel(sA, "blue", root, "左边的平齿轮（下层）", sA.r - L.ded, (0, 0, 0), disc="ring", t=L.disc_t, hub=(0.28, 0.2),
                   ring_w=0.39, extra=side_a_extra)
     o["sideTeeth"] = ringA.n
     set_rotate(o, "sideA", sA.axis)
@@ -371,7 +388,7 @@ def build_differential(L, root):
     def side_b_extra(mb):
         axial_pegs(mb, ringB)
 
-    o = peg_wheel(sB, "orange", root, "右边的平齿轮（上层）", sB.r - L.ded, (0, 0, 0.7), disc="solid", t=L.disc_t, hub=(0.24, 0.24),
+    o = peg_wheel(sB, "orange", root, "右边的平齿轮（上层）", sB.r - L.ded, (0, 0, 2.2), disc="solid", t=L.disc_t, hub=(0.24, 0.24),
                   extra=side_b_extra)
     o["sideTeeth"] = ringB.n
     set_rotate(o, "sideB", sB.axis)
@@ -383,12 +400,12 @@ def build_differential(L, root):
         cm.cyl((sx * 0.15, 0, L.z_pin), (sx * (L.r_side + 0.12), 0, L.z_pin), 0.05, "iron", n=6)
     carrier = cm.build("diff.carrier", cc, root)
     set_rotate(carrier, "carrier", (0, 0, 1))
-    set_teach(carrier, "gear", "架子（木人就站在它上面）", (0, 0, 0))
+    set_teach(carrier, "gear", "架子（木人就站在它上面）", (0, 0, 1.1))
     for k in (0, 1):
         p = g[f"pinion.{k}"]
         o = peg_wheel(p, "gold", carrier, "小齿轮", L.pin_disc_r, disc="solid", t=0.08, hub=(0.08, 0.12))
         set_rotate(o, "pinion", p.axis)
-    figure(L, root)
+    figure(L, root, 1.7)
 
 
 # --------------------------------------------------------------------------- main

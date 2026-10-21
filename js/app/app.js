@@ -6,7 +6,9 @@ import { Chariot, wrap } from "../sim/chariot.js";
 import { pivotTwist, roll, twist } from "../sim/drive.js";
 import { applyDirective, freeBase, hasFaults, hasSlip, sameFaults } from "./directive.js";
 import { FollowPlayer, planPlayback } from "./playback.js";
+import { joinRoute } from "../sim/route.js";
 import { Tracker } from "./checks.js";
+import { RAMP, ease } from "./drive.js";
 import { toSim, toWorld } from "../scene/world.js";
 
 /** @import { World } from "../scene/world.js" */
@@ -15,11 +17,11 @@ import { toSim, toWorld } from "../scene/world.js";
 /** @import { Player } from "./playback.js" */
 /** @import { DriveInput } from "./drive.js" */
 /** @import { CheckSnapshot } from "./checks.js" */
+/** @import { DrawnRoute } from "./share.js" */
 
 /** Hand driving: body speed (chi/s) and turn rate (rad/s) at speed 1. */
 const DRIVE_V = 5;
 const DRIVE_W = 0.9;
-
 export class App {
   /**
    * @param {World} world
@@ -37,9 +39,15 @@ export class App {
     /** the last route played, for "再看一遍" */
     /** @type {string | null} */
     this.lastPlay = null;
+    /** a lesson's route that waits for the opening close view to pull back (else the child misses its start) */
+    /** @type {string | null} */
+    this.waiting = null;
     /** following a route the child drew */
     /** @type {FollowPlayer | null} */
     this.follow = null;
+    /** the last route drawn and where the chariot set off from (for a shared link) */
+    /** @type {DrawnRoute | null} */
+    this.drawn = null;
     /** loop the home page's demo drive */
     this.idleLoop = false;
     this.tracker = new Tracker();
@@ -47,6 +55,25 @@ export class App {
     this.listeners = new Set();
     /** @type {Set<(state: SceneState) => void>} */
     this.stateListeners = new Set();
+    /** hand driving as it eases toward what is held: forward and turn, −1..1 */
+    this.drive = { fwd: 0, turn: 0 };
+    /** everything that moves by itself is held still (the camera still moves) */
+    this.paused = false;
+    /** @type {Set<(paused: boolean) => void>} */
+    this.pauseListeners = new Set();
+  }
+
+  /** @param {(paused: boolean) => void} fn */
+  onPause(fn) {
+    this.pauseListeners.add(fn);
+  }
+
+  /** @param {boolean} on */
+  setPaused(on) {
+    if (on === this.paused) return;
+    this.paused = on;
+    if (on) this.drive = { fwd: 0, turn: 0 };
+    for (const fn of this.pauseListeners) fn(on);
   }
 
   /** Notify on state changes (tools, HUD visibility). @param {(state: SceneState) => void} fn */
@@ -65,6 +92,8 @@ export class App {
    * @param {{jump?: SceneState}} [opts] jump: adopt this whole state (going back / opening a lesson)
    */
   direct(d, opts = {}) {
+    // pressing anything carries on: pause only holds what was already playing
+    this.setPaused(false);
     const j = opts.jump;
     /** @type {DirectiveResult} */
     const res = j
@@ -97,11 +126,17 @@ export class App {
     if (st.demo !== prev.demo || res.reset) w.setDemo(st.demo);
     this.input.enabled = st.controls.includes("drive");
     if (!st.controls.includes("draw") && this.input.drawOn) this.input.setDraw(false);
-    if (res.viewChanged || st.view !== prev.view || (st.demo !== prev.demo && st.demo === "holdHands")) w.setView(st.view);
+    // the big figure would fill the close view of the gears
+    w.setFigureBig(st.view !== "gears" && st.view !== "works" && st.view !== "pair", res.reset && res.viewChanged);
     this.tracker.sawBroken(this.broken);
     for (const fn of this.stateListeners) fn(st);
-    // after the listeners: framing the route needs this step's HUD
-    if (res.play) this.play(res.play);
+    // after the listeners: the views keep clear of this step's HUD (a view
+    // placed at once, as the first one is, would keep the last step's margins)
+    w.cam.brief = !this.idleLoop;
+    if (res.viewChanged || st.view !== prev.view || (st.demo !== prev.demo && st.demo === "holdHands")) w.setView(st.view);
+    this.waiting = null;
+    if (res.play && st.view === "intro" && !this.idleLoop) this.waiting = res.play;
+    else if (res.play) this.play(res.play);
     w.showPose(this.chariot.pose(), 0);
   }
 
@@ -109,10 +144,24 @@ export class App {
     return hasFaults(this.state.faults) || hasSlip(this.state.slip);
   }
 
-  /** Free driving, everything on show. */
-  free() {
+  /** Free driving, everything on show. @param {Partial<SceneState>} [over] a shared setup */
+  free(over = {}) {
     this.idleLoop = false;
-    this.direct({ reset: true, view: "follow" }, { jump: freeBase() });
+    this.drawn = null;
+    this.direct({ reset: true }, { jump: { ...freeBase(), view: "follow", ...over } });
+  }
+
+  /** Drive a drawn route from where it set off (a shared link). @param {DrawnRoute} r */
+  driveDrawn(r) {
+    this.resetChariot(false);
+    const st = this.state;
+    this.chariot = new Chariot({ mechanism: st.mechanism, faults: st.faults, x: r.x, y: r.y, heading: r.heading });
+    this.world.clearTrails();
+    this.world.showPose(this.chariot.pose(), 0);
+    this.world.setView(st.view, true);
+    for (const fn of this.stateListeners) fn(st);
+    const pts = r.pts.map(toWorld);
+    this.followRoute(pts);
   }
 
   /**
@@ -158,6 +207,7 @@ export class App {
 
   /** @param {string} name a MANOEUVRES key */
   play(name) {
+    this.waiting = null;
     this.follow = null;
     this.world.route.clear();
     this.lastPlay = name;
@@ -171,12 +221,13 @@ export class App {
   replay() {
     if (!this.lastPlay) return;
     const name = this.lastPlay;
+    this.setPaused(false);
     this.resetChariot();
     this.play(name);
   }
 
   get playing() {
-    return this.player !== null && !this.player.done;
+    return this.waiting !== null || (this.player !== null && !this.player.done);
   }
 
   /** Run any auto-play to its end at once (self-test). */
@@ -191,7 +242,13 @@ export class App {
    */
   followRoute(worldPts) {
     this.player = null;
-    const pts = [{ x: this.chariot.x, y: this.chariot.y }, ...worldPts.map(toSim)];
+    this.setPaused(false);
+    const c = this.chariot;
+    // joined onto the chariot: it sets off along the line, and the line shown is the one it drives
+    const joined = joinRoute(c, worldPts.map(toSim));
+    this.drawn = { x: c.x, y: c.y, heading: c.heading, pts: joined };
+    const pts = [{ x: c.x, y: c.y }, ...joined];
+    this.world.route.set(pts.map(toWorld));
     const st = this.state;
     const style = st.mechanism === "song" && st.assist ? "pivot" : "smooth";
     this.follow = new FollowPlayer(pts, style, st.slip);
@@ -201,7 +258,9 @@ export class App {
 
   /** The child took the wheel: stop any auto-play. */
   takeOver() {
+    this.setPaused(false);
     if (this.player) this.player = null;
+    this.waiting = null;
     this.world.cam.unframe();
     if (this.follow) {
       this.follow = null;
@@ -212,10 +271,13 @@ export class App {
 
   /** @param {number} dt */
   tick(dt) {
+    if (this.paused) dt = 0;
     const c = this.chariot;
     const before = { x: c.x, y: c.y, heading: c.heading, d: (c.distL + c.distR) / 2 };
     let byChild = false;
     const speed = this.state.speed;
+    if (this.waiting && dt > 0 && !this.world.cam.opening) this.play(this.waiting);
+    if ((this.player && !this.player.done) || this.follow) this.drive = { fwd: 0, turn: 0 };
     if (this.player && !this.player.done) {
       this.player.update(c, dt, speed);
       if (this.player.done && this.idleLoop && this.lastPlay) {
@@ -231,10 +293,13 @@ export class App {
         this.tracker.routeDone();
       }
     } else {
-      const { fwd, turn } = this.input.command();
-      if (fwd !== 0 || turn !== 0) {
+      const want = this.input.command();
+      const dr = this.drive;
+      dr.fwd = ease(dr.fwd, want.fwd, dt, RAMP.up, RAMP.brake);
+      dr.turn = ease(dr.turn, want.turn, dt, RAMP.steer, RAMP.steer);
+      if (dr.fwd !== 0 || dr.turn !== 0) {
         const st = this.state;
-        const v = fwd * DRIVE_V * speed, omega = turn * DRIVE_W * speed;
+        const v = dr.fwd * DRIVE_V * speed, omega = dr.turn * DRIVE_W * speed;
         const g = st.mechanism === "song" && st.assist ? pivotTwist(v, omega, dt, c.track) : twist(v, omega, dt, c.track);
         roll(c, g.groundL, g.groundR, st.slip);
         byChild = true;

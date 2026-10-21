@@ -1,5 +1,8 @@
 """bpy helpers: flat-shaded low-poly solids in chi, materials, nodes and glTF extras.
 
+A node can be built smooth instead (`MB.build(..., smooth=deg)`): faces meeting
+at less than that angle shade as one curved surface, sharper edges stay crisp.
+
 Every primitive is a convex solid; faces are oriented outward from the solid's centroid,
 so normals are right without bpy.ops. Coordinates are Blender world coordinates (chi);
 `MB.build` re-bases them on the node's pivot.
@@ -163,10 +166,27 @@ class MB:
             faces += [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)]
         self.convex(pts, faces, mat)
 
+    def ellipsoid(self, c, r, mat, n=16, m=8):
+        """Ellipsoid round c with semi-axes r = (rx, ry, rz): n segments round z, m from pole to pole."""
+        c = V(c)
+        rx, ry, rz = r
+        pts = [c + Vector((0, 0, rz))]
+        for j in range(1, m):
+            t = math.pi * j / m
+            pts += [c + Vector((rx * math.sin(t) * math.cos(2 * math.pi * i / n), ry * math.sin(t) * math.sin(2 * math.pi * i / n), rz * math.cos(t))) for i in range(n)]
+        pts.append(c - Vector((0, 0, rz)))
+        last = len(pts) - 1
+        ring = lambda j, i: 1 + (j - 1) * n + i % n  # noqa: E731
+        faces = [[0, ring(1, i), ring(1, i + 1)] for i in range(n)]
+        for j in range(1, m - 1):
+            faces += [[ring(j, i), ring(j + 1, i), ring(j + 1, i + 1), ring(j, i + 1)] for i in range(n)]
+        faces += [[last, ring(m - 1, i + 1), ring(m - 1, i)] for i in range(n)]
+        self.convex(pts, faces, mat)
+
     def tris(self):
         return sum(len(f) - 2 for f in self.faces)
 
-    def build(self, name, pivot, parent=None, collection=None):
+    def build(self, name, pivot, parent=None, collection=None, smooth=None):
         pivot = V(pivot)
         me = bpy.data.meshes.new(name)
         me.from_pydata([tuple(p - pivot) for p in self.verts], [], self.faces)
@@ -174,6 +194,9 @@ class MB:
             me.materials.append(material(m))
         me.polygons.foreach_set("material_index", self.fmat)
         me.validate()
+        if smooth is not None:
+            me.shade_smooth()
+            me.set_sharp_from_angle(angle=math.radians(smooth))
         me.update()
         obj = bpy.data.objects.new(name, me)
         (collection or bpy.context.scene.collection).objects.link(obj)

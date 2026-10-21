@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-entry="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>South-Pointing Chariot: no magnets, just gears</title>
+    <meta name="description" content="Drive a 3D model of China's ancient south-pointing chariot, draw it a road, X-ray it and pull its gears apart to see why the little wooden man always points south. Six short lessons for curious kids (and grown-ups)." />
+    <meta name="theme-color" content="#1f4a5c" />
+    <!-- The English entry: index.html with this <head> in English, so link
+         previews (crawlers run no JS) are in English, and the page opens in
+         English (data-entry, js/i18n.js). Same js/ and css/; keep the <body>
+         as index.html's (tests/entry.test.js). The site's address is not decided yet, so og:image and the
+         hreflang links are relative; most crawlers want absolute URLs: when the
+         site goes up, set og:url and make og:image / twitter:image / hreflang
+         absolute here and in index.html (README.en.md, "Publishing"). -->
+    <link rel="alternate" hreflang="zh-CN" href="./" />
+    <link rel="alternate" hreflang="en" href="en.html" />
+    <link rel="alternate" hreflang="x-default" href="./" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="South-Pointing Chariot" />
+    <meta property="og:title" content="No magnets. Just gears. The 1,000-year-old south-pointing chariot" />
+    <meta property="og:description" content="A compass with no magnet, from ancient China. Drive it in your browser, draw it a road, X-ray it and take its gears apart to see why the wooden man always points south." />
+    <meta property="og:image" content="images/og.en.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The same wooden cart three times as it turns round in a palace courtyard; each time the little wooden man on top points his arm at the red South Gate" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="No magnets. Just gears. The 1,000-year-old south-pointing chariot" />
+    <meta name="twitter:description" content="A compass with no magnet, from ancient China. Drive it, X-ray it and take it apart in your browser to see how the gears keep the wooden man pointing south." />
+    <meta name="twitter:image" content="images/og.en.jpg" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23c8361f'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23fbf8f1' font-family='serif'%3E南%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/build/three.module.js",
+          "three/addons/": "./vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body data-mode="home">
+    <div class="app">
+      <header class="bar">
+        <h1 class="mark"><span class="seal" aria-hidden="true">南</span><span data-i18n="bar.brand">South‑Pointing Chariot</span></h1>
+        <nav class="tabs" aria-label="Pages" data-i18n="bar.tabsLabel" data-i18n-attr="aria-label">
+          <button type="button" class="tab on" data-go="home" aria-current="page" data-i18n="bar.tabHome">Lessons</button>
+          <button type="button" class="tab" data-go="free" data-i18n="bar.tabFree">Drive</button>
+        </nav>
+      </header>
+      <main class="layout">
+        <section id="stage" class="stage" aria-label="The chariot" data-i18n="bar.stageLabel" data-i18n-attr="aria-label">
+          <div id="stage-gl" class="stage-gl"></div>
+          <div id="stage-overlay" class="stage-overlay"></div>
+          <p id="loading" class="loading" role="status" data-i18n="bar.loading">Wheeling the chariot out…</p>
+        </section>
+        <aside id="panel" class="panel" aria-label="Lessons" data-i18n="bar.panelLabel" data-i18n-attr="aria-label"></aside>
+      </main>
+    </div>
+    <noscript><p class="noscript">This page needs JavaScript. <span lang="zh-CN">这个页面要打开 JavaScript 才能用。</span></p></noscript>
+  </body>
+</html>

@@ -13,6 +13,7 @@ import * as THREE from "three";
  * @property {number} heading sim heading (rad)
  * @property {"differential" | "song"} mechanism
  * @property {number} figureX figure shaft's local x (chi)
+ * @property {boolean} [inside] looking at the works (x-ray on, or taken apart)
  */
 
 /**
@@ -25,6 +26,53 @@ import * as THREE from "three";
 
 const GLIDE = 0.8;
 
+/** The home page's opening: how long the close view of the figure holds, and how long the pull back to the chase view takes (s). */
+const INTRO = { hold: 1.8, out: 3.2 };
+/** A lesson step's opening (its demo waits for it): a glance at the hand, then out. */
+const INTRO_BRIEF = { hold: 0.5, out: 2.2 };
+
+/** The figure's middle, arm included (chariot local, big figure: js/scene/rig.js), and its height with the arm. */
+const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
+
+/**
+ * The follow view looks along a fixed bearing in the world: from the north
+ * and a little west, south past the chariot at the gate (js/scene/landmark.js).
+ */
+const CHASE_DIR = new THREE.Vector3(-0.2, 0.125, -1).normalize();
+/** How far round the chariot the chase view keeps clear of the HUD, whichever way it turns (the shafts reach further). */
+const CHASE_ROOM = 6;
+
+/**
+ * Where the camera may go, relative to the chariot (the courtyard rides along
+ * with it, js/scene/look.js): inside the corridor columns (x ±63.5), short of
+ * the lions and the south gate (z 92, 105) and the pines and cauldrons in
+ * the north (z −108). A drag that would take it further brings it in closer
+ * along the line of sight instead of through a wall.
+ */
+const ROOM = { x: 56, north: -100, south: 84 };
+
+/** The chariot's bulk (centre height, radius): the wide views keep out of it. */
+const BULK = { y: 5, r: 9 };
+
+/** Framing a route: the chariot's reach round its centre and its height (no figure: it is over the centre). */
+const BODY = { r: 5, h: 8 };
+/** ...tipped this far from straight down (degrees), with this much room to spare round it. */
+const TOP_TIP = 30;
+const TOP_SPARE = 1.1;
+
+/** The close view over the chariot frames the ground this far round it (x, z) and the figure up to its head (the big figure: js/scene/rig.js). */
+const ABOVE = { x: 10, z: 8 };
+const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
+
+/** Views close in on the works on purpose: they may look from inside the body. */
+const CLOSE = new Set(["gears", "works", "pair", "wheels", "figure", "hero", "intro"]);
+
+/** The gears view looks from behind and above, a little to the right (chariot local). */
+const GEARS_DIR = /** @type {const} */ ([-1, 1.35, 0.75]);
+
+/** Views that swing round with the chariot. */
+const TURNING = new Set(["gears", "works", "pair", "wheels", "figure"]);
+
 export class CameraRig {
   /**
    * @param {THREE.PerspectiveCamera} camera
@@ -35,13 +83,128 @@ export class CameraRig {
     this.controls = controls;
     /** @type {ViewId} */
     this.view = "overview";
-    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number} | null} */
+    /** @type {{fromPos: THREE.Vector3, fromTarget: THREE.Vector3, t: number, dur?: number} | null} */
     this.glide = null;
+    /** the home page's opening (view "intro"): seconds into it, and whether it has pulled back yet */
+    this.intro = { t: 0, out: false };
+    /** the opening is a lesson step's, which waits with its demo till it is out: keep it short */
+    this.brief = false;
     /** fixed framing for the top view (route playback), else null */
-    /** @type {{cx: number, cz: number, h: number} | null} */
+    /** @type {{target: THREE.Vector3, pos: THREE.Vector3} | null} */
     this.box = null;
     this.last = { x: 0, z: 0, heading: Math.PI / 2 };
     this.extraRadius = 0;
+    /** seconds left to keep the taken-apart parts framed (set while they move) */
+    this.reframe = 0;
+    /** @type {THREE.Box3 | null} round the parts, world space */
+    this.parts = null;
+    /** the chariot is taken apart (setApart): the camera may come in among the parts */
+    this.apart = false;
+    /** @type {Insets[]} ways to keep clear of the HUD when framing the parts (the one that shows them biggest wins) */
+    this.partsInset = [{ left: 0, right: 0, top: 0, bottom: 0 }];
+    /** which of them was used last (kept unless another is clearly better: no flip-flopping) */
+    this.partsPick = 0;
+    /** the view is under 600 CSS px tall (set by the world) */
+    this.short = false;
+    /** the HUD's margins over the view (set by the world) */
+    /** @type {() => Insets} */
+    this.insets = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+    /** the HUD's margins over the lower part of the view, where the chase view has the chariot (set by the world) */
+    /** @type {() => Insets} */
+    this.lowInsets = () => this.insets();
+    /** the ways to keep clear of the HUD: beside it, or above and below it (set by the world) */
+    /** @type {() => Insets[]} */
+    this.bands = () => [this.insets()];
+    /** how far from the target the camera wanted to be when last kept in the room (0: it wasn't) */
+    this.wantDist = 0;
+    /** the camera is where its view put it (nobody has dragged it since) */
+    this.atPreset = false;
+    controls.addEventListener("start", () => {
+      this.atPreset = false;
+      // a drag in the opening: the child has taken the view, no pull back later
+      this.intro.out = true;
+    });
+  }
+
+  /**
+   * Keep the camera in the courtyard and out of the chariot, moving it along
+   * its line of sight (the view keeps its direction). Remembers how far it
+   * wanted to be, so it eases back out once the way is clear.
+   * @param {Focus} f
+   */
+  #keepIn(f) {
+    const cam = this.camera.position, tgt = this.controls.target;
+    const off = cam.clone().sub(tgt);
+    const want = off.length();
+    // the room: shrink the offset until the camera is inside
+    let t = 1;
+    const lim = (/** @type {number} */ o, /** @type {number} */ base, /** @type {number} */ lo, /** @type {number} */ hi) => {
+      const p = base + o;
+      if (p > hi && o > 0) t = Math.min(t, (hi - base) / o);
+      if (p < lo && o < 0) t = Math.min(t, (lo - base) / o);
+    };
+    lim(off.x, tgt.x - f.x, -ROOM.x, ROOM.x);
+    lim(off.z, tgt.z - f.z, ROOM.north, ROOM.south);
+    t = Math.max(0, t);
+    off.multiplyScalar(t);
+    if (!CLOSE.has(this.view) && !this.apart) {
+      // out of the chariot: if inside its sphere, go on along the line of
+      // sight to the far side of it, or back toward the target if nearer
+      const c = new THREE.Vector3(f.x, BULK.y, f.z).sub(tgt);
+      const d = off.clone();
+      const len = d.length();
+      if (len > 1e-6) {
+        d.divideScalar(len);
+        const b = d.dot(c), cc = c.lengthSq() - BULK.r * BULK.r;
+        const disc = b * b - cc;
+        if (disc > 0) {
+          const s0 = b - Math.sqrt(disc), s1 = b + Math.sqrt(disc);
+          if (len > s0 && len < s1) off.copy(d).multiplyScalar(s0 > 0.5 ? s0 : s1);
+        }
+      }
+    }
+    const got = off.length();
+    if (Math.abs(got - want) < 1e-4) return;
+    cam.copy(tgt).add(off);
+    // brought in by a wall: ease back out later; pushed out of the chariot:
+    // that is simply where it is now (zooming out again starts from there)
+    this.wantDist = got < want ? want : 0;
+  }
+
+  /**
+   * How far back from a box's centre, looking along -`off`, every corner of
+   * the box fits in the part of the view the inset leaves free.
+   * @param {THREE.Box3} box @param {THREE.Vector3} off unit, from the box toward the camera
+   * @param {Insets} inset @param {number} least the smallest free fraction of the view to count on
+   */
+  #fitBox(box, off, inset, least) {
+    const { right, up } = axes(off);
+    const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), th = tv * this.camera.aspect;
+    const ux = Math.max(least, 1 - inset.left - inset.right), uy = Math.max(least, 1 - inset.top - inset.bottom);
+    const centre = box.getCenter(new THREE.Vector3());
+    const c = new THREE.Vector3();
+    let want = 0;
+    for (let i = 0; i < 8; i++) {
+      c.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(centre);
+      const z = c.dot(off);
+      want = Math.max(want, z + Math.abs(c.dot(right)) / (th * ux), z + Math.abs(c.dot(up)) / (tv * uy));
+    }
+    return want;
+  }
+
+  /**
+   * Camera and target `d` back from a box's centre along `off`, aimed off
+   * centre so the box sits in the middle of the part of the view the inset
+   * leaves free.
+   * @param {THREE.Box3} box @param {THREE.Vector3} off @param {number} d @param {Insets} inset
+   */
+  #aimBox(box, off, d, inset) {
+    const { right, up } = axes(off);
+    const tv = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), th = tv * this.camera.aspect;
+    const target = box.getCenter(new THREE.Vector3())
+      .addScaledVector(right, -(inset.left - inset.right) * th * d)
+      .addScaledVector(up, -(inset.bottom - inset.top) * tv * d);
+    return { target, pos: target.clone().addScaledVector(off, d) };
   }
 
   /** Distance at which a sphere of radius r fills the view. @param {number} r */
@@ -63,14 +226,29 @@ export class CameraRig {
       const c = Math.cos(f.heading), s = Math.sin(f.heading);
       return new THREE.Vector3(f.x + lx * c + lz * s, ly, f.z - lx * s + lz * c);
     };
-    const dirLocal = (/** @type {number} */ lx, /** @type {number} */ ly, /** @type {number} */ lz) => {
-      const c = Math.cos(f.heading), s = Math.sin(f.heading);
-      return new THREE.Vector3(lx * c + lz * s, ly, -lx * s + lz * c).normalize();
-    };
+    const dirLocal = (/** @type {number} */ lx, /** @type {number} */ ly, /** @type {number} */ lz) => fromChariot(f, lx, ly, lz);
+    if (view === "intro") view = this.intro.out ? "follow" : "hero";
     switch (view) {
+      case "hero": {
+        // Close on the figure from behind it and to one side, the arm side-on
+        // enough to read, the South Gate it points at in the same picture.
+        // Figure and arm take about a third of the height; the wider the view,
+        // the further round to the side it can go and still have the gate in.
+        const v = THREE.MathUtils.degToRad(this.camera.fov);
+        const hf = 2 * Math.atan(Math.tan(v / 2) * this.camera.aspect);
+        const side = THREE.MathUtils.clamp(hf * 0.72, THREE.MathUtils.degToRad(14), THREE.MathUtils.degToRad(36));
+        const fig = new THREE.Vector3(f.x + FIGURE_MID.x, FIGURE_MID.y, f.z + FIGURE_MID.z);
+        const d = (FIGURE_MID.h * 2.05) / Math.tan(v / 2);
+        // from the north and a little west (the sunlit side, as the chase view)
+        const pos = fig.clone().addScaledVector(new THREE.Vector3(-Math.sin(side), 0.2, -Math.cos(side)).normalize(), d);
+        // aim between the figure and the gate (js/scene/landmark.js), so both are in
+        const gate = new THREE.Vector3(f.x, 12.5, f.z + 105);
+        const aim = fig.clone().sub(pos).normalize().add(gate.sub(pos).normalize()).normalize();
+        return { pos, target: pos.clone().addScaledVector(aim, d) };
+      }
       case "top": {
         if (this.box) {
-          return { target: new THREE.Vector3(this.box.cx, 0, this.box.cz), pos: new THREE.Vector3(this.box.cx, this.box.h, this.box.cz + 0.01) };
+          return { target: this.box.target.clone(), pos: this.box.pos.clone() };
         }
         if (this.extraRadius) {
           // A demo on the ground: frame just the demo, tipped a little (north
@@ -82,28 +260,97 @@ export class CameraRig {
         return { target: new THREE.Vector3(f.x, 0, f.z), pos: new THREE.Vector3(f.x, h, f.z + 0.01) };
       }
       case "follow": {
-        const target = local(1.5, 2.6, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.7, 0.08), this.fit(12)) };
+        // A chase camera that does not turn with the chariot: the chariot
+        // turns on screen while the figure's hand keeps pointing at the gate.
+        const target = new THREE.Vector3(f.x + 1, 7.5, f.z + 3.5);
+        // Phones held upright (polish-mobile): fit() goes by the narrow width
+        // there and leaves the chariot small, so come in closer.
+        // A short stage (a tablet held upright, the lesson panel below it)
+        // leaves it small too, and so does a stage narrower than it is tall
+        // (a tablet held flat, the panel beside it).
+        const r = this.camera.aspect < 0.8 ? 15.5 : this.short || this.camera.aspect < 1 ? 16 : 19;
+        const d = this.fit(r);
+        // in the middle of what the HUD leaves free across the view (the
+        // drive pad on a phone would sit on the chariot)
+        const ins = this.lowInsets();
+        // The camera keeps this framing as the chariot drives and turns; side
+        // on (shafts and all) it is twice as long as head on. If that would
+        // not fit between the panels down the sides (free driving on a
+        // tablet: the odometer one side, "See the gears" and the arrows the
+        // other), set it where the HUD leaves the most room, further back if
+        // it must be.
+        const round = new THREE.Box3(new THREE.Vector3(f.x - CHASE_ROOM, 0, f.z - CHASE_ROOM), new THREE.Vector3(f.x + CHASE_ROOM, FIGURE_TOP, f.z + CHASE_ROOM));
+        let best = { d: this.#fitBox(round, CHASE_DIR, ins, 0.25), ins };
+        if (best.d > d) {
+          for (const b of this.bands()) {
+            const bd = this.#fitBox(round, CHASE_DIR, b, 0.25);
+            if (bd < best.d * 0.95) best = { d: bd, ins: b };
+          }
+          if (best.ins !== ins) return this.#aimBox(round, CHASE_DIR, Math.max(d, best.d), best.ins);
+        }
+        const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
+        const right = new THREE.Vector3(0, 1, 0).cross(CHASE_DIR).normalize();
+        target.addScaledVector(right, ((ins.right - ins.left) / 2) * d * th);
+        return { target, pos: target.clone().addScaledVector(CHASE_DIR, d) };
       }
       case "gears": {
-        // From behind and well above, so the left wheel is on the left of the
-        // screen: the wheels stand at the sides (local ±Z, radius 3) and would
-        // hide the gears from any side-on angle. High enough that the figure
-        // on top of its shaft is in the picture too; a little to the right so
-        // the big left crown wheel shows its face. The boards go see-through
-        // with x-ray.
         const song = f.mechanism === "song";
-        const target = song ? local(1.1, 5.6, 0) : local(0, 5.2, 0);
-        const r = song ? 6.6 : 6.2;
-        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 2, 0.3), this.fit(r)) };
+        if (!f.inside) {
+          // Not seeing through the body yet: the whole cart from behind and
+          // above (sunlit side, figure in the picture); x-ray glides in close.
+          const target = local(song ? 0.6 : 0.2, 5.6, 0);
+          return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.85, 1.05), this.fit(9.5)) };
+        }
+        // From behind and above, so the left wheel is on the left of the
+        // screen: the wheels stand at the sides (local ±Z, radius 3) and would
+        // hide the gears from any side-on angle. Close on the gears, which
+        // fill the view (the figure is up its shaft, out of the picture: the
+        // dial shows where it points); a little to the right so the big left
+        // crown wheel shows its face. The boards go see-through with x-ray.
+        const target = song ? local(1.1, 3.7, 0) : local(0.2, 2.5, -0.5);
+        const r = song ? 4.9 : 4.4;
+        return { target, pos: target.clone().addScaledVector(dirLocal(...GEARS_DIR), this.fit(r)) };
+      }
+      case "works": {
+        // The gears and, up the shaft, the figure standing on them: the
+        // carrier and the man can be seen turning together. Higher and
+        // further back than the gears view, from the same side.
+        const target = local(f.figureX * 0.5 + 0.1, 6.2, -0.3);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 1.15, 0.8), this.fit(6.6)) };
+      }
+      case "pair": {
+        // Low behind the differential, a little to the right: its two flat
+        // gears lie one above the other on the shaft (big left one under,
+        // small right one over), and from this low they and their turning
+        // arrows stand apart; the left wheel is on the left of the screen.
+        const target = local(0, 1.6, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.6, 0.25), this.fit(3.6)) };
+      }
+      case "above": {
+        // Close over the chariot, north up, tipped so the figure reads as a
+        // figure; set in the part of the view the HUD leaves free (beside it,
+        // or above and below it: whichever leaves the chariot bigger). What
+        // must fit is the ground round the chariot (its wheel tracks) and the
+        // figure up its pole: in a wide, short view the figure's head is
+        // what reaches the top edge first.
+        const tip = THREE.MathUtils.degToRad(32);
+        const off = new THREE.Vector3(0, Math.cos(tip), Math.sin(tip));
+        const box = new THREE.Box3(new THREE.Vector3(f.x - ABOVE.x, 0, f.z - ABOVE.z), new THREE.Vector3(f.x + ABOVE.x, FIGURE_TOP, f.z + ABOVE.z));
+        let best = { d: Infinity, ins: this.insets() };
+        for (const ins of this.bands()) {
+          const d = this.#fitBox(box, off, ins, 0.4);
+          if (d < best.d * 0.95) best = { d, ins };
+        }
+        return this.#aimBox(box, off, best.d, best.ins);
       }
       case "wheels": {
         const target = local(0, 2.8, 0);
         return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.32, 0.3), this.fit(5.5)) };
       }
       case "figure": {
-        const target = local(f.figureX, 12.3, 0);
-        return { target, pos: target.clone().addScaledVector(dirLocal(0.4, 0.35, 1), this.fit(2.2)) };
+        // the figure is drawn big here (js/scene/rig.js FIGURE_SCALE)
+        const target = local(f.figureX, 13.4, 0);
+        return { target, pos: target.clone().addScaledVector(dirLocal(0.4, 0.35, 1), this.fit(4.2)) };
       }
       case "overview":
       default: {
@@ -120,7 +367,14 @@ export class CameraRig {
    * @param {boolean} [instant]
    */
   setView(view, f, instant = false) {
+    // the opening plays once: a reset while it runs (the home page's demo
+    // drive starting over) keeps going where it got to
+    if (view === "intro" && this.view !== "intro") this.intro = { t: 0, out: false };
     this.view = view;
+    this.atPreset = true;
+    // zooming in stops short of the chariot, except in the views that look inside it
+    this.controls.minDistance = CLOSE.has(view) || this.apart ? 2 : 16;
+    this.wantDist = 0;
     if (view !== "top") this.box = null;
     this.last = { x: f.x, z: f.z, heading: f.heading };
     if (instant) {
@@ -135,8 +389,9 @@ export class CameraRig {
   }
 
   /**
-   * Frame a region of the ground from above (route playback in the top view),
-   * in the part of the view the HUD leaves free.
+   * Frame a route from above (route playback in the top view), in the part of
+   * the view the HUD leaves free: the chariot's path and its bulk with about a
+   * fifth to spare, tipped a little (north still up) so it reads as a chariot.
    * @param {{x: number, z: number}[]} pts world points
    * @param {Focus} f
    * @param {Insets} [inset] HUD margins as fractions of the view
@@ -147,21 +402,36 @@ export class CameraRig {
       x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
       z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z);
     }
-    const pad = 9; // the compass ring (radius 8.2) round the chariot at every path point
+    // the chariot round each path point: wheels at ±3.6, the body and pole about as far
+    const pad = BODY.r;
     x0 -= pad; x1 += pad; z0 -= pad; z1 += pad;
-    const ux = Math.max(0.3, 1 - inset.left - inset.right), uz = Math.max(0.3, 1 - inset.top - inset.bottom);
-    const v = THREE.MathUtils.degToRad(this.camera.fov);
-    const tv = Math.tan(v / 2), th = tv * this.camera.aspect;
-    const h = Math.max((z1 - z0) / (2 * uz * tv), (x1 - x0) / (2 * ux * th), this.fit(14));
-    // shift so the region sits in the middle of the free part
-    const ex = h * th, ez = h * tv;
-    this.box = { cx: (x0 + x1) / 2 - (inset.left - inset.right) * ex, cz: (z0 + z1) / 2 - (inset.top - inset.bottom) * ez, h };
+    const tip = THREE.MathUtils.degToRad(TOP_TIP);
+    const off = new THREE.Vector3(0, Math.cos(tip), Math.sin(tip));
+    const box = new THREE.Box3(new THREE.Vector3(x0, 0, z0), new THREE.Vector3(x1, BODY.h, z1));
+    const want = Math.max(this.#fitBox(box, off, inset, 0.3) * TOP_SPARE, this.fit(8));
+    this.box = this.#aimBox(box, off, want, inset);
     this.setView("top", f);
+  }
+
+  /** The chariot is taken apart, or put back together. @param {boolean} on */
+  setApart(on) {
+    this.apart = on;
+    this.controls.minDistance = CLOSE.has(this.view) || on ? 2 : 16;
+  }
+
+  /** Taken apart, frame only the gears (else the wheels too): the gears are what a view not about the works gets taken apart for. */
+  get gearsOnly() {
+    return this.view === "gears" || !CLOSE.has(this.view);
   }
 
   /** Back to following the chariot in the top view. */
   unframe() {
     this.box = null;
+  }
+
+  /** Still in the opening's close view or pulling back from it. */
+  get opening() {
+    return this.view === "intro" && (!this.intro.out || this.glide !== null);
   }
 
   /**
@@ -171,9 +441,25 @@ export class CameraRig {
    */
   update(dt, f) {
     const cam = this.camera, ctl = this.controls;
+    if (this.view === "intro" && !this.intro.out) {
+      this.intro.t += dt;
+      const o = this.brief ? INTRO_BRIEF : INTRO;
+      if (this.intro.t >= o.hold && !this.glide) {
+        // slowly back out to the whole scene
+        this.intro.out = true;
+        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: o.out };
+      }
+    }
+    // put back the distance taken off last frame, so the camera eases out
+    // again once the way is clear (a glide or a jump places it afresh)
+    if (this.wantDist && !this.glide) {
+      const off = cam.position.clone().sub(ctl.target);
+      cam.position.copy(ctl.target).addScaledVector(off.normalize(), this.wantDist);
+    }
+    this.wantDist = 0;
     if (this.glide) {
       const g = this.glide;
-      g.t = Math.min(1, g.t + dt / GLIDE);
+      g.t = Math.min(1, g.t + dt / (g.dur ?? GLIDE));
       const k = g.t * g.t * (3 - 2 * g.t);
       const d = this.desired(this.view, f);
       cam.position.lerpVectors(g.fromPos, d.pos, k);
@@ -192,7 +478,7 @@ export class CameraRig {
       }
       cam.position.x += dx; cam.position.z += dz;
       ctl.target.x += dx; ctl.target.z += dz;
-      if (this.view === "follow" || this.view === "gears" || this.view === "wheels" || this.view === "figure") {
+      if (TURNING.has(this.view)) {
         // Swing round with the chariot.
         const dh = Math.atan2(Math.sin(f.heading - this.last.heading), Math.cos(f.heading - this.last.heading));
         if (dh !== 0) {
@@ -203,7 +489,78 @@ export class CameraRig {
         }
       }
     }
+    if (this.reframe > 0 && this.parts && !this.glide && this.view !== "top") this.#frameParts(dt, this.parts, this.partsInset, f);
+    this.reframe = Math.max(0, this.reframe - dt);
     this.last = { x: f.x, z: f.z, heading: f.heading };
     ctl.update(dt);
+    this.#keepIn(f);
   }
+
+  /**
+   * While the chariot comes apart, keep every part in the picture: same
+   * direction of view (the child may have turned it), centre and distance
+   * eased so the box round the parts just fits in the part of the view the
+   * HUD leaves free. The HUD can be cleared beside it (a column free in the
+   * middle) or above and below it (a band free across the view); whichever
+   * shows the parts bigger is used. A view that is not about the works (the
+   * chase view in free driving) swings round to where the gears view looks
+   * from: from the side the wheels and the body hide the gears.
+   * @param {number} dt @param {THREE.Box3} box @param {Insets[]} insets @param {Focus} f
+   */
+  #frameParts(dt, box, insets, f) {
+    const cam = this.camera, ctl = this.controls;
+    const a = 1 - Math.exp(-dt * 5);
+    const off = cam.position.clone().sub(ctl.target);
+    const dist = off.length();
+    off.divideScalar(dist);
+    if (!CLOSE.has(this.view)) off.lerp(fromChariot(f, ...GEARS_DIR), a).normalize();
+    const centre = box.getCenter(new THREE.Vector3());
+    const right = new THREE.Vector3().crossVectors(cam.up, off).normalize();
+    const up = new THREE.Vector3().crossVectors(off, right);
+    const tv0 = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2), th0 = tv0 * cam.aspect;
+    const fits = insets.map((inset) => {
+      const ux = Math.max(0.3, 1 - inset.left - inset.right), uy = Math.max(0.3, 1 - inset.top - inset.bottom);
+      const th = th0 * ux, tv = tv0 * uy;
+      let want = 0;
+      const c = new THREE.Vector3();
+      for (let i = 0; i < 8; i++) {
+        c.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(centre);
+        const z = c.dot(off);
+        want = Math.max(want, z + Math.abs(c.dot(right)) / th, z + Math.abs(c.dot(up)) / tv);
+      }
+      return want * 1.06;
+    });
+    let k = Math.min(this.partsPick, fits.length - 1);
+    fits.forEach((w, i) => {
+      if (w < fits[k] * 0.9) k = i;
+    });
+    this.partsPick = k;
+    const want = fits[k], inset = insets[k];
+    // aim off-centre so the parts sit in the middle of the free part
+    const goal = centre.clone()
+      .addScaledVector(right, -(inset.left - inset.right) * th0 * want)
+      .addScaledVector(up, -(inset.bottom - inset.top) * tv0 * want);
+    ctl.target.lerp(goal, a);
+    cam.position.copy(ctl.target).addScaledVector(off, dist + (want - dist) * a);
+  }
+}
+
+/**
+ * A direction in the chariot's frame (+X forward, +Y up, +Z right), in the world.
+ * @param {Focus} f @param {number} lx @param {number} ly @param {number} lz
+ */
+function fromChariot(f, lx, ly, lz) {
+  const c = Math.cos(f.heading), s = Math.sin(f.heading);
+  return new THREE.Vector3(lx * c + lz * s, ly, -lx * s + lz * c).normalize();
+}
+
+/**
+ * Screen right and up for a camera looking along -`off`, world up kept up.
+ * @param {THREE.Vector3} off
+ */
+function axes(off) {
+  const right = new THREE.Vector3(0, 1, 0).cross(off);
+  if (right.lengthSq() < 1e-8) right.set(1, 0, 0);
+  right.normalize();
+  return { right, up: new THREE.Vector3().crossVectors(off, right) };
 }

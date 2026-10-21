@@ -72,7 +72,7 @@ All nodes are children of root `chariot`.
 { "group": "shell" | "chassis" | "wheel" | "gear" | "figure", "explode": [dx, dy, dz], "label": "中心大平轮", "teeth": 48 }
 ```
 
-- `shell`: everything that hides the gears (roof, side boards, railings). X-ray makes it transparent; explode moves it far away.
+- `shell`: everything that hides the gears (roof, side boards, railings). X-ray draws it (and `body.frame`) as a faint wireframe; explode moves it away while it fades out.
 - `explode`: offset in chi, used at explode = 1, applied to the node's position in its parent's frame. Only direct children of `chariot` carry a non-zero offset; deeper nodes (pinions, small flat wheels, markers) are `[0, 0, 0]` and move with their parent. Gears separate vertically so that the meshing stays readable.
 - `label`: Chinese name shown in callouts. `teeth`: tooth count, used by the "count the teeth" tasks.
 - Every gear has one **marker tooth** in a contrasting colour (child mesh `<node>.marker`, static relative to its gear), so children can follow a gear round and count turns. The wheels also have a red marker spoke (`wheel.L.marker`, `wheel.R.marker`).

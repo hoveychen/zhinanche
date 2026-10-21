@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 22 480 248" role="img">
+  <!-- 司南 (sinan), drawn for this site: a lodestone spoon on a smooth square
+       bronze plate, its handle turned to the south (the red mark at the front). -->
+  <defs>
+    <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dcb46e"/>
+      <stop offset="1" stop-color="#b98a45"/>
+    </linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a6230"/>
+      <stop offset="1" stop-color="#6b4a22"/>
+    </linearGradient>
+    <radialGradient id="inner" cx="0.5" cy="0.4" r="0.65">
+      <stop offset="0" stop-color="#f0dcae"/>
+      <stop offset="1" stop-color="#d2a862"/>
+    </radialGradient>
+    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2b2f34"/>
+      <stop offset="0.4" stop-color="#6c7178"/>
+      <stop offset="1" stop-color="#2b2f34"/>
+    </linearGradient>
+    <radialGradient id="bowl" cx="0.4" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#7d838a"/>
+      <stop offset="0.6" stop-color="#3b4046"/>
+      <stop offset="1" stop-color="#1d2024"/>
+    </radialGradient>
+    <radialGradient id="hollow" cx="0.55" cy="0.65" r="0.7">
+      <stop offset="0" stop-color="#5d636a"/>
+      <stop offset="1" stop-color="#202327"/>
+    </radialGradient>
+  </defs>
+  <rect width="480" height="300" fill="#f6ecd8"/>
+  <!-- the plate's shadow on the table -->
+  <ellipse cx="240" cy="252" rx="222" ry="16" fill="#000" opacity="0.12"/>
+  <!-- the plate: thickness, then the top -->
+  <path d="M22 226 L458 226 L458 246 L22 246 Z" fill="url(#side)"/>
+  <path d="M72 40 L408 40 L458 226 L22 226 Z" fill="url(#top)" stroke="#8a6230" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M92 54 L388 54 L432 214 L48 214 Z" fill="none" stroke="#9a7038" stroke-width="2" opacity="0.7"/>
+  <!-- the round middle, polished smooth so the spoon can turn -->
+  <ellipse cx="240" cy="141" rx="134" ry="64" fill="#a97a3c" opacity="0.5"/>
+  <ellipse cx="240" cy="138" rx="132" ry="62" fill="url(#inner)" stroke="#9a7038" stroke-width="2"/>
+  <!-- marks round it, like the 24 directions -->
+  <g stroke="#8a6230" stroke-width="2.5" stroke-linecap="round">
+    <path d="M240.0 72.0 L240.0 67.3"/><path d="M275.7 74.2 L277.3 71.5"/><path d="M309.0 80.8 L312.0 78.4"/><path d="M337.6 91.3 L341.8 89.3"/><path d="M359.5 105.0 L364.7 103.6"/><path d="M373.3 120.9 L379.1 120.2"/><path d="M378.0 138.0 L388.0 138.0"/><path d="M373.3 155.1 L379.1 155.8"/><path d="M359.5 171.0 L364.7 172.4"/><path d="M337.6 184.7 L341.8 186.7"/><path d="M309.0 195.2 L312.0 197.6"/><path d="M275.7 201.8 L277.3 204.5"/><path d="M240.0 204.0 L240.0 208.7"/><path d="M204.3 201.8 L202.7 204.5"/><path d="M171.0 195.2 L168.0 197.6"/><path d="M142.4 184.7 L138.2 186.7"/><path d="M120.5 171.0 L115.3 172.4"/><path d="M106.7 155.1 L100.9 155.8"/><path d="M102.0 138.0 L92.0 138.0"/><path d="M106.7 120.9 L100.9 120.2"/><path d="M120.5 105.0 L115.3 103.6"/><path d="M142.4 91.3 L138.2 89.3"/><path d="M171.0 80.8 L168.0 78.4"/><path d="M204.3 74.2 L202.7 71.5"/>
+  </g>
+  <!-- south: the red mark on the front edge -->
+  <path d="M240 236 l-12 -15 h24 Z" fill="#c8361f" stroke="#8f2412" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- the spoon's shadow -->
+  <ellipse cx="248" cy="122" rx="50" ry="28" fill="#000" opacity="0.16"/>
+  <path d="M244 146 L262 192 L252 196 L236 150 Z" fill="#000" opacity="0.14"/>
+  <!-- the handle, long and flat, pointing south (toward us) -->
+  <path d="M229 136 Q 233 166 236 192 Q 240 199 245 192 Q 248 166 252 136 Z" fill="url(#stone)" stroke="#1d2024" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- the bowl: round underneath, so it can spin on the plate -->
+  <ellipse cx="240" cy="112" rx="48" ry="31" fill="url(#bowl)" stroke="#1d2024" stroke-width="1.5"/>
+  <ellipse cx="240" cy="109" rx="37" ry="22" fill="url(#hollow)"/>
+  <path d="M210 104 Q 222 92 244 91" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+</svg>

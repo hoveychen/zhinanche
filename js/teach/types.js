@@ -5,13 +5,20 @@
 /** @import { MechanismId } from "../sim/params.js" */
 
 /**
- * Camera presets the scene provides.
- * @typedef {"overview" | "top" | "follow" | "gears" | "wheels" | "figure"} ViewId
+ * Camera presets the scene provides. "works": the gears with the figure on
+ * its shaft above them, turning with the chariot; "above": close over the
+ * chariot from the north side, following it (north stays up); "hero": close
+ * on the figure from behind and to one side, the gate it points at beyond;
+ * "intro": the hero view for a moment, then slowly out to "follow" (the home
+ * page's opening; in a lesson step a shorter one, and the step's route
+ * waits till it is out); "pair": low behind the differential's two flat gears,
+ * which lie one above the other, so both and their turning arrows show.
+ * @typedef {"overview" | "top" | "follow" | "gears" | "works" | "wheels" | "figure" | "above" | "hero" | "intro" | "pair"} ViewId
  */
 
 /**
  * UI controls a step may show. Anything not listed is hidden while the step is active.
- * @typedef {"drive" | "draw" | "mechanism" | "assist" | "faults" | "slip" | "xray" | "explode" | "reset" | "speed"} ControlId
+ * @typedef {"drive" | "draw" | "mechanism" | "assist" | "faults" | "slip" | "xray" | "explode" | "reset" | "speed" | "gearsView"} ControlId
  */
 
 /**
@@ -60,6 +67,8 @@
  * @property {number} answer index into options
  * @property {string} right feedback when right
  * @property {string} wrong feedback when wrong (a hint, never a scolding)
+ * @property {boolean} [guess] guess first, then watch: the step's auto-play (and the walking
+ *   demo) waits until an option is picked, so the answer is not on the screen while asking
  */
 
 /**
@@ -86,6 +95,7 @@
  * @property {SceneDirective} [scene]
  * @property {Task} [task]
  * @property {Picture} [picture]
+ * @property {boolean} [tallyAtEnd] the odometer's line comparing the wheels waits till the step's route is done (the text tells how it ends)
  */
 
 /**
@@ -94,6 +104,16 @@
  * @property {string} title
  * @property {string} summary one line for the lesson list
  * @property {LessonStep[]} steps
+ */
+
+/**
+ * The words of a lesson in another language, laid over the lesson of the same
+ * id (js/teach/lessons.en.js): one entry per step, and per task / picture
+ * exactly the fields the original has.
+ * @typedef {object} LessonText
+ * @property {string} title
+ * @property {string} summary
+ * @property {{text: string, task?: {prompt: string, options?: string[], right?: string, wrong?: string, done?: string}, picture?: {alt: string, credit: string}}[]} steps
  */
 
 export {};

@@ -5,37 +5,21 @@
 
 import * as THREE from "three";
 import { COLORS } from "./ground.js";
+import { S, canvasFont, onLang } from "../i18n.js";
 
-const FONT = '"Kaiti SC", "STKaiti", "KaiTi", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", serif';
+/** @import { Strings } from "../teach/strings.js" */
 
 /**
- * A text label that always faces the camera.
- * @param {string} text
- * @param {number} height world height in chi
- * @param {string} [color]
+ * A word over the scene, drawn by the page as a label (js/app/labels.js) at
+ * the anchor's place on screen: crisp, at reading size, kept off the HUD.
+ * @typedef {object} SceneLabel
+ * @property {THREE.Object3D} anchor
+ * @property {(s: Strings) => string} text
+ * @property {"l" | "r" | ""} side the left-wheel blue or the right-wheel orange, or neither
+ * @property {boolean} [beside] level with the anchor, on the side away from the
+ *   other such labels (two children one behind the other: labels stacked over
+ *   them pointed at the wrong one)
  */
-export function textSprite(text, height, color = "#3a3128") {
-  const c = document.createElement("canvas");
-  const g = /** @type {CanvasRenderingContext2D} */ (c.getContext("2d"));
-  const fs = 96;
-  g.font = `${fs}px ${FONT}`;
-  const w = Math.ceil(g.measureText(text).width) + 48;
-  c.width = w;
-  c.height = fs + 40;
-  g.font = `${fs}px ${FONT}`;
-  g.fillStyle = "rgba(251,248,240,0.92)";
-  g.fillRect(0, 0, c.width, c.height);
-  g.fillStyle = color;
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.fillText(text, w / 2, c.height / 2 + 4);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false }));
-  s.scale.set((height * c.width) / c.height, height, 1);
-  s.renderOrder = 10;
-  return s;
-}
 
 /** @param {number} robe colour */
 function kid(robe) {
@@ -91,9 +75,14 @@ export class HoldHands {
       p.frustumCulled = false;
       this.group.add(p);
     }
-    this.labelIn = textSprite("里圈", 1.1, "#2e70d6");
-    this.labelOut = textSprite("外圈", 1.1, "#c4620c");
+    this.labelIn = new THREE.Object3D();
+    this.labelOut = new THREE.Object3D();
     this.group.add(this.labelIn, this.labelOut);
+    /** @type {SceneLabel[]} */
+    this.labels = [
+      { anchor: this.labelIn, text: (t) => t.scene.inner, side: "l", beside: true },
+      { anchor: this.labelOut, text: (t) => t.scene.outer, side: "r", beside: true },
+    ];
     /** @type {(() => void) | null} */
     this.onLap = null;
     this.angle = 0;
@@ -166,8 +155,9 @@ export class HoldHands {
     const mid = (R_IN + R_OUT) / 2;
     this.arms.position.set(Math.cos(a) * mid, 2.1 + bob, -Math.sin(a) * mid);
     this.arms.rotation.y = a;
-    this.labelIn.position.set(Math.cos(a) * R_IN, 5.0 + bob, -Math.sin(a) * R_IN);
-    this.labelOut.position.set(Math.cos(a) * R_OUT, 5.0 + bob, -Math.sin(a) * R_OUT);
+    // each child's head (the labels sit beside it)
+    this.labelIn.position.set(Math.cos(a) * R_IN, 3.15 + bob, -Math.sin(a) * R_IN);
+    this.labelOut.position.set(Math.cos(a) * R_OUT, 3.15 + bob, -Math.sin(a) * R_OUT);
   }
 
   /** Radius that frames the demo. */
@@ -178,35 +168,42 @@ export class HoldHands {
 
 /** Compass face: 北 at −z (north), 南 at +z, red needle end to the south. */
 function faceTexture() {
-  const S = 512;
+  const SIZE = 512;
   const c = document.createElement("canvas");
-  c.width = c.height = S;
+  c.width = c.height = SIZE;
   const g = /** @type {CanvasRenderingContext2D} */ (c.getContext("2d"));
-  g.fillStyle = "#f6efdc";
-  g.beginPath();
-  g.arc(S / 2, S / 2, S / 2 - 4, 0, Math.PI * 2);
-  g.fill();
-  g.strokeStyle = "#3a3128";
-  g.lineWidth = 6;
-  g.stroke();
-  for (let d = 0; d < 360; d += 30) {
-    const a = (d * Math.PI) / 180;
-    g.beginPath();
-    g.moveTo(S / 2 + Math.sin(a) * (S / 2 - 12), S / 2 - Math.cos(a) * (S / 2 - 12));
-    g.lineTo(S / 2 + Math.sin(a) * (S / 2 - 40), S / 2 - Math.cos(a) * (S / 2 - 40));
-    g.stroke();
-  }
-  g.fillStyle = "#3a3128";
-  g.font = `bold 70px ${FONT}`;
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.fillText("北", S / 2, 88);
-  g.fillText("东", S - 88, S / 2);
-  g.fillText("西", 88, S / 2);
-  g.fillStyle = "#c8361f";
-  g.fillText("南", S / 2, S - 88);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
+  const draw = () => {
+    const w = S().scene;
+    g.clearRect(0, 0, SIZE, SIZE);
+    g.fillStyle = "#f6efdc";
+    g.beginPath();
+    g.arc(SIZE / 2, SIZE / 2, SIZE / 2 - 4, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = "#3a3128";
+    g.lineWidth = 6;
+    g.stroke();
+    for (let d = 0; d < 360; d += 30) {
+      const a = (d * Math.PI) / 180;
+      g.beginPath();
+      g.moveTo(SIZE / 2 + Math.sin(a) * (SIZE / 2 - 12), SIZE / 2 - Math.cos(a) * (SIZE / 2 - 12));
+      g.lineTo(SIZE / 2 + Math.sin(a) * (SIZE / 2 - 40), SIZE / 2 - Math.cos(a) * (SIZE / 2 - 40));
+      g.stroke();
+    }
+    g.fillStyle = "#3a3128";
+    g.font = `bold 70px ${canvasFont()}`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText(w.north, SIZE / 2, 88);
+    g.fillText(w.east, SIZE - 88, SIZE / 2);
+    g.fillText(w.west, 88, SIZE / 2);
+    g.fillStyle = "#c8361f";
+    g.fillText(w.south, SIZE / 2, SIZE - 88);
+    t.needsUpdate = true;
+  };
+  draw();
+  onLang(draw);
   return t;
 }
 
@@ -232,8 +229,10 @@ export class CompassDemo {
     this.needle.add(south, north);
     this.needle.position.y = 3.75;
     for (const m of [post, dish, south, north]) m.castShadow = true;
-    const label = textSprite("指南针：靠磁针", 0.9);
-    label.position.y = 5.2;
+    const label = new THREE.Object3D();
+    label.position.y = 3.9;
+    /** @type {SceneLabel[]} */
+    this.labels = [{ anchor: label, text: (t) => t.scene.compass, side: "" }];
     this.group.add(post, dish, face, this.needle, label);
     this.t = 0;
   }
