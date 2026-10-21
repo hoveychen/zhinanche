@@ -192,6 +192,13 @@ world.hudInsets = () => {
   }
   return ins;
 };
+// A phone's free-driving sheet, pulled up, lies over the bottom of the view.
+world.cover = () => {
+  const r = stage.getBoundingClientRect(), p = byId("panel").getBoundingClientRect();
+  // only a panel over the view (beside it or under it on a wider screen is not)
+  if (!r.height || p.left >= r.right - 1 || p.right <= r.left + 1 || p.top >= r.bottom || p.bottom < r.bottom) return 0;
+  return (r.bottom - Math.max(p.top, r.top)) / r.height;
+};
 // The parts taken apart are framed beside the HUD too, or in the band
 // between what sits along the top (dial, pause) and along the bottom (the
 // drive dock, the odometer), whichever leaves them bigger.

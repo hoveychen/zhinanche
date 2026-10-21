@@ -114,6 +114,10 @@ export class World {
     /** @type {() => Insets[]} */
     this.hudBands = () => [this.hudInsets()];
     this.cam.insets = () => this.hudInsets();
+    /** how much of the view, from the bottom, a panel lies over (a phone's sheet; set by the page) */
+    this.cover = () => 0;
+    /** the picture is moved up this far (CSS px) to sit in what the panel leaves showing */
+    this.lift = 0;
     this.cam.bands = () => this.hudBands();
 
     this.raycaster = new THREE.Raycaster();
@@ -408,6 +412,25 @@ export class World {
     if (this.demo === "compass") this.compass.update(this.focus.x, this.focus.z, dt);
     this.ring.fadeLabels(!(this.cam.view === "gears" || this.cam.view === "works" || this.cam.view === "pair"), dt);
     this.cam.update(dt, this.camFocus());
+    this.#liftOver(dt);
+  }
+
+  /**
+   * A sheet pulled up over the view (free driving on a phone) would hide the
+   * chariot, which every view puts in the middle: move the picture up so its
+   * middle is the middle of what still shows. Picking and drawing follow, as
+   * they go through the same projection.
+   * @param {number} dt
+   */
+  #liftOver(dt) {
+    const h = this.host.clientHeight, w = this.host.clientWidth;
+    const c = this.cover();
+    const want = c > 0.05 ? (Math.min(c, 0.7) * h) / 2 : 0;
+    const a = dt > 0 ? 1 - Math.exp(-dt * 6) : 1;
+    this.lift += (want - this.lift) * a;
+    if (Math.abs(want - this.lift) < 0.5) this.lift = want;
+    if (this.lift > 0.5) this.camera.setViewOffset(w, h, 0, this.lift, w, h);
+    else if (this.camera.view) this.camera.clearViewOffset();
   }
 
   render() {
