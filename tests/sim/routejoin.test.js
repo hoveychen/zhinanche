@@ -4,7 +4,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Chariot } from "../../js/sim/chariot.js";
-import { joinRoute, SNAP } from "../../js/sim/route.js";
+import { joinParts, joinRoute, SNAP } from "../../js/sim/route.js";
 import { FollowPlayer } from "../../js/app/playback.js";
 
 /** @param {{x: number, y: number}} a @param {{x: number, y: number}} b */
@@ -58,4 +58,20 @@ test("a stroke behind the chariot gets no lead-in (it turns on the spot first)",
   const c = new Chariot();
   const stroke = line({ x: 0, y: -8 }, { x: -10, y: -20 });
   assert.deepEqual(joinRoute(c, stroke), stroke);
+});
+
+test("a stroke begun right by the chariot, across its heading, is reached by a curve, not a corner", () => {
+  const c = new Chariot(); // facing +y
+  // begun 2.5 chi ahead, drawn off to the left: a straight line onto it would turn 90° at its start
+  const stroke = line({ x: 0, y: 2.5 }, { x: -16, y: 2.5 });
+  const { lead } = joinParts(c, stroke);
+  assert.ok(lead.length >= 3, "a lead-in is added");
+  const r = [{ x: c.x, y: c.y }, ...joinRoute(c, stroke)];
+  let worst = 0;
+  for (let i = 2; i < r.length; i++) {
+    const a = Math.atan2(r[i - 1].y - r[i - 2].y, r[i - 1].x - r[i - 2].x), b = Math.atan2(r[i].y - r[i - 1].y, r[i].x - r[i - 1].x);
+    worst = Math.max(worst, Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))));
+  }
+  assert.ok(worst < (50 * Math.PI) / 180, `no sharp corner (worst ${((worst * 180) / Math.PI).toFixed(0)}°)`);
+  assert.ok(worstStray(c, r.slice(1)) < 1.5, "keeps to the line");
 });

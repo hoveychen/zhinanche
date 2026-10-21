@@ -31,15 +31,28 @@ export const SNAP = 4;
 /**
  * Join a drawn route onto the chariot, so it sets off along the line the child
  * sees rather than looping round to reach it. A stroke drawn through or out
- * from the chariot starts where it passes closest; a stroke begun further
- * away is reached by a smooth curve leaving along the chariot's heading (or,
- * if it lies behind, straight after a turn on the spot).
+ * from the chariot starts where it passes closest; the stroke is reached by
+ * a smooth curve leaving along the chariot's heading and arriving along the
+ * stroke (a stroke begun right by the chariot too: a straight line to it
+ * would show a kink the chariot cuts), or, if it lies behind, straight after
+ * a turn on the spot.
  * @param {{x: number, y: number, heading: number}} c the chariot
  * @param {Point[]} pts the stroke, in drawing order
  * @returns {Point[]} the route from the chariot on (the chariot's own position not included)
  */
 export function joinRoute(c, pts) {
-  if (pts.length < 2) return pts.slice();
+  const { lead, stroke } = joinParts(c, pts);
+  return [...lead, ...stroke];
+}
+
+/**
+ * joinRoute in two parts: the lead-in the chariot adds (drawn as a lead-in,
+ * not as the child's line) and what it keeps of the stroke.
+ * @param {{x: number, y: number, heading: number}} c @param {Point[]} pts
+ * @returns {{lead: Point[], stroke: Point[]}}
+ */
+export function joinParts(c, pts) {
+  if (pts.length < 2) return { lead: [], stroke: pts.slice() };
   const d = (/** @type {Point} */ p) => Math.hypot(p.x - c.x, p.y - c.y);
   let k = 0;
   for (let i = 1; i < pts.length; i++) if (d(pts[i]) < d(pts[k])) k = i;
@@ -52,7 +65,7 @@ export function joinRoute(c, pts) {
   const first = out[0];
   const far = d(first);
   const ahead = Math.cos(Math.atan2(first.y - c.y, first.x - c.x) - c.heading);
-  if (far < SNAP || ahead < 0.2) return out;
+  if (far < 1 || ahead < 0.2) return { lead: [], stroke: out };
   // a curve from the chariot (leaving along its heading) into the stroke
   // (arriving along the stroke's own direction)
   const next = out.find((p) => Math.hypot(p.x - first.x, p.y - first.y) > 1) ?? out[out.length - 1];
@@ -64,7 +77,7 @@ export function joinRoute(c, pts) {
   const p2 = { x: first.x - tx * L, y: first.y - ty * L };
   /** @type {Point[]} */
   const lead = [];
-  const n = Math.max(2, Math.ceil(far / 0.8));
+  const n = Math.max(8, Math.ceil(far / 0.8));
   for (let i = 1; i < n; i++) {
     const t = i / n, u = 1 - t;
     lead.push({
@@ -72,7 +85,7 @@ export function joinRoute(c, pts) {
       y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * first.y,
     });
   }
-  return [...lead, ...out];
+  return { lead, stroke: out };
 }
 
 /**

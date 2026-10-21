@@ -307,7 +307,7 @@ canvas.addEventListener("pointermove", (e) => {
   const last = drawing[drawing.length - 1];
   if (p && Math.hypot(p.x - last.x, p.z - last.z) > 0.4 && drawing.length < 600) {
     drawing.push(p);
-    world.route.set([toWorld(app.chariot), ...drawing]);
+    app.showRoute(drawing);
   }
 });
 const endDraw = () => {
