@@ -16,7 +16,7 @@ import { partCaption } from "./parts.js";
 import { Ice } from "./ice.js";
 import { bind } from "../i18n.js";
 import { Look } from "./look.js";
-import { HighlightGlow, OUTLINES, updateOutlines } from "./gearviz.js";
+import { HighlightGlow, OUTLINES, setBoxLineSize, updateOutlines } from "./gearviz.js";
 
 /** @import { Pose } from "../sim/chariot.js" */
 /** @import { MechanismId } from "../sim/params.js" */
@@ -510,6 +510,7 @@ export class World {
     updateOutlines(this.renderer);
     // looking at the works is a diagram: every gear sharp, near or far
     if (this.look.postfx) this.look.postfx.dofOn = !this.rig?.inside;
+    this.rig?.fadeBoxLines(this.camera);
     this.look.render();
     // the highlighted parts' halo, over the finished picture
     const lit = this.rig?.glowParts();
@@ -530,6 +531,7 @@ export class World {
     // a view placed before the layout settled was framed for the old shape
     if (this.#viewed && this.cam.atPreset && !this.cam.glide) this.cam.setView(this.cam.view, this.camFocus(), true);
     this.route.resize(w, h);
+    setBoxLineSize(w, h);
     this.look?.resize(w, h);
   }
 

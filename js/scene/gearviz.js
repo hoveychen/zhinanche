@@ -7,6 +7,9 @@
 
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 
 /** Left train blue, right train orange, the middle (carrier, shaft, big flat wheel) brass. sRGB. */
@@ -306,9 +309,12 @@ export function makeHull(mesh) {
 
 // The body in x-ray: a ghost of glass, not a wireframe (a cage of fine lines
 // read as a debug view, and close on the gears as scratches over them). Faces
-// turned to the camera are almost clear, faces seen edge on glow faintly in
-// the lacquer's colour (a Fresnel rim), so the box keeps its shape; whatever
-// is near the camera fades right out, so a close view of the gears is clean.
+// turned to the camera are clear, faces seen edge on glow faintly in the
+// lacquer's colour (a Fresnel rim); the box's own edges are drawn in
+// (makeBoxLines) and its railing stays solid, so it reads as a box. (A
+// stronger ghost, with nothing else, read from across the courtyard as
+// blocks of red haze.) Whatever is near the camera fades right out, so a
+// close view of the gears is clean.
 const GHOST_VERT = /* glsl */ `
 varying vec3 vNormal;
 varying vec3 vView;
@@ -330,7 +336,7 @@ void main() {
   float d = length(vView);
   float facing = abs(dot(normalize(vNormal), vView / d));
   float fres = pow(1.0 - facing, 3.0);
-  float a = (0.012 + 0.5 * fres) * opacity * smoothstep(fade.x, fade.y, d);
+  float a = (0.004 + 0.2 * fres) * opacity * smoothstep(fade.x, fade.y, d);
   if (a < 0.003) discard;
   gl_FragColor = vec4(mix(fill, rim, fres), a);
 }`;
@@ -368,6 +374,51 @@ export function makeWire(mesh) {
 /** @param {THREE.Mesh} ghost @param {number} v 0..1 */
 export function setGhostOpacity(ghost, v) {
   /** @type {THREE.ShaderMaterial} */ (ghost.material).uniforms.opacity.value = v;
+}
+
+/** How much of the ghost shows at a distance from the camera (chi), 0..1. @param {number} d */
+export function ghostFade(d) {
+  return THREE.MathUtils.smoothstep(d, GHOST_FADE.x, GHOST_FADE.y);
+}
+
+/** The box's edges in x-ray: thin warm lines, the size of a pen stroke (CSS px). */
+const BOX_LINE = new LineMaterial({ color: 0xffd6b0, linewidth: 1.5, transparent: true, opacity: 1, depthWrite: false });
+
+/** Size the edge lines for the canvas (CSS px). @param {number} w @param {number} h */
+export function setBoxLineSize(w, h) {
+  BOX_LINE.resolution.set(w, h);
+}
+
+/**
+ * The twelve edges of each box, for x-ray (in the chariot's frame). Its own
+ * material (its opacity fades).
+ * @param {THREE.Box3[]} boxes
+ */
+export function makeBoxLines(boxes) {
+  /** @type {number[]} */
+  const pts = [];
+  for (const b of boxes) {
+    const c = (/** @type {number} */ i) => [i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z];
+    for (let i = 0; i < 8; i++) {
+      for (const bit of [1, 2, 4]) if (!(i & bit)) pts.push(...c(i), ...c(i | bit));
+    }
+  }
+  const geo = new LineSegmentsGeometry().setPositions(pts);
+  const lines = new LineSegments2(geo, BOX_LINE.clone());
+  lines.name = "body.edges";
+  lines.castShadow = lines.receiveShadow = false;
+  lines.userData.noAO = true;
+  lines.visible = false;
+  lines.renderOrder = 1;
+  lines.raycast = () => {};
+  return lines;
+}
+
+/** @param {LineSegments2} lines @param {number} v 0..1 */
+export function setBoxLineOpacity(lines, v) {
+  const m = /** @type {LineMaterial} */ (lines.material);
+  m.opacity = v;
+  m.resolution.copy(BOX_LINE.resolution);
 }
 
 /** How much of the circle the arc covers. */
