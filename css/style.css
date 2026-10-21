@@ -586,6 +586,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .panel-nav .primary { min-width: 0; padding: 0 10px 0 16px; }
   .panel-nav .plain { padding: 0 14px 0 8px; }
   .panel-nav .icon { width: 18px; height: 18px; }
+  .tools .seg-btn { padding: 0 8px; font-size: 17px; }
 }
 
 /* Smaller HUD on tablets and portrait. */
