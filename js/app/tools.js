@@ -166,8 +166,9 @@ export class Tools {
     const p = this.parts;
     p.mech.sync((v) => v === st.mechanism);
     const song = st.mechanism === "song";
-    p.assistBtn.setAttribute("aria-checked", String(st.assist));
-    p.assistBtn.classList.toggle("on", st.assist);
+    // the differential needs no driver: show the switch off there, not "on but grey"
+    p.assistBtn.setAttribute("aria-checked", String(song && st.assist));
+    p.assistBtn.classList.toggle("on", song && st.assist);
     p.assistBtn.toggleAttribute("disabled", !song);
     const t = S().tools;
     p.assistNote.textContent = !song ? t.assistOff : st.assist ? t.assistOn : t.assistNone;

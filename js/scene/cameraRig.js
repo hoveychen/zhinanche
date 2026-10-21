@@ -28,6 +28,8 @@ const GLIDE = 0.8;
 
 /** The home page's opening: how long the close view of the figure holds, and how long the pull back to the chase view takes (s). */
 const INTRO = { hold: 1.8, out: 3.2 };
+/** A lesson step's opening (its demo waits for it): a glance at the hand, then out. */
+const INTRO_BRIEF = { hold: 0.5, out: 2.2 };
 
 /** The figure's middle, arm included (chariot local, big figure: js/scene/rig.js), and its height with the arm. */
 const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
@@ -37,6 +39,8 @@ const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
  * and a little west, south past the chariot at the gate (js/scene/landmark.js).
  */
 const CHASE_DIR = new THREE.Vector3(-0.2, 0.125, -1).normalize();
+/** How far round the chariot the chase view keeps clear of the HUD, whichever way it turns (the shafts reach further). */
+const CHASE_ROOM = 6;
 
 /**
  * Where the camera may go, relative to the chariot (the courtyard rides along
@@ -83,6 +87,8 @@ export class CameraRig {
     this.glide = null;
     /** the home page's opening (view "intro"): seconds into it, and whether it has pulled back yet */
     this.intro = { t: 0, out: false };
+    /** the opening is a lesson step's, which waits with its demo till it is out: keep it short */
+    this.brief = false;
     /** fixed framing for the top view (route playback), else null */
     /** @type {{target: THREE.Vector3, pos: THREE.Vector3} | null} */
     this.box = null;
@@ -267,6 +273,21 @@ export class CameraRig {
         // in the middle of what the HUD leaves free across the view (the
         // drive pad on a phone would sit on the chariot)
         const ins = this.lowInsets();
+        // The camera keeps this framing as the chariot drives and turns; side
+        // on (shafts and all) it is twice as long as head on. If that would
+        // not fit between the panels down the sides (free driving on a
+        // tablet: the odometer one side, "See the gears" and the arrows the
+        // other), set it where the HUD leaves the most room, further back if
+        // it must be.
+        const round = new THREE.Box3(new THREE.Vector3(f.x - CHASE_ROOM, 0, f.z - CHASE_ROOM), new THREE.Vector3(f.x + CHASE_ROOM, FIGURE_TOP, f.z + CHASE_ROOM));
+        let best = { d: this.#fitBox(round, CHASE_DIR, ins, 0.25), ins };
+        if (best.d > d) {
+          for (const b of this.bands()) {
+            const bd = this.#fitBox(round, CHASE_DIR, b, 0.25);
+            if (bd < best.d * 0.95) best = { d: bd, ins: b };
+          }
+          if (best.ins !== ins) return this.#aimBox(round, CHASE_DIR, Math.max(d, best.d), best.ins);
+        }
         const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
         const right = new THREE.Vector3(0, 1, 0).cross(CHASE_DIR).normalize();
         target.addScaledVector(right, ((ins.right - ins.left) / 2) * d * th);
@@ -408,6 +429,11 @@ export class CameraRig {
     this.box = null;
   }
 
+  /** Still in the opening's close view or pulling back from it. */
+  get opening() {
+    return this.view === "intro" && (!this.intro.out || this.glide !== null);
+  }
+
   /**
    * Follow the chariot and finish any glide.
    * @param {number} dt
@@ -417,10 +443,11 @@ export class CameraRig {
     const cam = this.camera, ctl = this.controls;
     if (this.view === "intro" && !this.intro.out) {
       this.intro.t += dt;
-      if (this.intro.t >= INTRO.hold && !this.glide) {
+      const o = this.brief ? INTRO_BRIEF : INTRO;
+      if (this.intro.t >= o.hold && !this.glide) {
         // slowly back out to the whole scene
         this.intro.out = true;
-        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: INTRO.out };
+        this.glide = { fromPos: cam.position.clone(), fromTarget: ctl.target.clone(), t: 0, dur: o.out };
       }
     }
     // put back the distance taken off last frame, so the camera eases out

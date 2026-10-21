@@ -208,6 +208,7 @@ export const LESSONS = [
       {
         text: "刚才车拐了两个弯，一共掉了个头。外边的车轮比里边<b>多转了一圈</b>。\n\n车身转了半圈，木人就反着转半圈，还是指着南。",
         scene: { reset: true, view: "above", trails: true, odometer: true, highlight: ["figure"], play: "pivotLeft" },
+        tallyAtEnd: true,
       },
       {
         text: "把「拆开」的滑块往右拖，齿轮会一个一个分开。",

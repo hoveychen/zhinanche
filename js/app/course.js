@@ -215,6 +215,12 @@ export class Course {
     return lessons()[this.lesson];
   }
 
+  /** The odometer's line comparing the wheels waits: for a guess, or for the end of a route the words already tell. */
+  get tallyHeld() {
+    if (this.held !== null) return true;
+    return this.mode === "lesson" && this.current.steps[this.step]?.tallyAtEnd === true && this.app.playing;
+  }
+
   /**
    * @param {number} k step index
    * @param {boolean} jump fold the directives from the start instead of applying one on top
@@ -424,12 +430,47 @@ export class Course {
     if (!sc || !el) return;
     const need = this.#below(el) + 14;
     if (need <= 0) return;
-    const top = sc.querySelector(this.doTask && el !== this.doTask.el && !all ? ".lesson-text" : ".lesson-head");
-    const room = top ? top.getBoundingClientRect().top - sc.getBoundingClientRect().top - 2 : 0;
-    const by = all ? need : Math.min(need, Math.max(0, room));
+    const by = all ? need : this.#stop(need, this.doTask !== null && el !== this.doTask.el);
     if (by <= 0) return;
     if (all) sc.scrollBy({ top: by, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     else sc.scrollTop += by;
+  }
+
+  /**
+   * How far opening a step may scroll: only to where a block of the heading
+   * or the text begins (never through a line of words), at most to the text's
+   * first line (`past` true) or the heading. The least that shows all of the
+   * control, else the most allowed: better a control half in view than a
+   * line of words cut in two.
+   * @param {number} need @param {boolean} past
+   */
+  #stop(need, past) {
+    const sc = /** @type {HTMLElement} */ (this.scroller);
+    const y0 = sc.getBoundingClientRect().top + 2;
+    const head = sc.querySelector(".lesson-head");
+    const text = sc.querySelector(".lesson-text");
+    if (!head || !text) return 0;
+    /** The lines of words in a box (a big heading's glyphs reach above its box). @param {Element} box */
+    const linesIn = (box) => {
+      /** @type {DOMRect[]} */
+      const out = [];
+      const tw = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+      for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+        const r = document.createRange();
+        r.selectNodeContents(n);
+        out.push(...r.getClientRects());
+      }
+      return out;
+    };
+    const lines = [...linesIn(head), ...linesIn(text)];
+    // the step dots alone on top would mean nothing: not a place to stop
+    const blocks = past ? [...head.children].filter((b) => !b.matches(".dots")).concat(text) : [head];
+    // a short panel can't scroll that far: the browser would stop mid-line
+    const most = sc.scrollHeight - sc.clientHeight - sc.scrollTop;
+    const stops = blocks.map((b) => Math.min(b.getBoundingClientRect().top, ...linesIn(b).map((l) => l.top)))
+      .filter((y) => !lines.some((l) => l.top < y - 0.5 && l.bottom > y + 0.5))
+      .map((y) => Math.floor(y - y0)).filter((d) => d > 0 && d <= most).sort((a, b) => a - b);
+    return stops.find((d) => d >= need) ?? stops.at(-1) ?? 0;
   }
 
   /** Show "往下看" while this step's target is still below the fold. */

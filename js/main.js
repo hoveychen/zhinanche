@@ -174,6 +174,8 @@ for (const b of document.querySelectorAll("[data-go]")) {
 app.onState((st) => {
   tools.sync(st);
   odo.el.hidden = !st.odometer || st.demo === "holdHands";
+  // its words now, not on the next frame: the view placed next keeps clear of it at its full height
+  if (!odo.el.hidden) odo.update(app.chariot.distL, app.chariot.distR);
   input.pad.hidden = !st.controls.includes("drive");
   input.drawBtn.hidden = !st.controls.includes("draw");
   gearsBtn.hidden = !st.controls.includes("gearsView");
@@ -396,8 +398,9 @@ function frame(/** @type {number} */ now) {
     dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
     if (!odo.el.hidden) {
       odo.update(pose.distL, pose.distR);
-      // a guess-first question about the wheels: the line that compares them waits too
-      odo.diff.hidden = course.held !== null;
+      // a guess-first question about the wheels, or a route whose end the words
+      // tell ("one more turn"): the line that compares them waits
+      odo.diff.hidden = course.tallyHeld;
     }
     syncHint();
     if (!demoCount.hidden) demoCount.textContent = S().stage.demoCount(world.holdHands.steps.in, world.holdHands.steps.out);
