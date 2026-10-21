@@ -39,6 +39,8 @@ const FIGURE_MID = { x: 0, y: 13.4, z: 0.9, h: 3.4 };
  * and a little west, south past the chariot at the gate (js/scene/landmark.js).
  */
 const CHASE_DIR = new THREE.Vector3(-0.2, 0.125, -1).normalize();
+/** How far round the chariot the chase view keeps clear of the HUD, whichever way it turns (the shafts reach further). */
+const CHASE_ROOM = 6;
 
 /**
  * Where the camera may go, relative to the chariot (the courtyard rides along
@@ -271,6 +273,21 @@ export class CameraRig {
         // in the middle of what the HUD leaves free across the view (the
         // drive pad on a phone would sit on the chariot)
         const ins = this.lowInsets();
+        // The camera keeps this framing as the chariot drives and turns; side
+        // on (shafts and all) it is twice as long as head on. If that would
+        // not fit between the panels down the sides (free driving on a
+        // tablet: the odometer one side, "See the gears" and the arrows the
+        // other), set it where the HUD leaves the most room, further back if
+        // it must be.
+        const round = new THREE.Box3(new THREE.Vector3(f.x - CHASE_ROOM, 0, f.z - CHASE_ROOM), new THREE.Vector3(f.x + CHASE_ROOM, FIGURE_TOP, f.z + CHASE_ROOM));
+        let best = { d: this.#fitBox(round, CHASE_DIR, ins, 0.25), ins };
+        if (best.d > d) {
+          for (const b of this.bands()) {
+            const bd = this.#fitBox(round, CHASE_DIR, b, 0.25);
+            if (bd < best.d * 0.95) best = { d: bd, ins: b };
+          }
+          if (best.ins !== ins) return this.#aimBox(round, CHASE_DIR, Math.max(d, best.d), best.ins);
+        }
         const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
         const right = new THREE.Vector3(0, 1, 0).cross(CHASE_DIR).normalize();
         target.addScaledVector(right, ((ins.right - ins.left) / 2) * d * th);

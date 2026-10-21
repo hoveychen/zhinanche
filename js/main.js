@@ -174,6 +174,8 @@ for (const b of document.querySelectorAll("[data-go]")) {
 app.onState((st) => {
   tools.sync(st);
   odo.el.hidden = !st.odometer || st.demo === "holdHands";
+  // its words now, not on the next frame: the view placed next keeps clear of it at its full height
+  if (!odo.el.hidden) odo.update(app.chariot.distL, app.chariot.distR);
   input.pad.hidden = !st.controls.includes("drive");
   input.drawBtn.hidden = !st.controls.includes("draw");
   gearsBtn.hidden = !st.controls.includes("gearsView");
