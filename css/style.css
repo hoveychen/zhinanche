@@ -87,6 +87,7 @@ button { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .icon { flex: none; display: block; width: var(--icon); height: var(--icon); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon.filled { fill: currentColor; stroke: none; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .app { display: grid; grid-template-rows: var(--bar-h) 1fr; height: 100vh; height: 100dvh; }
@@ -250,11 +251,10 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .pic figcaption { margin-top: 6px; font-size: var(--fs-xs); line-height: 1.5; color: var(--ink-2); }
 .replay, .walk { margin: 4px 0 16px; }
 
-/* a task: a card with the accent down its edge; green once done */
+/* a task: a card edged in the accent (your turn); green once done */
 .task {
   margin: 8px 0 18px; padding: 16px 18px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l);
-  box-shadow: inset 4px 0 0 var(--accent);
+  background: var(--surface); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: var(--r-l);
 }
 .task-prompt { margin: 0 0 10px; font-weight: 700; font-size: 19px; line-height: 1.5; }
 /* a question asked before the scene plays: say it will play once answered */
@@ -272,7 +272,7 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .feedback:empty { display: none; }
 .feedback.yes { color: var(--ok); }
 .feedback.hint { color: var(--accent-ink); }
-.task.passed { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 30%, var(--line)); box-shadow: inset 4px 0 0 var(--ok); }
+.task.passed { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); }
 .task.do { display: flex; gap: 14px; align-items: flex-start; }
 .task.do .task-prompt { margin: 0; }
 .tick {
@@ -315,9 +315,9 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .trouble {
   margin-top: var(--sp-4); padding: 14px 16px 16px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l);
-  box-shadow: inset 4px 0 0 var(--accent);
 }
-.trouble-head { margin: 0; font-size: var(--fs-m); font-weight: 700; line-height: 1.4; color: var(--accent-ink); }
+.trouble-head { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-m); font-weight: 700; line-height: 1.4; color: var(--accent-ink); }
+.trouble-head .icon { width: 20px; height: 20px; }
 .trouble-note { margin: 2px 0 0; font-size: var(--fs-s); line-height: 1.5; color: var(--ink-2); }
 .trouble .tool { margin-top: var(--sp-3); }
 .tool { margin-top: var(--sp-4); }
@@ -456,6 +456,7 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .stage-corner { position: absolute; top: var(--hud-gap); right: var(--hud-gap); display: flex; gap: 2px; padding: 4px; }
 .pause-btn .i-play, .pause-btn.on .i-pause { display: none; }
 .pause-btn.on .i-play { display: block; }
+.pause-btn .icon { width: 20px; height: 20px; }
 /* paused: "carry on" is the button to press */
 .pause-btn.on, .pause-btn.on:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 .share-btn { display: none; }

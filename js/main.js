@@ -138,7 +138,7 @@ const stageHook = h("div", { class: "stage-hook" }, [
 // the gears and the walking demo; the view can still be dragged round.
 const pauseText = h("span", { text: S().ui.pause });
 const pauseBtn = bind(h("button", { type: "button", class: "bar-btn pause-btn", "aria-pressed": "false", onclick: () => app.setPaused(!app.paused) }, [
-  icon("player-pause", "i-pause"), icon("player-play", "i-play"),
+  icon("player-pause-filled", "i-pause"), icon("player-play-filled", "i-play"),
   pauseText,
 ]), (s) => s.ui.pauseKey, "title");
 const share = new ShareButton(() => setupOf(app.state, app.drawn));

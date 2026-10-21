@@ -136,7 +136,7 @@ export class Tools {
     // The faults first and set apart: "does it drift?" is what people ask.
     const b = this.blocks;
     this.trouble = bind(h("div", { class: "trouble", role: "group" }, [
-      bind(h("p", { class: "trouble-head" }), (s) => s.free.breakHead),
+      h("p", { class: "trouble-head" }, [icon("tool"), bind(h("span"), (s) => s.free.breakHead)]),
       bind(h("p", { class: "trouble-note" }), (s) => s.free.breakNote),
       b.faults, b.slip,
     ]), (s) => s.free.breakHead, "aria-label");

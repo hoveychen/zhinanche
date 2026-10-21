@@ -15,7 +15,8 @@ export function icon(name, cls = "") {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("class", cls ? `icon ${cls}` : "icon");
+  const kind = name.endsWith("-filled") ? "icon filled" : "icon";
+  svg.setAttribute("class", cls ? `${kind} ${cls}` : kind);
   svg.innerHTML = ICONS[name];
   return svg;
 }
