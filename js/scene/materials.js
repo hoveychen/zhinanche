@@ -261,6 +261,25 @@ export function faceUVs(geo, scale, mode, seed) {
 }
 
 /**
+ * Put the photographed wood (photo.js) on whatever wears the procedural
+ * bare wood: the boards, hubs, spokes and pegs. It is a near-white
+ * multiplier like the procedural one, so the role colours (and the rig's
+ * highlight colours) stay; painted parts keep their soft grain.
+ * @param {Iterable<THREE.Mesh>} meshes @param {import("./photo.js").PhotoSet} set @param {Textures} tex the procedural ones
+ */
+export function photoWood(meshes, set, tex) {
+  // the scan is 2 m (6.5 chi) of plank, the procedural tile ~2 chi
+  set.albedo.repeat.setScalar(0.5);
+  set.normal.repeat.setScalar(0.5);
+  for (const o of meshes) {
+    const m = /** @type {THREE.MeshPhysicalMaterial} */ (o.material);
+    if (m.map !== tex.wood) continue;
+    m.map = set.albedo;
+    if (m.normalMap === tex.woodNormal) m.normalMap = set.normal;
+  }
+}
+
+/**
  * Swap the GLB's flat colours for the realistic materials. Call before the
  * Rig is made (it clones each mesh's material for its own looks).
  * @param {THREE.Object3D} root the GLB scene

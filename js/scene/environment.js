@@ -443,13 +443,15 @@ export class Environment {
    * Put the photographed sky up (it fades in) and bake it into the
    * environment map. Same program as before: only uniforms change.
    * @param {PhotoSky} photo
+   * @param {boolean} [now] no fade (before the first picture)
    */
-  setPhoto(photo) {
+  setPhoto(photo, now = false) {
     this.photo = photo;
     const u = this.skyUniforms;
     photoUniforms(u, photo, photo.bgTex, photo.bg.elev);
     u.photoOn.value = 0;
     this.photoFade = 0;
+    if (now) this.update(0.8);
     if (this.tex) this.bake(this.tex);
   }
 
@@ -457,7 +459,7 @@ export class Environment {
   bake(tex) {
     this.tex = tex;
     const mat = /** @type {THREE.ShaderMaterial} */ (this.sky.material);
-    if (tex && this.cloudsWanted) {
+    if (tex && this.cloudsWanted && this.photoFade < 1) {
       mat.uniforms.clouds.value = tex.clouds;
       mat.uniforms.cloudAmount.value = 1;
     }

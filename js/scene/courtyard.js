@@ -17,8 +17,13 @@
 
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { meanOf, placeholder } from "./photo.js";
 
 /** @import { Textures } from "./materials.js" */
+/** @import { PhotoSet } from "./photo.js" */
+
+/** Stand-ins for photographed textures: white colour, a flat normal, no occlusion and roughness ×1. */
+const BLANK = { white: placeholder([255, 255, 255]), flat: placeholder([128, 128, 255]), arm: placeholder([255, 255, 0]) };
 
 /** The court the chariot sits in (rider-local chi). */
 export const COURT = { half: 77, north: -205, south: 225 };
@@ -663,6 +668,8 @@ export class Courtyard {
   /** Empty: use Courtyard.build. */
   constructor() {
     this.materials = materials();
+    /** @type {Textures | null} the procedural textures it was dressed with */
+    this.tex = null;
     this.group = new THREE.Group();
     this.group.name = "courtyard";
   }
@@ -679,17 +686,56 @@ export class Courtyard {
     this.group.add(mesh);
   }
 
-  /** Add texture detail once the procedural textures exist. @param {Textures} tex */
+  /**
+   * Add texture detail once the procedural textures exist. The walls and
+   * roofs get every slot a photographed set fills (photo), with stand-ins,
+   * so the photos go on later without new programs.
+   * @param {Textures} tex
+   */
   dress(tex) {
     const m = this.materials;
+    this.tex = tex;
     for (const k of /** @type {const} */ (["roofYellow", "roofGray"])) {
       m[k].map = tex.tiles;
       m[k].normalMap = tex.tilesNormal;
       m[k].roughnessMap = tex.tilesRough;
+      m[k].aoMap = BLANK.arm;
     }
+    m.wallRed.map = BLANK.white;
+    m.wallRed.normalMap = BLANK.flat;
+    m.wallRed.roughnessMap = BLANK.arm;
+    m.wallRed.aoMap = BLANK.arm;
     m.marble.map = tex.stone;
     m.marble.roughnessMap = tex.stoneRough;
     for (const mat of Object.values(m)) mat.needsUpdate = true;
+  }
+
+  /**
+   * Swap a photographed set in (photo.js), keeping each material's average
+   * colour. Only textures and uniforms change: nothing recompiles.
+   * @param {"plaster" | "roof"} name @param {PhotoSet} set
+   */
+  photo(name, set) {
+    const m = this.materials;
+    const keys = name === "plaster" ? /** @type {const} */ (["wallRed"]) : /** @type {const} */ (["roofYellow", "roofGray"]);
+    // what the material's colour was multiplied by before: white, or the procedural tiles
+    const was = name === "plaster" ? new THREE.Color(1, 1, 1) : meanOf(/** @type {Textures} */ (this.tex).tiles);
+    const k = new THREE.Color(was.r / set.mean.r, was.g / set.mean.g, was.b / set.mean.b);
+    // the scans are 2 m (plaster) and 2.5 m (roof) square; walls carry 0.05–0.1 uv per chi
+    const repeat = name === "plaster" ? 2 : 0.6;
+    for (const t of [set.albedo, set.normal, set.arm]) t?.repeat.set(repeat, repeat);
+    for (const key of keys) {
+      const mat = m[key];
+      mat.color.multiply(k);
+      mat.map = set.albedo;
+      mat.normalMap = set.normal;
+      if (set.arm) {
+        mat.roughnessMap = set.arm;
+        mat.aoMap = set.arm;
+      }
+      // the scan's roughness is absolute, not a multiplier; glazed tiles stay glossier
+      mat.roughness = name === "roof" ? 0.75 : 1;
+    }
   }
 
   /** The meshes that cast baked shadows (all but the hills). */

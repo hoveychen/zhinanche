@@ -6,8 +6,9 @@
 import * as THREE from "three";
 import { Environment, SetShadow, contactShadow } from "./environment.js";
 import { Courtyard } from "./courtyard.js";
-import { dressGround, makeGround } from "./ground.js";
-import { dressChariot, loadTextures } from "./materials.js";
+import { dressGround, makeGround, photoGround } from "./ground.js";
+import { dressChariot, loadTextures, photoWood } from "./materials.js";
+import { meanOf } from "./photo.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
 import { Photos } from "./photo.js";
 
@@ -55,6 +56,10 @@ export class Look {
     this.yard = null;
     /** @type {Promise<void> | undefined} */
     this.yardBuilt = undefined;
+    /** @type {() => void} */
+    this.yardIsReady = () => {};
+    /** resolves once the courtyard is up (not started by waiting on it) */
+    this.yardReady = new Promise((r) => (this.yardIsReady = () => r(undefined)));
     this.frames = 0;
     /** @type {Textures | null} */
     this.sceneTex = null;
@@ -62,6 +67,8 @@ export class Look {
     camera.updateProjectionMatrix();
     /** @type {THREE.Mesh[]} */
     this.chariotMeshes = [];
+    /** @type {import("./photo.js").PhotoSet | null} the photographed wood, once it is up */
+    this.woodPhoto = null;
     /** @type {PostFX | null} */
     this.postfx = null;
     /** stepping down off post-processing, once its programs are compiled */
@@ -76,7 +83,6 @@ export class Look {
     const tex = loadTextures(renderer, s.textures);
     /** the photographed sky and surfaces, coming in after the first picture */
     this.photos = new Photos(renderer, s.textures);
-    void this.#loadPhotos();
     /** @type {Promise<Textures>} */
     this.chariotTex = tex.chariot;
     /** @type {Promise<Textures>} */
@@ -88,25 +94,61 @@ export class Look {
       this.env.bake(tex);
       return tex;
     });
+    void this.#loadPhotos();
   }
 
-  /** Swap each photographed set in as it is uploaded. */
+  /** Swap each photographed set in as it is uploaded (sky first: it is the smallest). */
   async #loadPhotos() {
     const done = (/** @type {string} */ part) => {
       const now = (document.body.dataset.photo ?? "").split(" ").filter(Boolean);
       now.push(part);
       document.body.dataset.photo = now.join(" ");
     };
-    try {
-      const sky = await this.photos.sky();
-      if (sky) {
-        await this.texReady;
-        this.env.setPhoto(sky);
+    /** @template T @param {string} name @param {Promise<T>} p */
+    const safe = (name, p) => p.catch((err) => {
+      console.warn(`photographed ${name} unavailable`, err);
+      return null;
+    });
+    const sky = safe("sky", this.photos.sky());
+    // sizes [albedo, normal, arm] for the full and lite tiers (tools/assets/build_photo.py makes these)
+    const sets = {
+      ground: safe("ground", this.photos.surface("ground", { full: [1024, 1024, 1024], lite: [1024, 1024, 512] })),
+      plaster: safe("plaster", this.photos.surface("plaster", { full: [1024, 1024, 512], lite: [512, 512, 256] })),
+      roof: safe("roof", this.photos.surface("roof", { full: [1024, 512, 512], lite: [512, 512, 256] })),
+      wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
+    };
+    // A sky decoded before the textures are made (the usual case) goes up at
+    // once and is in the environment map's first bake; one that comes later
+    // costs a second bake (~20 ms on a throttled CPU), on a frame of its own.
+    const early = sky.then((s) => {
+      if (s && !this.sceneTex) {
+        this.env.setPhoto(s, true);
         done("sky");
+        return true;
       }
-    } catch (err) {
-      console.warn("photographed sky unavailable", err);
-    }
+      return false;
+    });
+    const tex = await this.texReady;
+    /** @param {string} name @param {Promise<any>} p @param {(s: any) => unknown} on */
+    const put = async (name, p, on) => {
+      const got = await p;
+      if (!got) return;
+      // the swap on a frame of its own, after the uploads
+      await (await this.photos.later(() => on(got)));
+      done(name);
+    };
+    await Promise.all([
+      early.then((was) => (was ? undefined : put("sky", sky, (s) => this.env.setPhoto(s)))),
+      put("ground", sets.ground, (s) => photoGround(this.ground, s, meanOf(tex.stone))),
+      put("wood", sets.wood, async (s) => {
+        this.woodPhoto = s;
+        photoWood(this.chariotMeshes, s, await this.chariotTex);
+      }),
+      this.yardReady.then(() => Promise.all([
+        put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
+        put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
+      ])),
+    ]);
   }
 
   /** The sun light (its shadow follows the chariot). */
@@ -117,9 +159,13 @@ export class Look {
   /** Swap a loaded chariot's flat colours for real materials. @param {THREE.Object3D} root */
   async dress(root) {
     dressChariot(root, await this.chariotTex);
+    /** @type {THREE.Mesh[]} */
+    const meshes = [];
     root.traverse((o) => {
-      if (o instanceof THREE.Mesh) this.chariotMeshes.push(o);
+      if (o instanceof THREE.Mesh) meshes.push(o);
     });
+    this.chariotMeshes.push(...meshes);
+    if (this.woodPhoto) photoWood(meshes, this.woodPhoto, await this.chariotTex);
   }
 
   /** Contact shadow under the chariot. @param {THREE.Object3D} holder */
@@ -171,6 +217,7 @@ export class Look {
     this.setShadow.bake(renderer, gate ? [yard.group, gate] : [yard.group]);
     if (hills) hills.visible = true;
     document.body.dataset.scene = "ready";
+    this.yardIsReady();
   }
 
   /** @param {number} dt */

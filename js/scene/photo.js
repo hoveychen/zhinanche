@@ -4,9 +4,11 @@
 // set is ready, then the materials swap texture objects. A material keeps
 // the same texture slots throughout, so the swap compiles nothing.
 //
-// Files are fetched and decoded off the main thread (createImageBitmap), and
-// uploaded to the GPU one texture per frame (tick), so no frame pays for a
-// whole set; a set goes on only once all of it is uploaded.
+// Files are fetched and decoded off the main thread (createImageBitmap), then
+// the GPU work is spread out, one job per frame (tick): each texture's upload,
+// then the swap itself. No frame pays for a whole set, and a set goes on only
+// once all of it is uploaded. (On a 4×-throttled CPU a 1024² upload with
+// mipmaps took 5–8 ms, a 2048² one 43 ms: the scans stop at 1024.)
 
 import * as THREE from "three";
 
@@ -26,7 +28,7 @@ const ROOT = new URL("../../assets/photo/", import.meta.url);
  * @typedef {object} PhotoSet a surface: colour, OpenGL normal, AO·roughness·metal
  * @property {THREE.Texture} albedo
  * @property {THREE.Texture} normal
- * @property {THREE.Texture} arm
+ * @property {THREE.Texture | null} arm (none asked for: the chariot's wood keeps its own roughness)
  * @property {THREE.Color} mean the albedo's average (linear), to keep a tint's colour
  */
 
@@ -38,6 +40,27 @@ export function placeholder(rgb) {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.needsUpdate = true;
   return t;
+}
+
+/**
+ * The average (linear) colour of a procedural texture, from a sample of its
+ * texels: a photo swapped in for it is tinted to the same average.
+ * @param {THREE.Texture} tex a DataTexture (texgen.js) in sRGB
+ */
+export function meanOf(tex) {
+  const d = /** @type {Uint8Array} */ (tex.image.data);
+  const sum = [0, 0, 0];
+  let n = 0;
+  // ~4000 texels, prime stride so it doesn't walk one column
+  const step = 4 * Math.max(1, Math.floor(d.length / 4 / 4001));
+  for (let o = 0; o < d.length; o += step) {
+    for (let c = 0; c < 3; c++) {
+      const v = d[o + c] / 255;
+      sum[c] += v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    }
+    n++;
+  }
+  return new THREE.Color(sum[0] / n, sum[1] / n, sum[2] / n);
 }
 
 /**
@@ -71,8 +94,8 @@ export class Photos {
     this.renderer = renderer;
     this.level = level;
     this.aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-    /** @type {{tex: THREE.Texture, done: () => void}[]} decoded, waiting for the GPU */
-    this.queue = [];
+    /** @type {(() => void)[]} GPU work waiting for a frame of its own */
+    this.jobs = [];
     /** @type {Promise<PhotoManifest | null>} */
     this.manifest = fetch(new URL("manifest.json", ROOT))
       .then((r) => (r.ok ? r.json() : null))
@@ -80,12 +103,32 @@ export class Photos {
   }
 
   /**
-   * One texture, decoded and then uploaded on a later tick.
+   * Run `fn` on a later frame, alone (tick).
+   * @template T @param {() => T} fn @returns {Promise<T>}
+   */
+  later(fn) {
+    return new Promise((done, fail) => this.jobs.push(() => {
+      try {
+        done(fn());
+      } catch (err) {
+        fail(err);
+      }
+    }));
+  }
+
+  /** Run at most one waiting job. Call once a frame, before drawing. */
+  tick() {
+    this.jobs.shift()?.();
+  }
+
+  /**
+   * One texture, decoded, its upload queued (tick).
    * @param {string} file
    * @param {{colour: boolean, repeat: boolean, mips: boolean}} o
+   * @param {boolean} [wait] resolve once uploaded, not once decoded
    * @returns {Promise<THREE.Texture>}
    */
-  async #load(file, o) {
+  async #load(file, o, wait = true) {
     const { image, flipY } = await decode(new URL(file, ROOT));
     const tex = new THREE.Texture(/** @type {any} */ (image));
     tex.flipY = flipY;
@@ -96,21 +139,16 @@ export class Photos {
     tex.minFilter = o.mips ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
     tex.anisotropy = o.mips ? this.aniso : 1;
     tex.needsUpdate = true;
-    await new Promise((done) => this.queue.push({ tex, done: () => done(undefined) }));
+    // (a texture already drawn with is not uploaded again)
+    const up = this.later(() => this.renderer.initTexture(tex));
+    if (wait) await up;
     return tex;
-  }
-
-  /** Upload at most one waiting texture. Call once a frame, before drawing. */
-  tick() {
-    const next = this.queue.shift();
-    if (!next) return;
-    this.renderer.initTexture(next.tex);
-    next.done();
   }
 
   /**
    * The photographed sky: the background strip and the small whole-dome map
-   * for reflections, uploaded.
+   * for reflections, decoded (their uploads queued: if the sky goes up before
+   * the first frame, drawing it uploads them).
    * @returns {Promise<PhotoSky | null>}
    */
   async sky() {
@@ -119,14 +157,14 @@ export class Photos {
     const s = m.sky;
     const bg = this.level === "lite" ? "2048" : "4096";
     const opts = { colour: true, repeat: true, mips: false };
-    const [bgTex, envTex] = await Promise.all([this.#load(s.bg.files[bg], opts), this.#load(s.env.files["1024"], opts)]);
+    const [bgTex, envTex] = await Promise.all([this.#load(s.bg.files[bg], opts, false), this.#load(s.env.files["1024"], opts, false)]);
     return { ...s, bgTex, envTex };
   }
 
   /**
-   * A surface scan at the sizes for this level.
+   * A surface scan at the sizes for this level, uploaded.
    * @param {string} name ground, plaster, roof, wood
-   * @param {{full: number[], lite: number[]}} sizes [albedo, normal, arm] texel widths
+   * @param {{full: number[], lite: number[]}} sizes [albedo, normal, arm] texel widths (arm 0: none)
    * @returns {Promise<PhotoSet | null>}
    */
   async surface(name, sizes) {
@@ -137,7 +175,7 @@ export class Photos {
     const [albedo, normal, arm] = await Promise.all([
       this.#load(t.albedo[a], { colour: true, repeat: true, mips: true }),
       this.#load(t.normal[n], { colour: false, repeat: true, mips: true }),
-      this.#load(t.arm[r], { colour: false, repeat: true, mips: true }),
+      r ? this.#load(t.arm[r], { colour: false, repeat: true, mips: true }) : null,
     ]);
     return { albedo, normal, arm, mean: new THREE.Color(t.mean[0], t.mean[1], t.mean[2]) };
   }

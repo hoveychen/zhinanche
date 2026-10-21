@@ -9,11 +9,9 @@
     0.1808
    ],
    "albedo": {
-    "2048": "ground-albedo-2048.webp",
     "1024": "ground-albedo-1024.webp"
    },
    "normal": {
-    "2048": "ground-normal-2048.webp",
     "1024": "ground-normal-1024.webp"
    },
    "arm": {
@@ -53,7 +51,6 @@
     "512": "roof-albedo-512.webp"
    },
    "normal": {
-    "1024": "roof-normal-1024.webp",
     "512": "roof-normal-512.webp"
    },
    "arm": {
@@ -64,9 +61,9 @@
   "wood": {
    "id": "dark_wood",
    "mean": [
-    0.1155,
-    0.0255,
-    0.0094
+    0.6933,
+    0.6496,
+    0.5968
    ],
    "albedo": {
     "1024": "wood-albedo-1024.webp",
@@ -76,10 +73,7 @@
     "1024": "wood-normal-1024.webp",
     "512": "wood-normal-512.webp"
    },
-   "arm": {
-    "512": "wood-arm-512.webp",
-    "256": "wood-arm-256.webp"
-   }
+   "arm": {}
   }
  },
  "sky": {

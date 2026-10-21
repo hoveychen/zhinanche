@@ -49,12 +49,18 @@ SKY_ENV = (-3.0, 90.0)
 # brightness of the procedural sky it replaces.
 SKY_MEDIAN = 0.32
 
-# name -> (albedo sizes, normal sizes, arm sizes, albedo mode)
+# name -> (albedo sizes, normal sizes, arm sizes, albedo mode); the sizes are the ones
+# js/scene/look.js asks for (full, lite tiers).
+#   colour      the scan as it is (the page tints it to the old colour by its mean)
+#   grey        light and dark only, mean 0.5 (the page tints it per roof)
+#   multiplier  light and dark only, a little warm, near white (mean ~0.72 linear):
+#               it multiplies the chariot's role colours as the procedural wood did,
+#               so materials.js and the rig's highlight colours stay as they are
 TEXTURES = {
-    "ground": ((2048, 1024), (2048, 1024), (1024, 512), "colour"),
+    "ground": ((1024,), (1024,), (1024, 512), "colour"),
     "plaster": ((1024, 512), (1024, 512), (512, 256), "colour"),
-    "roof": ((1024, 512), (1024, 512), (512, 256), "grey"),
-    "wood": ((1024, 512), (1024, 512), (512, 256), "colour"),
+    "roof": ((1024, 512), (512,), (512, 256), "grey"),
+    "wood": ((1024, 512), (1024, 512), (), "multiplier"),
 }
 
 
@@ -234,6 +240,12 @@ def build_texture(name, meta, cache, manifest):
         g = lum(lin)
         g = g / g.mean() * 0.5
         lin = np.repeat(g[..., None], 3, -1)
+        albedo = Image.fromarray(to_srgb8(lin))
+    elif mode == "multiplier":
+        g = lum(lin)
+        # grain contrast a little softer than the scan's (dark wood has deep figure)
+        g = np.exp(np.log(np.maximum(g / g.mean(), 1e-3)) * 0.7)
+        lin = np.clip(g[..., None] * 0.72 * np.array([1.0, 0.93, 0.85], np.float32), 0, 1)
         albedo = Image.fromarray(to_srgb8(lin))
     out = {"id": meta["id"], "mean": [round(float(v), 4) for v in lin.reshape(-1, 3).mean(0)], "albedo": {}, "normal": {}, "arm": {}}
     for s in a_sizes:
