@@ -458,7 +458,11 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .odo-read .m { display: block; font-size: var(--fs-xs); color: var(--ink-2); }
 .odo-col.l .num { color: var(--left); }
 .odo-col.r .num { color: var(--right-ink); }
-.odo-bar { position: relative; width: 40px; height: 92px; margin: 6px 0 4px; background: var(--paper-3); border-radius: var(--r-s); overflow: hidden; }
+/* a gauge, not an empty slot: quarter marks on the tube (the fill covers them as it rises) */
+.odo-bar {
+  position: relative; width: 40px; height: 92px; margin: 6px 0 4px; border-radius: var(--r-s); overflow: hidden;
+  background: repeating-linear-gradient(to top, transparent 0 calc(25% - 1px), var(--line-2) calc(25% - 1px) 25%) var(--paper-3);
+}
 .odo-bar .fill { position: absolute; left: 0; right: 0; bottom: calc(var(--from, 0) * 100%); height: calc(var(--len, 0) * 100%); }
 .odo-col.l .fill { background: var(--left); }
 .odo-col.r .fill { background: var(--right); }
@@ -771,7 +775,7 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .odo-read .num { font-size: 17px; }
   .odo-read .unit { font-size: var(--fs-xs); }
   .odo-read .m { display: none; }
-  .odo-bar { grid-area: bar; width: auto; height: 7px; margin: 1px 0 0; border-radius: var(--r-full); }
+  .odo-bar { grid-area: bar; width: auto; height: 7px; margin: 1px 0 0; border-radius: var(--r-full); background: repeating-linear-gradient(to right, transparent 0 calc(25% - 1px), var(--line-2) calc(25% - 1px) 25%) var(--paper-3); }
   .odo-bar .fill { top: 0; bottom: 0; right: auto; height: auto; left: calc(var(--from, 0) * 100%); width: calc(var(--len, 0) * 100%); }
   .odo-bar .zero { top: -2px; bottom: -2px; left: 50%; right: auto; width: 2px; height: auto; }
   .odo-diff { margin-top: 3px; font-size: var(--fs-xs); text-wrap: balance; }
