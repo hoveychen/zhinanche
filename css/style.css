@@ -738,7 +738,8 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .pad-btn .icon { width: 24px; height: 24px; }
   /* the two buttons share the width of the keys, each its icon over its word
      (a child reads the word: "回到车后" says how to get back) */
-  .stage-bar > .bar-btns { align-self: stretch; }
+  /* as wide as the keys and no wider (width 0 + min-width: long words wrap, they don't widen the bar) */
+  .stage-bar > .bar-btns { align-self: stretch; width: 0; min-width: 100%; }
   .bar-btns .bar-btn {
     flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 4px;
     font-size: var(--fs-xs); line-height: 1.15; white-space: normal; text-align: center;
@@ -856,3 +857,11 @@ body[data-mode="home"] .stage-hook { display: flex; }
 .hud-odo.folded .odo-read .num { font-size: var(--fs-m); }
 .hud-odo.folded .odo-read .unit { font-size: var(--fs-xs); }
 .hud-odo.folded .odo-bar, .hud-odo.folded .odo-read .m, .hud-odo.folded .odo-diff { display: none; }
+/* phones: the two numbers one over the other, so the folded card stays narrow
+   beside the drive bar whatever the distances grow to */
+@media (orientation: portrait) and (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
+  .hud-odo.folded .odo-cols { flex-direction: column; align-items: stretch; gap: 0; }
+  .hud-odo.folded .odo-col { justify-content: space-between; gap: var(--sp-3); }
+  .hud-odo.folded .odo-name { font-size: var(--fs-xs); }
+  .hud-odo.folded .odo-read .num { font-size: var(--fs-s); }
+}
