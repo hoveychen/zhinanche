@@ -150,6 +150,14 @@ html[lang="en"] .home-kicker, html[lang="en"] .list-head, html[lang="en"] .tool-
 .panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-5) var(--sp-5) var(--sp-6); container-type: inline-size; }
 
 @media (min-width: 1280px) { :root { --panel-w: 460px; } }
+/* Side panel (desktops, tablets on their side): a short step's back / next
+   follow its words, the panel's spare room goes under them; a long step's
+   words scroll and the buttons stay at the bottom. (Portrait screens and
+   phones keep the buttons at the bottom: their panel is short anyway.) */
+@media (orientation: landscape) and (min-width: 761px) and (min-height: 501px) {
+  .panel-body { flex: 0 1 auto; min-height: 0; }
+  .panel-body + .panel-nav { border-bottom: 1px solid var(--line); }
+}
 
 /* Portrait tablets and phones: 3D on top, lessons below. */
 @media (orientation: portrait), (max-width: 760px) {
