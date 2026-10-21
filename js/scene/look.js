@@ -168,6 +168,7 @@ export class Look {
       plaster: safe("plaster", this.photos.surface("plaster", { full: [1024, 1024, 512], lite: [512, 512, 256] })),
       roof: safe("roof", this.photos.surface("roof", { full: [1024, 512, 512], lite: [512, 512, 256] })),
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
+      trees: safe("trees", this.photos.trees()),
     };
     // A sky decoded before the textures are made (the usual case) goes up at
     // once and is in the environment map's first bake; one that comes later
@@ -211,6 +212,7 @@ export class Look {
       this.yardReady.then(() => Promise.all([
         put("plaster", sets.plaster, (s) => this.yard?.photo("plaster", s)),
         put("roof", sets.roof, (s) => this.yard?.photo("roof", s)),
+        put("trees", sets.trees, (s) => this.yard?.trees?.set(s.cards, s.atlases)),
       ])),
     ]);
     this.photos.close();
@@ -272,6 +274,11 @@ export class Look {
     const tex = this.sceneTex ?? (await this.texReady);
     yard.dress(tex);
     yard.age(tex.clouds);
+    // The trees' small atlases (they come with the sky): on before the shadows
+    // are baked, so the trees cast theirs, and in the first picture.
+    yard.trees?.shadeFrom(this.setShadow);
+    const trees = await this.photos.firstTrees().catch((err) => console.warn("trees unavailable", err));
+    if (trees) yard.trees?.set(trees.cards, trees.atlases);
     const gate = scene.getObjectByName("landmark");
     for (const m of Object.values(yard.materials)) {
       this.setShadow.patch(m);

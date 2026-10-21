@@ -64,6 +64,11 @@ export function meanOf(tex) {
 }
 
 /** @typedef {{image: ImageBitmap | HTMLImageElement, flipY: boolean}} Decoded */
+/** @import { TreeCard } from "./trees.js" */
+/** @typedef {{cards: Record<string, TreeCard>, atlases: Map<string, THREE.Texture>}} TreeSet */
+
+/** Settings for a tree atlas: colour, clamped, mipmapped. */
+const ATLAS = { colour: true, repeat: false, mips: true };
 
 /**
  * Fetch and decode an image here, on the main thread, flipped as three.js
@@ -164,6 +169,13 @@ export class Photos {
     // already the photographed floor; the full-size set sharpens it later.
     /** @type {Promise<Decoded[]>} */
     this.groundFiles = Promise.all(["albedo", "normal", "arm"].map((k) => this.decoder.decode(new URL(`ground-${k}-256.webp`, ROOT), "high")));
+    // The tree impostors (build_trees.py): the small atlases come with the sky too.
+    /** @type {Promise<Record<string, TreeCard> | null>} */
+    this.treeCards = fetch(new URL("trees.json", ROOT))
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    /** @type {Promise<[string, Decoded][]>} */
+    this.treeFiles = this.treeCards.then((m) => Promise.all(Object.entries(m ?? {}).map(async ([name, t]) => /** @type {[string, Decoded]} */ ([name, await this.decoder.decode(new URL(t.files["256"], ROOT), "high")]))));
   }
 
   /**
@@ -194,9 +206,10 @@ export class Photos {
    * A decoded image as a texture, its upload queued (tick).
    * @param {Decoded} d
    * @param {{colour: boolean, repeat: boolean, mips: boolean}} o
+   * @param {boolean} [queue] queue the upload (else the first draw does it)
    * @returns {{tex: THREE.Texture, up: Promise<void>}}
    */
-  #texture({ image, flipY }, o) {
+  #texture({ image, flipY }, o, queue = true) {
     const tex = new THREE.Texture(/** @type {any} */ (image));
     tex.flipY = flipY;
     tex.colorSpace = o.colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -207,7 +220,7 @@ export class Photos {
     tex.anisotropy = o.mips ? this.aniso : 1;
     tex.needsUpdate = true;
     // (a texture already drawn with is not uploaded again)
-    return { tex, up: this.later(() => this.renderer.initTexture(tex)) };
+    return { tex, up: queue ? this.later(() => this.renderer.initTexture(tex)) : Promise.resolve() };
   }
 
   /**
@@ -253,6 +266,31 @@ export class Photos {
       return tex;
     });
     return { albedo, normal, arm, mean: new THREE.Color(t.mean[0], t.mean[1], t.mean[2]) };
+  }
+
+  /**
+   * The trees' small atlases, decoded early (no upload queued: they go up
+   * with the first frame that draws them, the three ~1 ms).
+   * @returns {Promise<TreeSet | null>}
+   */
+  async firstTrees() {
+    const cards = await this.treeCards;
+    if (!cards) return null;
+    const atlases = new Map((await this.treeFiles).map(([name, d]) => [name, this.#texture(d, ATLAS, false).tex]));
+    return { cards, atlases };
+  }
+
+  /**
+   * The trees' atlases at this level's size (768 × 1536, lite 512 × 1024), uploaded.
+   * @returns {Promise<TreeSet | null>}
+   */
+  async trees() {
+    const cards = await this.treeCards;
+    await this.skyDone;
+    if (!cards) return null;
+    const w = this.level === "lite" ? "512" : "768";
+    const got = await Promise.all(Object.entries(cards).map(async ([name, t]) => /** @type {[string, THREE.Texture]} */ ([name, await this.#load(t.files[w], ATLAS)])));
+    return { cards, atlases: new Map(got) };
   }
 
   /**

@@ -19,9 +19,11 @@ import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { meanOf, placeholder } from "./photo.js";
 import { age } from "./aging.js";
+import { Trees } from "./trees.js";
 
 /** @import { Textures } from "./materials.js" */
 /** @import { PhotoSet } from "./photo.js" */
+/** @import { TreePlace } from "./trees.js" */
 
 /** Stand-ins for photographed textures: white colour, a flat normal, no occlusion and roughness ×1. */
 const BLANK = { white: placeholder([255, 255, 255]), flat: placeholder([128, 128, 255]), arm: placeholder([255, 255, 0]) };
@@ -45,6 +47,8 @@ class Bucket {
   constructor() {
     /** @type {Map<string, THREE.BufferGeometry[]>} */
     this.parts = new Map();
+    /** @type {TreePlace[]} */
+    this.trees = [];
   }
 
   /**
@@ -360,54 +364,15 @@ function lump(rad, ph, rough, detail = 2) {
 }
 
 /**
- * Pine / cypress: trunk and a crown of ragged clumps, darker underneath.
+ * A pine or fir (trees.js draws them): where it stands, how tall, which kind.
+ * The firs are the dense ones, so most are firs.
  * @param {Bucket} b @param {number} x @param {number} z @param {number} h @param {number} seed
- * @param {boolean} [near] inside the yard: more and finer clumps
+ * @param {import("./trees.js").TreeKind} [kind] else picked by the seed
  */
-function tree(b, x, z, h, seed, near = false) {
+function tree(b, x, z, h, seed, kind) {
   const r = rand(seed);
-  // A trunk that leans a little, so the tiers step sideways as they rise.
-  const lean = r() * Math.PI * 2, leanBy = h * 0.05 * r();
-  const at = (/** @type {number} */ t) => [x + Math.cos(lean) * leanBy * t, z + Math.sin(lean) * leanBy * t];
-  const trunk = new THREE.CylinderGeometry(h * 0.018, h * 0.032, h * 0.92, 7, 1, true);
-  trunk.translate(0, h * 0.46, 0);
-  const tp = trunk.getAttribute("position");
-  for (let i = 0; i < tp.count; i++) {
-    const [dx, dz] = at(tp.getY(i) / h);
-    tp.setXYZ(i, tp.getX(i) + dx, tp.getY(i), tp.getZ(i) + dz);
-  }
-  b.add("trunk", trunk);
-  // The crown: tiers of flattened foliage pads (an old palace pine / cypress),
-  // lit on top and dark underneath, so it reads as layers, not as one blob.
-  const tiers = near ? 8 : 6;
-  const bottom = h * 0.34, top = h * 1.0;
-  const tint = 0.85 + 0.3 * r();
-  for (let k = 0; k < tiers; k++) {
-    const t = k / (tiers - 1);
-    const y = bottom + (top - bottom) * t + h * 0.03 * (r() - 0.5);
-    const reach = h * (0.25 - 0.16 * t) * (0.8 + 0.4 * r());
-    const pads = t > 0.85 ? 1 : 3 + Math.floor(r() * 2);
-    const a0 = r() * Math.PI * 2;
-    const [tx, tz] = at(y / h);
-    for (let j = 0; j < pads; j++) {
-      const a = a0 + (j / pads) * Math.PI * 2 + 0.6 * (r() - 0.5);
-      const d = pads === 1 ? 0 : reach * (0.4 + 0.3 * r());
-      const rad = reach * (pads === 1 ? 0.85 : 0.66) * (0.85 + 0.3 * r());
-      const g = lump(rad, r() * 10, 1.3, near ? 2 : 1);
-      g.scale(1.15, 0.5 + 0.15 * r(), 1.15);
-      const p = g.getAttribute("position");
-      const col = new Float32Array(p.count * 3);
-      const hy = rad * 0.6;
-      for (let i = 0; i < p.count; i++) {
-        const up = Math.max(0, Math.min(1, p.getY(i) / hy * 0.5 + 0.5));
-        const v = Math.min(1.25, (0.25 + 0.85 * up * up + 0.15 * t) * tint * (0.85 + 0.25 * r()));
-        col.set([v * 0.9, v, v * 0.78], i * 3);
-      }
-      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      g.translate(tx + Math.cos(a) * d, y, tz + Math.sin(a) * d);
-      b.add("leaves", g, true);
-    }
-  }
+  const pick = r();
+  b.trees.push({ kind: kind ?? (pick < 0.45 ? "fir" : pick < 0.8 ? "firb" : "pine"), x, z, h, tint: 0.9 + 0.2 * r() });
 }
 
 /** A bronze tripod cauldron (鼎) on a plinth. @param {Bucket} b @param {number} x @param {number} z */
@@ -581,7 +546,6 @@ function materials() {
     bracket: M(0x2c6a5f, 0.7),
     roofYellow: M(0xe0a62a, 0.34, { side: THREE.DoubleSide }),
     roofGray: M(0x4b5354, 0.6, { side: THREE.DoubleSide }),
-    leaves: M(0x2d5226, 0.85, { vertexColors: true }),
     trunk: M(0x4a3626, 0.95),
     bronze: M(0x6b5634, 0.38, { metalness: 0.85 }),
     gold: M(0xd2a443, 0.3, { metalness: 1 }),
@@ -625,18 +589,29 @@ function* layout(b, lite) {
   yield;
   // pines in the corners of the court
   const r = rand(5);
-  for (const [x, z, h] of [[-50, 196, 36], [52, 190, 40], [-52, -112, 34], [50, -108, 32]]) tree(b, x, z, h, Math.floor(r() * 1e6), true);
-  // beyond the walls: tree crowns, far roofs
+  /** @type {[number, number, number, import("./trees.js").TreeKind][]} */
+  const court = [[-50, 196, 40, "fir"], [52, 190, 44, "fir"], [-52, -112, 38, "pine"], [50, -108, 36, "fir"]];
+  for (const [x, z, h, kind] of court) tree(b, x, z, h, Math.floor(r() * 1e6), kind);
+  // beyond the walls: groves of one to three trees (the photographed trees
+  // are slimmer than the old crowns were, and a card costs next to nothing)
   const outer = lite ? 18 : 40;
+  /** @param {number} x @param {number} z @param {number} h */
+  const grove = (x, z, h) => {
+    const n = 1 + Math.floor(r() * 3);
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2, d = i ? 7 + r() * 9 : 0;
+      tree(b, x + Math.cos(a) * d, z + Math.sin(a) * d, h * (i ? 0.75 + 0.3 * r() : 1), Math.floor(r() * 1e6));
+    }
+  };
   for (let k = 0; k < outer; k++) {
     const t = k / outer;
     if (t < 0.45) {
       // south, behind the gate wall
       const x = (r() < 0.5 ? -1 : 1) * (48 + r() * 170), z = C.south + 25 + r() * 120;
-      tree(b, x, z, 34 + r() * 20, Math.floor(r() * 1e6));
+      grove(x, z, 40 + r() * 22);
     } else {
       const side = k % 2 ? 1 : -1;
-      tree(b, side * (95 + r() * 110), -230 + r() * 420, 36 + r() * 24, Math.floor(r() * 1e6));
+      grove(side * (95 + r() * 110), -230 + r() * 420, 42 + r() * 26);
     }
     if (k % 8 === 7) yield;
   }
@@ -658,6 +633,8 @@ export class Courtyard {
     const b = new Bucket();
     for (const _ of layout(b, !!opts.lite)) await pause();
     const yard = new Courtyard();
+    yard.trees = new Trees(b.trees);
+    yard.group.add(yard.trees.group);
     // merging is a good share of the work too: one material's meshes per slice
     for (const [key, list] of b.parts) {
       await pause();
@@ -673,6 +650,8 @@ export class Courtyard {
     this.tex = null;
     this.group = new THREE.Group();
     this.group.name = "courtyard";
+    /** @type {Trees | null} */
+    this.trees = null;
   }
 
   /** Merge one material's geometries into a mesh. @param {string} key @param {THREE.BufferGeometry[]} list */
