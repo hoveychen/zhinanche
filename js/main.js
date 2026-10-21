@@ -32,15 +32,42 @@ world.onLoading = (on, err) => {
     loading.classList.add("error");
   }
 };
+/** the view before "draw a road" went up above the ground, to go back to after */
+/** @type {import("./app/directive.js").SceneState["view"] | null} */
+let viewBeforeDraw = null;
+/** set while leaving the drawing for another view, which then is not undone */
+let keepView = false;
 const input = new DriveInput({
   onDraw: (on) => {
     world.controls.enabled = !on;
     stage.classList.toggle("drawing", on);
     syncHint();
-    if (on && app.state.view !== "top") app.direct({ view: "top" });
+    if (on) {
+      viewBeforeDraw = app.state.view;
+      if (app.state.view !== "top") app.direct({ view: "top" });
+      return;
+    }
+    const back = viewBeforeDraw;
+    viewBeforeDraw = null;
+    // a lesson step taking the draw button away sets its own view
+    if (!keepView && back && back !== "top" && app.state.view === "top" && app.state.controls.includes("draw")) app.direct({ view: back });
   },
-  onDrive: () => app.takeOver(),
+  onDrive: () => {
+    stopDrawing(false);
+    app.takeOver();
+  },
 });
+/**
+ * Leave "draw a road": the chariot set off on the road, or the child moved on
+ * to something else (driving by hand, X-ray, the gears).
+ * @param {boolean} restore go back to the view from before the drawing
+ */
+function stopDrawing(restore) {
+  if (!input.drawOn) return;
+  keepView = !restore;
+  input.setDraw(false);
+  keepView = false;
+}
 const app = new App(world, input);
 app.onPause((on) => {
   pauseBtn.classList.toggle("on", on);
@@ -59,7 +86,16 @@ window.addEventListener("keydown", (e) => {
   e.preventDefault();
   app.setPaused(!app.paused);
 });
-const tools = new Tools({ direct: (d) => app.direct(d), resetChariot: () => app.resetChariot() });
+const tools = new Tools({
+  direct: (d) => {
+    stopDrawing(d.view === undefined);
+    app.direct(d);
+  },
+  resetChariot: () => {
+    stopDrawing(true);
+    app.resetChariot();
+  },
+});
 const dial = new Dial();
 const odo = new Odometer();
 const hint = bind(h("p", { class: "stage-hint", hidden: true }), (s) => s.stage.drawHint);
@@ -69,6 +105,7 @@ let xrayBeforeGears = false;
 const gearsBtn = h("button", {
   type: "button", class: "draw-btn gears-btn", "data-control": "gearsView", "aria-pressed": "false",
   onclick: () => {
+    stopDrawing(false);
     const st = app.state;
     if (st.view === "gears") app.direct({ view: "follow", xray: xrayBeforeGears });
     else {
@@ -209,7 +246,11 @@ const endDraw = () => {
   let len = 0;
   for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
   if (len < 4) world.route.clear();
-  else app.followRoute(pts);
+  else {
+    app.followRoute(pts);
+    // the road is down: back to following the chariot along it
+    stopDrawing(true);
+  }
   syncHint();
 };
 canvas.addEventListener("pointerup", (e) => {
