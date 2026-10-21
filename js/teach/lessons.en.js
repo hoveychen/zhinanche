@@ -103,7 +103,7 @@ export const LESSONS_EN = {
       },
       { text: "A chariot's two wheels work the same way.\n\nWhen it drives straight, the <span class=\"l\">left wheel</span> and the <span class=\"r\">right wheel</span> roll exactly the same distance." },
       {
-        text: "Now the chariot drives a circle to the left.\n\nThe <span class=\"l\">left wheel</span> is on the inside, the <span class=\"r\">right wheel</span> is on the outside. Watch how far each one rolls.",
+        text: "Now the chariot is going to drive a circle to the left.\n\nThe <span class=\"l\">left wheel</span> is on the inside, the <span class=\"r\">right wheel</span> is on the outside. Make a guess first, then watch how far each one rolls.",
         task: {
           prompt: "Which wheel rolls further?",
           options: ["The blue left wheel", "The orange right wheel", "Both the same"],

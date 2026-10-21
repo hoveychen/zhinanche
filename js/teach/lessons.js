@@ -144,10 +144,11 @@ export const LESSONS = [
         scene: { reset: true, demo: null, mechanism: "differential", view: "above", trails: true, odometer: true, play: "straight" },
       },
       {
-        text: "现在车向左绕一个圈。\n\n<span class=\"l\">左轮</span>在里圈，<span class=\"r\">右轮</span>在外圈。看看两个轮子各走了多远。",
+        text: "现在车要向左绕一个圈。\n\n<span class=\"l\">左轮</span>在里圈，<span class=\"r\">右轮</span>在外圈。先猜一猜，再看两个轮子各走了多远。",
         scene: { reset: true, view: "top", play: "circle" },
         task: {
           kind: "choose",
+          guess: true,
           prompt: "哪个轮子走的路更多？",
           options: ["蓝色的左轮", "橙色的右轮", "一样多"],
           answer: 1,

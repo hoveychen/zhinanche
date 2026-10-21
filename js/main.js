@@ -355,7 +355,11 @@ function frame(/** @type {number} */ now) {
     const cam = world.camera.position, tgt = world.controls.target;
     const camBearing = Math.atan2(-(tgt.z - cam.z), tgt.x - cam.x);
     dial.update(pose.figureWorld, pose.heading, pose.errorDeg, camBearing);
-    if (!odo.el.hidden) odo.update(pose.distL, pose.distR);
+    if (!odo.el.hidden) {
+      odo.update(pose.distL, pose.distR);
+      // a guess-first question about the wheels: the line that compares them waits too
+      odo.diff.hidden = course.held !== null;
+    }
     syncHint();
     if (!demoCount.hidden) demoCount.textContent = S().stage.demoCount(world.holdHands.steps.in, world.holdHands.steps.out);
     placeCallout();
