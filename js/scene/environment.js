@@ -541,7 +541,10 @@ export class Environment {
     envScene.add(envSky);
     // The courtyard as the chariot sees it: paving below, a red wall band
     // and dark-gold roofs round the horizon (walls are ~70–180 chi off).
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(38, 32), new THREE.MeshBasicMaterial({ color: 0x8a8378 }));
+    // The paving as lit by the low sun, warm (0x8a8378 left the halls' eaves,
+    // doors and steps, which see mostly the ground, darker than sunlit stone
+    // throws light up into them; the shade's fill from the sky stays blue).
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(38, 32), new THREE.MeshBasicMaterial({ color: 0xb3a28a }));
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -1.5;
     envScene.add(floor);
@@ -576,7 +579,12 @@ export class Environment {
     this.scene.environment?.dispose();
     this.scene.environment = rt.texture;
     this.scene.environmentIntensity = SUN.sky;
-    this.hemi.intensity = 0.12;
+    // Once the map is in, the hemisphere light is mostly the light thrown up
+    // by the sunlit paving (sun on the stone, about 0.4 of it bounced): warm,
+    // from below. Its sky half stays as faint as it was (0xbcd3ea at 0.12).
+    this.hemi.color.set(0x94a8ba);
+    this.hemi.groundColor.set(0xb3a28a);
+    this.hemi.intensity = 0.2;
   }
 
   /** Keep the shadow camera on the chariot. @param {number} x @param {number} z */
