@@ -8,8 +8,9 @@
  * Camera presets the scene provides. "works": the gears with the figure on
  * its shaft above them, turning with the chariot; "above": close over the
  * chariot from the north side, following it (north stays up); "hero": close
- * on the figure from behind and to one side, the gate it points at beyond;
- * "intro": the hero view for a moment, then slowly out to "follow" (the home
+ * on the figure from in front and to the west, its face three-quarters on, the
+ * arm and its green line running off south; "intro": the hero view for a
+ * moment, then slowly out round the west side to "follow" (the home
  * page's opening; in a lesson step a shorter one, and the step's route
  * waits till it is out); "pair": low behind the differential's two flat gears,
  * which lie one above the other, so both and their turning arrows show;

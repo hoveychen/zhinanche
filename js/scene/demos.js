@@ -21,25 +21,95 @@ import { S, canvasFont, onLang } from "../i18n.js";
  *   them pointed at the wrong one)
  */
 
-/** @param {number} robe colour */
-function kid(robe) {
+/** A child's arm, from the shoulder down -y: sleeve and hand. @param {THREE.Material} sleeve @param {THREE.Material} skin */
+function arm(sleeve, skin) {
   const g = new THREE.Group();
-  const robeMat = new THREE.MeshStandardMaterial({ color: robe, roughness: 0.8, flatShading: true });
-  const skin = new THREE.MeshStandardMaterial({ color: 0xf0c8a0, roughness: 0.9, flatShading: true });
-  const hair = new THREE.MeshStandardMaterial({ color: 0x2a2420, roughness: 0.9, flatShading: true });
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.85, 2.6, 8), robeMat);
-  body.position.y = 1.3;
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.62, 1), skin);
-  head.position.y = 3.15;
-  const bun = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), hair);
-  bun.position.set(-0.15, 3.75, 0);
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.64, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.2), hair);
-  cap.position.y = 3.2;
-  for (const m of [body, head, bun, cap]) {
-    m.castShadow = true;
-    g.add(m);
-  }
+  const s = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.95, 10), sleeve);
+  s.position.y = -0.47;
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), skin);
+  h.position.y = -1.05;
+  g.add(s, h);
   return g;
+}
+
+/** A leg, from the hip down -y: trouser and shoe. @param {THREE.Material} cloth @param {THREE.Material} shoe */
+function leg(cloth, shoe) {
+  const g = new THREE.Group();
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.13, 1.35, 10), cloth);
+  t.position.y = -0.68;
+  const f = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 6), shoe);
+  f.scale.set(1.6, 0.6, 1);
+  f.position.set(0.08, -1.4, 0);
+  g.add(t, f);
+  return g;
+}
+
+/**
+ * A child as in Song paintings of children at play (婴戏图): hair in two
+ * buns (双丫髻), a short jacket crossed at the collar over trousers, a sash.
+ * About 3.9 chi tall, facing +x, the holding hand towards +z (side 1) or -z
+ * (side -1), reaching to meet the other child's 1.5 chi to that side.
+ * @param {number} robe jacket colour @param {1 | -1} side
+ */
+function kid(robe, side) {
+  const g = new THREE.Group();
+  const mat = (/** @type {number} */ color, roughness = 0.85) => new THREE.MeshStandardMaterial({ color, roughness });
+  const jacket = mat(robe), trousers = mat(0xe9dfc8), skin = mat(0xf0c8a0, 0.7), hair = mat(0x241d19, 0.6), dark = mat(0x2b2622), sashM = mat(0xc8361f);
+  // the jacket: turned from hem to collar, a little deeper than wide
+  const prof = [[0, 1.2], [0.6, 1.2], [0.58, 1.45], [0.47, 1.9], [0.45, 2.4], [0.42, 2.68], [0.24, 2.84], [0.15, 2.9], [0, 2.9]].map(([r, y]) => new THREE.Vector2(r, y));
+  const body = new THREE.Mesh(new THREE.LatheGeometry(prof, 16), jacket);
+  body.scale.set(0.82, 1, 1);
+  // the crossed collar (交领): a band from the right shoulder down to the left side
+  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.62, 0.12), sashM);
+  collar.position.set(0.36, 2.55, 0.06);
+  collar.rotation.x = 0.6;
+  const sash = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.06, 6, 20), sashM);
+  sash.rotation.x = Math.PI / 2;
+  sash.scale.set(0.82, 1, 1);
+  sash.position.y = 1.75;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.25, 10), skin);
+  neck.position.y = 2.95;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 18, 14), skin);
+  head.position.y = 3.3;
+  // hair: over the crown and the back, a fringe, two buns tied with red
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.575, 18, 10, Math.PI * 0.62, Math.PI * 1.76, 0, Math.PI * 0.62), hair);
+  cap.position.y = 3.3;
+  g.add(body, collar, sash, neck, head, cap);
+  for (const z of [-0.3, 0.3]) {
+    const bun = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), hair);
+    bun.position.set(-0.05, 3.86, z);
+    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 5, 12), sashM);
+    tie.position.set(-0.05, 3.72, z * 0.92);
+    tie.rotation.x = Math.PI / 2;
+    // face: eyes, rosy cheeks
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), dark);
+    eye.position.set(0.5, 3.33, z * 0.6);
+    const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), mat(0xe8907a, 0.8));
+    cheek.scale.set(0.3, 0.7, 1);
+    cheek.position.set(0.47, 3.15, z * 0.95);
+    g.add(bun, tie, eye, cheek);
+  }
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat(0xb8432e, 0.7));
+  mouth.scale.set(0.5, 0.6, 1.4);
+  mouth.position.set(0.535, 3.06, 0);
+  g.add(mouth);
+  /** @type {THREE.Group[]} */
+  const legs = [];
+  for (const z of [-0.2, 0.2]) {
+    const l = leg(trousers, dark);
+    l.position.set(0, 1.55, z);
+    legs.push(l);
+    g.add(l);
+  }
+  const hold = arm(jacket, skin), free = arm(jacket, skin);
+  hold.position.set(0, 2.62, side * 0.42);
+  free.position.set(0, 2.62, -side * 0.42);
+  // reach out and a little down to meet the other hand (the hands' centres
+  // 0.98 out from the shoulder, 1.5 from the middle less a hand's width)
+  hold.rotation.x = -side * Math.asin(0.98 / 1.05);
+  g.add(hold, free);
+  g.traverse((o) => { if (/** @type {THREE.Mesh} */ (o).isMesh) o.castShadow = true; });
+  return { group: g, legs, free };
 }
 
 const R_IN = 3;
@@ -58,11 +128,10 @@ export class HoldHands {
       ring.position.y = 0.02;
       this.group.add(ring);
     }
-    this.inner = kid(COLORS.left);
-    this.outer = kid(COLORS.right);
-    this.arms = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, R_OUT - R_IN, 6), new THREE.MeshStandardMaterial({ color: 0xf0c8a0, flatShading: true }));
-    this.arms.geometry.rotateZ(Math.PI / 2);
-    this.group.add(this.inner, this.outer, this.arms);
+    // the inner child holds out its outer hand (+z, away from the middle), the outer one its inner
+    this.inner = kid(COLORS.left, 1);
+    this.outer = kid(COLORS.right, -1);
+    this.group.add(this.inner.group, this.outer.group);
     const print = new THREE.CircleGeometry(0.22, 10);
     print.scale(1.5, 1, 1);
     print.rotateX(-Math.PI / 2);
@@ -147,17 +216,20 @@ export class HoldHands {
 
   #place() {
     const a = this.angle;
-    const bob = this.walking ? Math.abs(Math.sin(a * STEPS_IN)) * 0.12 : 0;
-    for (const [k, r] of /** @type {[THREE.Group, number][]} */ ([[this.inner, R_IN], [this.outer, R_OUT]])) {
-      k.position.set(Math.cos(a) * r, bob, -Math.sin(a) * r);
-      k.rotation.y = a + Math.PI / 2;
+    const lap = a / (Math.PI * 2);
+    // the outer child takes two steps to the inner one's one (as their footprints)
+    for (const [k, r, steps] of /** @type {[ReturnType<typeof kid>, number, number][]} */ ([[this.inner, R_IN, STEPS_IN], [this.outer, R_OUT, STEPS_IN * 2]])) {
+      const swing = this.walking ? Math.sin(lap * steps * Math.PI) : 0;
+      const bob = Math.abs(swing) * 0.08;
+      k.group.position.set(Math.cos(a) * r, bob, -Math.sin(a) * r);
+      k.group.rotation.y = a + Math.PI / 2;
+      k.legs[0].rotation.z = swing * 0.42;
+      k.legs[1].rotation.z = -swing * 0.42;
+      k.free.rotation.z = -swing * 0.35;
     }
-    const mid = (R_IN + R_OUT) / 2;
-    this.arms.position.set(Math.cos(a) * mid, 2.1 + bob, -Math.sin(a) * mid);
-    this.arms.rotation.y = a;
     // each child's head (the labels sit beside it)
-    this.labelIn.position.set(Math.cos(a) * R_IN, 3.15 + bob, -Math.sin(a) * R_IN);
-    this.labelOut.position.set(Math.cos(a) * R_OUT, 3.15 + bob, -Math.sin(a) * R_OUT);
+    this.labelIn.position.set(Math.cos(a) * R_IN, 3.3, -Math.sin(a) * R_IN);
+    this.labelOut.position.set(Math.cos(a) * R_OUT, 3.3, -Math.sin(a) * R_OUT);
   }
 
   /** Radius that frames the demo. */

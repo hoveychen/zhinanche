@@ -100,8 +100,10 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   wood: { color: 0xa66c3f, map: "wood", roughness: 0.62, clearcoat: 0.25, clearcoatRoughness: 0.4, normal: 0.5, scale: 0.8 },
   // Hubs, spokes, axles: darker walnut.
   wood_dark: { color: 0x5e3a24, map: "wood", roughness: 0.6, clearcoat: 0.15, clearcoatRoughness: 0.45, normal: 0.5, scale: 1 },
-  // Pegs (the gear teeth): pale boxwood, smooth from wear.
-  peg: { color: 0xe6c690, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
+  // Pegs (the gear teeth): hard wood a shade paler than the wheels they are
+  // set in, smooth from wear. (Pale boxwood, 0xe6c690, went olive grey in the
+  // box's shade under the blue sky and did not look like the wheel's timber.)
+  peg: { color: 0xb88250, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
   // The red box, railings, pillars: cinnabar lacquer (赤質).
   lacquer: { color: 0xa82a1d, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
   // The box's paintings (宋史: 兩箱畫青龍、白虎，四面畫花鳥): plain lacquer red (a
@@ -111,8 +113,10 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   mural_tiger: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "tiger" },
   mural_flowers: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "flowers" },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
-  // The wheels: red lacquer worn thinner than the box's, the grain showing more.
-  wheel: { color: 0x962c1e, map: "woodSoft", roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.4, scale: 0.8 },
+  // The wheels: red lacquer worn thinner than the box's and dulled by the road.
+  // (0x962c1e under a 0.6 coat went a glowing orange in the low sun, and the
+  // bevelled shoulders of the spokes caught it as white triangles.)
+  wheel: { color: 0x7e2a1e, map: "woodSoft", roughness: 0.62, clearcoat: 0.3, clearcoatRoughness: 0.4, normal: 0.2, scale: 0.8 },
   // The wheels' marker spoke: yellow lacquer.
   mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8 },
   // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
