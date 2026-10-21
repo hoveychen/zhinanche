@@ -32,6 +32,31 @@ function device() {
   return { coarse, shortSide: Math.min(screen.width, screen.height), saveData: !!nav.connection?.saveData };
 }
 
+/**
+ * three.js's opaque order (painterSortStable), except that the chariot's
+ * parts go first, as one block, those with the same colour texture next to
+ * each other. The rig gives every part its own material, in model order, so
+ * parts with the photographed wood and parts with the painted grain came in
+ * turns, and each turn re-sent two texture matrices and rebound textures
+ * (~40 more GL calls a frame). Everything else keeps three's order: grouping
+ * the courtyard's by texture too put coplanar faces in another order, and
+ * the gate's doorways striped.
+ * @param {any} a @param {any} b render items
+ */
+function chariotFirst(a, b) {
+  if (a.groupOrder !== b.groupOrder) return a.groupOrder - b.groupOrder;
+  if (a.renderOrder !== b.renderOrder) return a.renderOrder - b.renderOrder;
+  const ca = a.material.userData.chariot === true, cb = b.material.userData.chariot === true;
+  if (ca !== cb) return ca ? -1 : 1;
+  if (ca) {
+    const ta = a.material.map?.id ?? -1, tb = b.material.map?.id ?? -1;
+    if (ta !== tb) return ta - tb;
+  }
+  if (a.material.id !== b.material.id) return a.material.id - b.material.id;
+  if (a.z !== b.z) return a.z - b.z;
+  return a.id - b.id;
+}
+
 export class Look {
   /** @param {LookHost} host */
   constructor(host) {
@@ -42,6 +67,7 @@ export class Look {
     this.quality = pick.quality;
     const s = SETTINGS[this.quality];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, s.maxPixelRatio));
+    renderer.setOpaqueSort(chariotFirst);
     this.env = new Environment(renderer, scene, { shadowSize: s.shadowSize, clouds: true });
     // Sun shadows of the courtyard, baked once it exists (see render).
     this.setShadow = new SetShadow(this.quality === "lite" ? 1024 : 2048, 240);
@@ -166,7 +192,10 @@ export class Look {
     /** @type {THREE.Mesh[]} */
     const meshes = [];
     root.traverse((o) => {
-      if (o instanceof THREE.Mesh) meshes.push(o);
+      if (!(o instanceof THREE.Mesh)) return;
+      meshes.push(o);
+      // drawn as a block (chariotFirst); the rig's clones keep the mark
+      for (const m of [o.material].flat()) m.userData.chariot = true;
     });
     this.chariotMeshes.push(...meshes);
     if (this.woodPhoto) photoWood(meshes, this.woodPhoto, await this.chariotTex);
