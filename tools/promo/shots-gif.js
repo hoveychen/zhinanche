@@ -1,5 +1,5 @@
 // README loop: the chariot turns exactly once on the spot (6 s), the camera
-// is still; the gate on the left, the figure's hand on it all the way round.
+// is still, on the sunny side; the gate on the right, the figure's hand on it all the way round.
 (() => {
   const PRE = 1.0, LAP = 6.0;
   window.__T = { from: PRE, end: PRE + LAP };
@@ -11,8 +11,8 @@
       P.app.state.speed = (2 * Math.PI) / LAP / 0.9;
     }
     st.cmd = { fwd: 0, turn: -1 };
-    st.fov = 38;
-    st.cam = { pos: [20, 9.5, -20], target: [0.5, 6.4, 8.6] };
+    st.fov = 44;
+    st.cam = { pos: [-14, 9, -26], target: [6, 8, 14] };
     st.dof = false;
   };
 })();

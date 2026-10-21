@@ -2,14 +2,15 @@
 // Frame-stepped promo recorder: the page clock only moves on __step, one
 // screenshot per frame, ffmpeg joins them.
 //   LANG_=zh|en W=1920 H=1080 SQ=0|1 OUT=dir [FROM=s TO=s EVERY=n] node rec.mjs
-//   README loop: GIF=1 SHOTS=shots-gif.js W=1120 H=630 OUT=dir node rec.mjs
-// Run from this folder with the site served on :8786 (PORT=8786 node tools/serve.mjs)
+//   README loop: GIF=1 SHOTS=shots-gif.js DIAL=left W=1120 H=630 OUT=dir node rec.mjs (DIAL: the dial's corner, top right by default)
+// Run from this folder with the site served on :8786 (PORT=8786 node tools/serve.mjs; another port: PORT_=88xx)
 // and playwright installed beside it (not a dependency of the site); the page
 // is opened with ?promo (js/main.js). enc.sh joins the frames: sh enc.sh dir out.mp4 [kbps]
 import { chromium } from 'playwright';
 import { mkdirSync, rmSync } from 'node:fs';
 
 const LANG = process.env.LANG_ || 'en';
+const PORT = process.env.PORT_ || 8786;
 const FPS = 30, SUB = 2;
 const W = Number(process.env.W || 1920), H = Number(process.env.H || 1080);
 const SQ = process.env.SQ === '1';
@@ -45,11 +46,11 @@ try {
     window.__freeze = () => { vt = realNow(); frozen = true; };
     window.__step = (ms) => { vt += ms; const q = queue; queue = []; for (const cb of q) cb(vt); };
   });
-  await p.goto(`http://localhost:8786/?promo&quality=high&free&lang=${LANG}`);
+  await p.goto(`http://localhost:${PORT}/?promo&quality=high&free&lang=${LANG}`);
   await p.waitForFunction(() => document.getElementById('loading')?.hidden === true && window.__promo, null, { timeout: 60000 });
   const u = (px) => `${(px / 1080) * 100}vmin`;
   await p.addStyleTag({ content: `
-    .bar,.panel{display:none!important}#stage-overlay>*:not(.hud-dial){display:none!important}${process.env.GIF ? '.hud-dial{left:auto!important;right:96px!important}' : '.hud-dial{display:none!important}'}
+    .bar,.panel{display:none!important}#stage-overlay>*:not(.hud-dial){display:none!important}${process.env.GIF ? (process.env.DIAL === 'left' ? '' : '.hud-dial{left:auto!important;right:96px!important}') : '.hud-dial{display:none!important}'}
     .app{grid-template-rows:0 1fr!important;height:100vh}.layout{grid-template-columns:1fr!important;height:100vh}
     .promo{position:absolute;inset:0;pointer-events:none;color:#fbf6ea;font-family:var(--kai)}
     .promo>div{position:absolute;left:0;right:0;text-align:center;opacity:0}
@@ -65,8 +66,14 @@ try {
   ` });
   await p.evaluate((cfg) => { window.__cfg = cfg; }, { caps: CAPS, square: SQ });
   await p.addScriptTag({ path: 'director.js' });
-  await p.waitForTimeout(8000); // courtyard, textures, post-processing
-  await p.evaluate(() => window.__setup());
+  // every photographed set in (look.js), then a moment for post-processing
+  const PHOTOS = ['sky', 'plaster', 'ground', 'roof', 'dougong', 'iron', 'wood', 'trees', 'ao', 'murals'];
+  await p.waitForFunction((need) => {
+    const got = (document.body.dataset.photo ?? '').split(' ');
+    return document.body.dataset.photoState === 'in' && need.every((k) => got.includes(k));
+  }, PHOTOS, { timeout: 120000 });
+  await p.waitForTimeout(1500);
+  await p.evaluate(() => window.__setup({ grain: false }));
   await p.addScriptTag({ path: process.env.SHOTS || 'shots.js' });
   const END = await p.evaluate(() => window.__T.end);
   const FROM = Number(process.env.FROM || (await p.evaluate(() => window.__T.from)) || 0), TO = Number(process.env.TO || END);
