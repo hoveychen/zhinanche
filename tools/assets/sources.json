@@ -41,6 +41,13 @@
       "author": "Amal Kumar",
       "page": "https://polyhaven.com/a/rusty_metal_04",
       "use": "the chariot's ironwork: hub bands, axle caps and linchpins, straps, the shaft's point and collar (materials.js)"
+    },
+    "lacquer": {
+      "id": "lacquered_cherry_wood",
+      "res": "2k",
+      "author": "Jenelle van Heerden (scanning), Rico Cilliers (processing)",
+      "page": "https://polyhaven.com/a/lacquered_cherry_wood",
+      "use": "the gloss of the chariot's lacquer: its rubs, scratches and board seams (roughness), the grain under the coat (normal, a faint colour) (materials.js photoLacquer)"
     }
   },
   "models": {

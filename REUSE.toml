@@ -88,10 +88,11 @@ SPDX-License-Identifier = "CC-BY-SA-3.0"
 #   red_plaster_weathered, clay_roof_tiles_02 - Amal Kumar
 #   dark_wood - Dimitrios Savva, Dario Barresi, Rico Cilliers
 #   rusty_metal_04 - Amal Kumar
+#   lacquered_cherry_wood - Jenelle van Heerden, Rico Cilliers
 [[annotations]]
 path = ["assets/photo/*.webp"]
 precedence = "override"
-SPDX-FileCopyrightText = "Poly Haven (polyhaven.com): Greg Zaal, Jarod Guest, Rob Tuytel, Amal Kumar, Dimitrios Savva, Dario Barresi, Rico Cilliers"
+SPDX-FileCopyrightText = "Poly Haven (polyhaven.com): Greg Zaal, Jarod Guest, Rob Tuytel, Amal Kumar, Dimitrios Savva, Dario Barresi, Rico Cilliers, Jenelle van Heerden"
 SPDX-License-Identifier = "CC0-1.0"
 
 # Baked by tools/assets/build_photo.py from this project's own height fields

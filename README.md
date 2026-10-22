@@ -126,7 +126,7 @@ LICENSES/             许可证全文
 - 代码：[Apache-2.0](LICENSE)
 - 课件文字、3D 模型、参数、文档：[CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt)
 - three.js：MIT
-- 天空和材质扫描：Poly Haven，CC0（`tools/assets/build_photo.py` 下载并压缩）；车上的铁件用 rusty_metal_04（Amal Kumar）
+- 天空和材质扫描：Poly Haven，CC0（`tools/assets/build_photo.py` 下载并压缩）；车上的铁件用 rusty_metal_04（Amal Kumar），车漆的光泽（擦痕、划痕、板缝）用 lacquered_cherry_wood（Jenelle van Heerden、Rico Cilliers）
 - 车的遮蔽图集（`assets/photo/chariot-*-ao-*.webp`）：由本项目的模型烘焙，CC BY-SA 4.0（`pnpm build:model`）
 - 树模型：Poly Haven 的 pine_tree_01、fir_tree_01（Rico Cilliers 建模，Rob Tuytel 摄影），CC0（`tools/assets/fetch_models.py` 下载，`blender/scripts/render_impostors.py` 渲成贴片）
 - 屋瓦和斗拱贴图：本项目自绘的高度场，叠 Poly Haven 扫描（clay_roof_tiles_02、灰泥）的颗粒，CC BY-SA 4.0（`tools/assets/build_photo.py`）
