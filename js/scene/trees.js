@@ -158,7 +158,11 @@ function cardMaterial(shared, bake) {
     colorWrite: !bake,
   });
   // (baking: no shadow lookup, it may be the shadow being drawn)
-  if (bake) mat.defines = { TREE_BAKE: "" };
+  // Half the haze of the walls and halls at the same distance: a dark crown
+  // takes the air's light far more than a lit wall does (the woods behind the
+  // gate, 150-425 chi off, came out L 34 C 4 under it against L 15 C 13 clear,
+  // a grey card), and a wood 30 m off still reads green in a photograph.
+  mat.defines = bake ? { TREE_BAKE: "" } : { FOG_SCALE: "0.5" };
   mat.onBeforeCompile = (shader) => {
     // the material's map uniform is the atlas; the rest are ours
     const { map: _, ...rest } = shared;

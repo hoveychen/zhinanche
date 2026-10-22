@@ -8,7 +8,7 @@
 // courtyard (SetShadow), which never moves relative to the sun.
 
 import * as THREE from "three";
-import { FOG_DENSITY, GRADED, installFog } from "./grade.js";
+import { AWAY, FOG_DENSITY, GRADED, installFog } from "./grade.js";
 import { placeholder } from "./photo.js";
 
 /** @import { Textures } from "./materials.js" */
@@ -44,8 +44,8 @@ export const SKY = {
   horizon: new THREE.Color(0xaec8de),
   /** low haze on the sun's side */
   haze: new THREE.Color(0xf3d6ae),
-  /** low haze on the far side: the faint pink of the anti-solar belt */
-  antiHaze: new THREE.Color(0xdcccc8),
+  /** low haze on the far side: blue-grey (the anti-solar belt's pink shows only after sunset) */
+  antiHaze: new THREE.Color(0xc6d0dc),
   glow: new THREE.Color(0xffc98a),
   ground: new THREE.Color(0x857c70),
 };
@@ -148,15 +148,15 @@ void main() {
     p = mix(p, photoLow, smoothstep(0.03, -0.01, v));
     // The photo was taken under a higher sun. Ours is low: the clouds' white
     // (bright, unsaturated) takes its gold, the blue deepens overhead, and
-    // the low sky towards the sun warms; away from it, a faint rose haze.
+    // the low sky towards the sun warms; away from it, it cools (grade.js AWAY).
     float pl = dot(p, vec3(0.2126, 0.7152, 0.0722));
     float mx = max(p.r, max(p.g, p.b)), mn = min(p.r, min(p.g, p.b));
     float white = smoothstep(0.38, 0.12, (mx - mn) / max(mx, 1e-4));
     float sunSide = pow(clamp(0.5 + 0.5 * az, 0.0, 1.0), 2.0);
-    vec3 cloudGold = mix(vec3(1.06, 0.97, 0.86), vec3(1.16, 0.97, 0.78), sunSide);
+    vec3 cloudGold = mix(vec3(1.02, 0.99, 0.96), vec3(1.16, 0.97, 0.78), sunSide);
     p *= mix(vec3(1.0), cloudGold, white * smoothstep(0.25, 0.9, pl));
-    p *= mix(vec3(1.0), vec3(0.95, 0.97, 1.02), (1.0 - white) * smoothstep(0.1, 0.6, h));
-    vec3 lowTint = mix(vec3(1.08, 0.98, 0.93), vec3(1.2, 1.0, 0.8), sunSide);
+    p *= mix(vec3(1.0), vec3(0.92, 0.97, 1.05), (1.0 - white) * smoothstep(0.1, 0.6, h));
+    vec3 lowTint = mix(vec3(${AWAY.join(", ")}), vec3(1.2, 1.0, 0.8), sunSide);
     p *= mix(vec3(1.0), lowTint, exp(-max(h, 0.0) * 4.0));
     if (h < 0.0) p = mix(p, groundCol, smoothstep(0.03, 0.2, -h));
     // a soft glow round our sun (the photo's own sun is painted out)
