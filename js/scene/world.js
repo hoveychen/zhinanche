@@ -299,6 +299,7 @@ export class World {
     await this.look.dress(gltf.scene);
     const rig = new Rig(gltf.scene);
     if (rig.mechanism !== m) throw new Error(`chariot-${m}.glb holds the ${rig.mechanism} chariot`);
+    this.look.shadeChariot(gltf.scene);
     const fig = rig.node("figure");
     if (fig) {
       const beam = new Pointer(rig.armTip);

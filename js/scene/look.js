@@ -322,6 +322,20 @@ export class Look {
     if (!now.includes("ao")) document.body.dataset.photo = [...now, "ao"].join(" ");
   }
 
+  /**
+   * The courtyard's baked sun shadows on the chariot too: it drives about the
+   * court (design/decisions/0018), into the shade of the trees beyond the west
+   * wall, and lit there it stood on the dark paving like a cut-out, with no
+   * shadow of its own. On the rig's own materials (it clones them), before
+   * they are compiled.
+   * @param {THREE.Object3D} root
+   */
+  shadeChariot(root) {
+    root.traverse((o) => {
+      if (o instanceof THREE.Mesh) for (const m of [o.material].flat()) if (m instanceof THREE.MeshStandardMaterial) this.setShadow.patch(m);
+    });
+  }
+
   /** Contact shadow under the chariot. @param {THREE.Object3D} holder */
   attach(holder) {
     holder.add(contactShadow());

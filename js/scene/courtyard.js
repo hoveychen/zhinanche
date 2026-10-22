@@ -638,13 +638,20 @@ function hills(b) {
   b.add("hills", g);
 }
 
+/** The lane of sun through the west wood, as z − x·tan(24°) of the court's points it lights (chi). */
+const LANE = { lo: -42, hi: 15 };
+
 /**
  * A wood of tall trees beyond the west wall. The sun is low behind it
  * (west-north-west, 17° up: environment.js SUN), so the crowns throw shadows
  * three times their height long, right across the court: most of the court
  * lies in their dappled shade and the chariot stands in a lane of sun. The
- * lane is where no tree stands: a gap along the line from the chariot to the
- * sun (the court rides with the chariot, so the lane is always on it). With
+ * lane is where no tree stands: a gap along the line from the court's middle
+ * to the sun. The court stands still and the chariot drives about it
+ * (design/decisions/0018), so the gap is wide enough for where it starts and
+ * the home page's drive goes (a point in the court is lit through the gap
+ * when z − x·tan(24°) lies in LANE); driven further it goes into the shade,
+ * and is shaded (Look.shadeChariot). With
  * the whole court sunlit the paving, pale grey, was brighter than the red
  * chariot on it (Lab L 38 against 23–27, measured), and nothing in the picture
  * said where to look; a photographer waits for the sun to find the subject.
@@ -658,8 +665,9 @@ function westWood(b, lite) {
   for (let z = -120; z <= 215; z += step) {
     for (const [x0, depth] of [[-90, 14], [-112, 18]]) {
       const x = x0 - r() * depth, zz = z + (r() - 0.5) * step * 0.8;
-      // the lane of sun: keep clear of the line to the sun through the chariot
-      if (Math.abs(zz - x * toSun) < 15) continue;
+      // the lane of sun: no tree where it would shade the lane (LANE)
+      const off = zz - x * toSun;
+      if (off > LANE.lo && off < LANE.hi) continue;
       tree(b, x, zz, 58 + r() * 26, Math.floor(r() * 1e6));
     }
   }
