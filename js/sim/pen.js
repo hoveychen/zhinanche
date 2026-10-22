@@ -14,7 +14,7 @@
  * 7 round its middle (box, wheels and shafts). East and west: the corridors'
  * steps start at x ±60.5. South: the bronze lions before the gate stand at
  * y −92 (the gate at −105). North: the court goes on to the cauldrons and
- * pines (y 108–127), but the chase view looks south from about 35 north of
+ * pines (y 108–127), but the chase view looks south from 30–40 north of
  * the chariot, and beyond this it would be pushed in against the north end
  * (js/scene/cameraRig.js ROOM); the lessons' longest route ends at y 60.
  */
