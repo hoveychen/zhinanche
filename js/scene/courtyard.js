@@ -647,9 +647,12 @@ function materials(lite) {
   const M = (color, roughness, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness, ...extra });
   return {
     marble: M(0xdcd6cb, 0.72),
-    wallRed: M(0xa3392a, 0.9),
+    // the court's reds are old: washed by rain and faded by the sun, browner
+    // and duller than the chariot's new lacquer (they were as pure, the
+    // columns and lanterns purer, and the chariot did not stand out)
+    wallRed: M(0x9a4a3a, 0.9),
     panel: M(0x5e1d16, 0.7),
-    column: M(0x9a2618, 0.55),
+    column: M(0x8a3a2a, 0.6),
     bracket: M(0x2c6a5f, 0.7),
     // the bracket band: its colour comes with the baked band (photo), till then the old flat green
     dougong: M(0x2c6a5f, 0.8),
@@ -662,7 +665,8 @@ function materials(lite) {
     trunk: M(0x4a3626, 0.95),
     bronze: M(0x6b5634, 0.38, { metalness: 0.85 }),
     gold: M(0xd2a443, 0.3, { metalness: 1 }),
-    lantern: M(0xc42a18, 0.55, { emissive: 0xff5a2a, emissiveIntensity: 0.35 }),
+    // unlit by day: silk in the sun, not glowing (the glow made them the purest red in the picture)
+    lantern: M(0xa04a36, 0.7),
     hallDoor: M(0xffffff, 0.62, { map: latticeDoors(lite) }),
     gateDoor: M(0xffffff, 0.5, gateDoors(lite, SPRING)),
     hills: M(0x6f8790, 1, { flatShading: true }),

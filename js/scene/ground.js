@@ -23,6 +23,47 @@ export const OK_DEG = 1;
 const PAVING = 0xa29d93;
 
 /**
+ * The photographed paving (one 9.7-chi square: three courses of three slabs)
+ * relaid course by course. Laid as it comes it is a grid: the same nine
+ * slabs every 9.7 chi, the dark one in the middle course a dot in a lattice.
+ * Each course (a row of the tile, counted across the whole court) slides
+ * along by its own random amount, so the joints stagger as a mason's do, and
+ * each slab takes its own tone: the scan's slab means (sRGB grey) are evened
+ * out by half, then varied. All of it from the one tile, no extra taps:
+ * sampled with the unshifted uv's derivatives, so the course edges don't
+ * drop the mip level (a seam of blur along every joint).
+ * Courses in v, bottom up from the joint at 0.322: the scan's middle course
+ * (B, 0.322–0.653), the top (A) and the bottom (C, wrapping round); joints
+ * across each in u and the slabs' means between them.
+ */
+const COURSES = /* glsl */ `
+uniform float slabRows;
+float gHash( vec2 p ) { return fract( sin( dot( p, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ); }
+vec2 gUv;
+vec3 gTone;
+void groundCourses( vec2 uv ) {
+  gUv = uv;
+  gTone = vec3( 1.0 );
+  if ( slabRows < 0.5 ) return;
+  float t = uv.y - 0.322;
+  float K = floor( t ), f = t - K;
+  float course = f < 0.331 ? 0.0 : ( f < 0.666 ? 1.0 : 2.0 );
+  float row = K * 3.0 + course;
+  float u = uv.x + gHash( vec2( row, 7.31 ) );
+  gUv = vec2( u, uv.y );
+  vec3 joints = course < 0.5 ? vec3( 0.086, 0.398, 0.727 ) : course < 1.5 ? vec3( 0.069, 0.442, 0.700 ) : vec3( 0.005, 0.338, 0.628 );
+  vec3 means = course < 0.5 ? vec3( 129.2, 116.2, 115.3 ) : course < 1.5 ? vec3( 148.1, 139.7, 144.2 ) : vec3( 132.3, 133.4, 116.1 );
+  float Ku = floor( u ), fu = u - Ku;
+  float slab = fu < joints.x ? 2.0 : fu < joints.y ? 0.0 : fu < joints.z ? 1.0 : 2.0;
+  if ( fu < joints.x ) Ku -= 1.0;
+  float mean = slab < 0.5 ? means.x : slab < 1.5 ? means.y : means.z;
+  vec2 id = vec2( row, Ku * 3.0 + slab );
+  float h = gHash( id ), w = gHash( id + 17.7 );
+  gTone = vec3( pow( 132.0 / mean, 1.1 ) * mix( 0.84, 1.12, h ) ) * mix( vec3( 1.03, 1.0, 0.96 ), vec3( 0.97, 1.0, 1.04 ), w );
+}
+`;
+
+/**
  * The courtyard floor: stone slabs (procedural texture, 12 chi per tile, see
  * texgen.js), plain until the textures arrive (dressGround). The plane moves
  * with the chariot (Look.follow) but the slabs are laid in world space, so
@@ -64,10 +105,13 @@ export function dressGround(mesh, tex) {
   const macro = tex.clouds;
   const slab = { value: 12 };
   mat.userData.slabSize = slab;
+  const rows = { value: 0 };
+  mat.userData.slabRows = rows;
   const prev = mat.onBeforeCompile.bind(mat);
   mat.onBeforeCompile = (shader, r) => {
     shader.uniforms.macroMap = { value: macro };
     shader.uniforms.slabSize = slab;
+    shader.uniforms.slabRows = rows;
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nuniform float slabSize;\nvarying vec2 vGroundXZ;\nvarying vec2 vGroundRel;")
       .replace(
@@ -89,7 +133,8 @@ export function dressGround(mesh, tex) {
         #endif`,
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nuniform sampler2D macroMap;\nvarying vec2 vGroundXZ;\nvarying vec2 vGroundRel;")
+      .replace("#include <common>", `#include <common>\nuniform sampler2D macroMap;\nvarying vec2 vGroundXZ;\nvarying vec2 vGroundRel;\n${COURSES}`)
+      .replace("void main() {", "void main() {\n  groundCourses( vMapUv );\n  vec2 gUvDx = dFdx( vMapUv ), gUvDy = dFdy( vMapUv );")
       .replace(
         "#include <map_fragment>",
         `#include <map_fragment>
@@ -104,6 +149,15 @@ export function dressGround(mesh, tex) {
         `#include <normal_fragment_maps>
         normal = normalize(mix(normal, nonPerturbedNormal, groundFar));`,
       );
+    // The maps' taps go on the relaid courses: each chunk's texture2D is
+    // swapped for a textureGrad at gUv round its include (the includes stay,
+    // for the patches chained after this one: bakedao.js adds to the AO's).
+    const on = "#undef texture2D\n#define texture2D( s, uv ) textureGrad( s, gUv, gUvDx, gUvDy )\n";
+    const off = "\n#undef texture2D\n#define texture2D texture";
+    for (const chunk of ["map_fragment", "normal_fragment_maps", "roughnessmap_fragment", "aomap_fragment"]) {
+      const inc = `#include <${chunk}>`;
+      shader.fragmentShader = shader.fragmentShader.replace(inc, on + inc + off + (chunk === "map_fragment" ? "\n#ifdef USE_MAP\n  diffuseColor.rgb *= gTone;\n#endif" : ""));
+    }
     prev(shader, r);
   };
   const prevKey = mat.customProgramCacheKey.bind(mat);
@@ -133,6 +187,8 @@ export function photoGround(mesh, set, was) {
   mat.roughness = 1;
   // the scan is 3 m (9.7 chi) square
   mat.userData.slabSize.value = 9.7;
+  // ...laid as three courses of three slabs, relaid course by course (COURSES)
+  mat.userData.slabRows.value = 1;
 }
 
 const RING_R = 8.2;

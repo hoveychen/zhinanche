@@ -51,9 +51,9 @@ const HERO_DIR = new THREE.Vector3(-Math.sin(THREE.MathUtils.degToRad(50)), 0.14
  * chariot is set this much of half the width left of the middle, so the gate
  * has room on the right; and drawn this much bigger than the sphere fit.
  */
-const CHASE = { side: 0.85, least: 11, most: 22, up: 0.14, left: 0.1, close: 0.78 };
+const CHASE = { side: 0.85, least: 11, most: 22, up: 0.14, left: 0.1, close: 0.68 };
 /** How far round the chariot the chase view keeps clear of the HUD, whichever way it turns (the shafts reach further). */
-const CHASE_ROOM = 6;
+const CHASE_ROOM = 5;
 
 /**
  * Where the camera may go, relative to the chariot (the courtyard rides along

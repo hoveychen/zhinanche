@@ -78,7 +78,7 @@ function bracketBeam(w, h, d) {
 
 export class Landmark {
   constructor() {
-    const red = mat(0xb8321e), tile = mat(0x2c4f55), beamM = mat(0x2d6a6a), stone = mat(0xb9b2a2), gold = mat(0xd8a640);
+    const red = mat(0x9e4030), tile = mat(0x2c4f55), beamM = mat(0x2d6a6a), stone = mat(0xb9b2a2), gold = mat(0xd8a640);
     const trim = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75, vertexColors: true });
     // the courtyard's materials take over these once it is built (Courtyard.dressGate)
     tile.userData.yard = "roofGreen";
