@@ -173,8 +173,8 @@ export const LESSONS_EN = {
           wrong: "The big flat wheel is the biggest, so it has the most teeth. Count again?",
         },
       },
-      { text: "Going straight, both small flat wheels are lifted up, and the man stays still.\n\nOn a turn, the <b>pole</b> (the long bar at the front, where the animal is hitched) swings to one side, and the outside small wheel drops down. That links the outside road wheel to the big flat wheel." },
-      { text: "When a road wheel turns once, all 24 teeth of its upright wheel push past. That turns the small flat wheel twice, and the big flat wheel half a turn.\n\nOn a right-angle turn, the outside wheel turns half a turn. The big flat wheel moves 12 teeth — a quarter turn. That's exactly what the <em>History of Song</em> says." },
+      { text: "Going straight, both small flat wheels are lifted up, and the man stays still.\n\nOn a turn, the <b>pole</b> (the long bar at the front, where the animal is hitched) swings to one side, and the outside small wheel drops down. That links the outside road wheel to the big flat wheel.\n\nThe top-left corner says the man is a little off south? Remember that. Step 8 tells you why." },
+      { text: "When a road wheel turns once, all 24 teeth of its upright wheel push past. That turns the small flat wheel twice, and the big flat wheel half a turn.\n\nOn a right-angle turn, the outside wheel turns half a turn. The big flat wheel moves 12 teeth — a quarter turn. That's exactly what the <em>History of Song</em> says. But a real one built this way drifts a little. Step 8 shows why." },
       {
         text: "Later, people did the maths and found Yan Su's chariot had a catch: on every turn, the inside wheel has to <b>stay still</b> while the chariot swings round it.\n\nThe driver had to steer just like that, or the man wouldn't point anywhere near true. This time <b>Driver helps</b> is already off, and the chariot will drive a big, sloppy circle.",
         task: {

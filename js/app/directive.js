@@ -46,7 +46,7 @@ export function freeBase() {
  * What applying a directive asks the scene to do besides adopting the new state.
  * @typedef {object} DirectiveResult
  * @property {SceneState} state
- * @property {boolean} reset start fresh: chariot at the origin facing north, trails cleared
+ * @property {boolean} reset start fresh: chariot at the origin facing north (40° east of it where the child drives), trails cleared
  * @property {boolean} rebuild the chariot must be rebuilt (mechanism or faults changed) even without reset
  * @property {string | null} play a MANOEUVRES key to auto-play
  * @property {boolean} viewChanged

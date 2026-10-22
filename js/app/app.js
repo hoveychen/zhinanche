@@ -22,6 +22,15 @@ import { toSim, toWorld } from "../scene/world.js";
 /** Hand driving: body speed (chi/s) and turn rate (rad/s) at speed 1. */
 const DRIVE_V = 5;
 const DRIVE_W = 0.9;
+/**
+ * Where the child drives, the chariot starts facing 40° east of north (sim
+ * heading, + left of east). The chase view looks south from the north, and
+ * may come round only about 20° to the west before the gate leaves the
+ * picture (js/scene/cameraRig.js); facing north, the chariot was end on to
+ * it, and the box (5.45 longer than the wheels front and back) hid them. Turned,
+ * it is seen three-quarters on from the front, the near wheel under the box.
+ */
+const DRIVE_START = Math.PI / 2 - (40 * Math.PI) / 180;
 export class App {
   /**
    * @param {World} world
@@ -166,11 +175,13 @@ export class App {
 
   /**
    * Back at the start: facing north at the origin, figure pointing south.
+   * Where the child drives (the chase view), turned a little to the east.
    * @param {boolean} [notify]
    */
   resetChariot(notify = true) {
     const st = this.state;
-    this.chariot = new Chariot({ mechanism: st.mechanism, faults: st.faults });
+    const heading = st.controls.includes("drive") ? DRIVE_START : undefined;
+    this.chariot = new Chariot({ mechanism: st.mechanism, faults: st.faults, heading });
     this.player = null;
     this.follow = null;
     this.world.route.clear();

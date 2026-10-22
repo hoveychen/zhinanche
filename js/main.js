@@ -226,6 +226,12 @@ world.hudInsets = (low = false) => {
   }
   return ins;
 };
+// The home page's caption (and the drag hint under it) along the bottom of the view.
+world.cam.caption = () => {
+  if (stageHook.offsetParent === null) return 0;
+  const r = stage.getBoundingClientRect(), b = stageHook.getBoundingClientRect();
+  return r.height && b.height ? (r.bottom - b.top + 8) / r.height : 0;
+};
 // A phone's free-driving sheet, pulled up, lies over the bottom of the view.
 world.cover = () => {
   const r = stage.getBoundingClientRect(), p = byId("panel").getBoundingClientRect();
