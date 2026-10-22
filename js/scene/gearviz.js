@@ -336,7 +336,7 @@ void main() {
   float d = length(vView);
   float facing = abs(dot(normalize(vNormal), vView / d));
   float fres = pow(1.0 - facing, 3.0);
-  float a = (0.004 + 0.2 * fres) * opacity * smoothstep(fade.x, fade.y, d);
+  float a = (0.012 + 0.24 * fres) * opacity * smoothstep(fade.x, fade.y, d);
   if (a < 0.003) discard;
   gl_FragColor = vec4(mix(fill, rim, fres), a);
 }`;
@@ -381,8 +381,15 @@ export function ghostFade(d) {
   return THREE.MathUtils.smoothstep(d, GHOST_FADE.x, GHOST_FADE.y);
 }
 
-/** The box's edges in x-ray: thin warm lines, the size of a pen stroke (CSS px). */
-const BOX_LINE = new LineMaterial({ color: 0xffd6b0, linewidth: 1.5, transparent: true, opacity: 1, depthWrite: false });
+/**
+ * The box's edges in x-ray: thin lines the size of a pen stroke (CSS px), as
+ * the edges of a glass case: darker than what is behind them, in the
+ * lacquer's own brown. (Pale peach at full strength, lighter than the court
+ * behind, they glowed: a debug bounding box, not a box.)
+ */
+const BOX_LINE = new LineMaterial({ color: 0x5c2a1f, linewidth: 1.25, transparent: true, opacity: 1, depthWrite: false });
+/** How strong the edges are at full x-ray. */
+const BOX_LINE_OPACITY = 0.7;
 
 /** Size the edge lines for the canvas (CSS px). @param {number} w @param {number} h */
 export function setBoxLineSize(w, h) {
@@ -417,7 +424,7 @@ export function makeBoxLines(boxes) {
 /** @param {LineSegments2} lines @param {number} v 0..1 */
 export function setBoxLineOpacity(lines, v) {
   const m = /** @type {LineMaterial} */ (lines.material);
-  m.opacity = v;
+  m.opacity = v * BOX_LINE_OPACITY;
   m.resolution.copy(BOX_LINE.resolution);
 }
 
