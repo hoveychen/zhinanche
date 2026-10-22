@@ -200,6 +200,9 @@ export class Rig {
       o.userData.partNode = n;
       const src = /** @type {THREE.MeshStandardMaterial} */ (o.material);
       const mat = src.clone();
+      // a shader patch (materials.js wear) is not copied by clone()
+      mat.onBeforeCompile = src.onBeforeCompile;
+      mat.customProgramCacheKey = src.customProgramCacheKey;
       o.material = mat;
       // the railing stays solid in x-ray: with the figure on the deck inside
       // it, it says where the box's top is (the ghost alone read as red haze)

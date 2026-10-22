@@ -23,9 +23,15 @@
 // squared falloff it had left everything up to the tower nearly as clear as
 // the chariot (4.5% at 229 chi, measured), and the red behind the chariot
 // as bright and saturated as the chariot itself. The air's colour follows
-// the sky's low band: warmer and brighter towards the sun, the plain haze
+// the sky's low band: warmer and brighter towards the sun, a cool blue-grey
 // away from it (the photographed sky's own tint, environment.js), so a hall
-// against a warm sky melts into warm air.
+// against a warm sky melts into warm air. (Away from the sun it was a rose,
+// the anti-solar belt's: but that belt shows only after sunset; with the sun
+// 17° up the sky away from it is the bluest there is, and the rose haze over
+// every far tree and hall read as a lilac-grey card. Measured on the woods
+// behind the gate, 1440 high: L 34 C 3.9 h 319.)
+//
+// A material may thin its haze (define FOG_SCALE): the trees do (trees.js).
 //
 // Installed into three's chunks before any program is compiled
 // (environment.js calls installFog at import and sets CustomToneMapping).
@@ -53,6 +59,12 @@ vec3 CustomToneMapping( vec3 color ) {
   return g * g;
 }`;
 
+/**
+ * The low sky's (and the haze's) tint away from the sun, on the sky's own
+ * colour: a little cooler (environment.js SKY_FRAG lowTint uses it too).
+ */
+export const AWAY = ["0.94", "0.99", "1.06"];
+
 /** @param {number[]} v @returns {string} */
 const vec3 = (v) => `vec3( ${v.map((x) => x.toFixed(4)).join(", ")} )`;
 
@@ -71,13 +83,16 @@ const fog = (sun, glow) => {
   #else
     float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
   #endif
+  #ifdef FOG_SCALE
+    fogFactor *= FOG_SCALE;
+  #endif
   // fogColor is in the output's colour space (sRGB on the screen): back to linear
   vec3 fogLin = linearToOutputTexel( vec4( 0.5 ) ).r > 0.6 ? sRGBTransferEOTF( vec4( fogColor, 1.0 ) ).rgb : fogColor;
   vec3 fogDir = normalize( vFogDir );
   float fogAz = dot( normalize( fogDir.xz + 1e-5 ), vec2( ${(sun.x / flat).toFixed(4)}, ${(sun.z / flat).toFixed(4)} ) );
   float fogSun = pow( clamp( 0.5 + 0.5 * fogAz, 0.0, 1.0 ), 2.0 );
   float fogS = max( dot( fogDir, ${vec3([sun.x, sun.y, sun.z])} ), 0.0 );
-  vec3 fogCol = fogLin * mix( vec3( 1.08, 0.98, 0.93 ), vec3( 1.2, 1.0, 0.8 ), fogSun )
+  vec3 fogCol = fogLin * mix( vec3( ${AWAY.join(", ")} ), vec3( 1.2, 1.0, 0.8 ), fogSun )
     + ${vec3([glow.r, glow.g, glow.b])} * ( pow( fogS, 8.0 ) * 0.1 );
   gl_FragColor.rgb = mix( gl_FragColor.rgb, fogCol, fogFactor );
 #endif

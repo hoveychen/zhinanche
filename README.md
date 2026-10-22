@@ -117,6 +117,7 @@ LICENSES/             许可证全文
 - 故障演示里的尺寸误差和打滑（轮距大 10%、一个轮子大 5%、打滑 20%）故意放大，让偏差几步之内就能看出来。真车的误差小得多，但会在长路上一点点攒起来。
 - 宋尺取 0.31 米，只用于界面上换算「米」。
 - 庭院、牌楼和天空是布景，不是某座真实宫殿的复原。天空、地砖、墙、瓦、车木用的是实拍扫描（Poly Haven，CC0），做旧、阴影和天光遮蔽是程序生成或在加载时烘焙的，只为看起来像实拍；见[决策 0004](design/decisions/0004-realtime-photo-look.md)。地砖按行错缝、每块深浅不同，远景的雾，西墙外让院子落进树影、只把车留在光里的那片树林，也都是为画面安排的；见[决策 0013](design/decisions/0013-art-round-air-reds-light.md)。
+- 车漆上的擦痕、边角磨穿露出的黑底、角落的积灰和彩画上发黄的旧清漆，是用从模型烘出的边、凹处遮罩加实拍漆面扫描在着色器里做的，只为看起来像一辆用旧了的真车，不是哪件文物的实测。齿轮的蓝、橙、黄是为了分清左右两路染的木色，是教学用的。远处的树比墙和殿少吃一半雾。见[决策 0014](design/decisions/0014-lacquer-wear-stained-gears-cool-air.md)。
 - 院里院外的松和冷杉是 Poly Haven 的 CC0 树模型在 Blender 里从 16 个方向渲成的贴片，树的位置和成团方式是为画面排的。屋面的筒瓦垄、檐口的瓦当滴水椽头、檐下的斗拱是按清式做法的大意自己画的（高度场烘焙 + 实拍釉面颗粒），只求常用镜头下读得出来：垄距、斗拱攒数和彩画都没有按某座建筑考据；牌楼还是原来的平面屋顶，只贴了瓦和斗拱。见[决策 0005](design/decisions/0005-trees-and-eaves.md)。
 
 每个参数的出处和置信度都在 [`params/chariot.json`](params/chariot.json) 里，标签含义见 [`docs/sources.md`](docs/sources.md)。调研的依据和没覆盖到的地方见 [`research/REPORT.md`](research/REPORT.md)，书目见 [`research/sources/bibliography.md`](research/sources/bibliography.md)。
@@ -126,8 +127,8 @@ LICENSES/             许可证全文
 - 代码：[Apache-2.0](LICENSE)
 - 课件文字、3D 模型、参数、文档：[CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt)
 - three.js：MIT
-- 天空和材质扫描：Poly Haven，CC0（`tools/assets/build_photo.py` 下载并压缩）；车上的铁件用 rusty_metal_04（Amal Kumar）
-- 车的遮蔽图集（`assets/photo/chariot-*-ao-*.webp`）：由本项目的模型烘焙，CC BY-SA 4.0（`pnpm build:model`）
+- 天空和材质扫描：Poly Haven，CC0（`tools/assets/build_photo.py` 下载并压缩）；车上的铁件用 rusty_metal_04（Amal Kumar），车漆的光泽（擦痕、划痕、板缝）用 lacquered_cherry_wood（Jenelle van Heerden、Rico Cilliers）
+- 车的遮蔽图集（`assets/photo/chariot-*-ao-*.webp`，R 遮蔽和积灰、G 磨损的边、B 积灰的凹处）：由本项目的模型烘焙，CC BY-SA 4.0（`pnpm build:model`）
 - 树模型：Poly Haven 的 pine_tree_01、fir_tree_01（Rico Cilliers 建模，Rob Tuytel 摄影），CC0（`tools/assets/fetch_models.py` 下载，`blender/scripts/render_impostors.py` 渲成贴片）
 - 屋瓦和斗拱贴图：本项目自绘的高度场，叠 Poly Haven 扫描（clay_roof_tiles_02、灰泥）的颗粒，CC BY-SA 4.0（`tools/assets/build_photo.py`）
 - 课件图片：逐文件标注。三才图会（公有领域）；Andy Dingley 摄的伦敦科学博物馆模型（CC BY 3.0）；SSR2000 摄的台湾国立自然科学博物馆齿轮（CC BY-SA 3.0）

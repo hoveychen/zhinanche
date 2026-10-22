@@ -92,6 +92,9 @@ export function loadTextures(renderer, level) {
  * @property {"grain" | "roof"} [project]
  * @property {string} [mural] which of the box's paintings (photo.js murals()) is laid once over the whole sheet (muralUVs)
  * @property {false} [ao] false: never takes the baked occlusion atlas (a colour that must stay clean)
+ * @property {[number, number] | [number, number, number]} [wear] lacquer: how far its edges are rubbed
+ *   through to the black ground, how much dirt sits in its corners (0..1; the atlas's G and B) and how
+ *   yellowed its varnish is (wear()); its gloss is the photographed lacquer's (photoLacquer)
  */
 
 /** Role (GLB material name) → recipe. Colours are sRGB. */
@@ -104,32 +107,41 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   // set in, smooth from wear. (Pale boxwood, 0xe6c690, went olive grey in the
   // box's shade under the blue sky and did not look like the wheel's timber.)
   peg: { color: 0xb88250, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
-  // The red box, railings, pillars: cinnabar lacquer (赤質), new and glossy:
-  // brighter and purer than the court's weathered reds (0xa82a1d was as dark
-  // and no purer than the palace's columns, and the chariot sank into them).
-  lacquer: { color: 0xc83a22, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
+  // The red box, railings, pillars: cinnabar lacquer (赤質), glossy: brighter
+  // and purer than the court's weathered reds (0xa82a1d was as dark and no
+  // purer than the palace's columns, and the chariot sank into them), but a
+  // pigment, not a light: 0xc83a22 (C 72) came out in the low sun as the
+  // screen's purest red (blue 10 of 255), a toy's plastic. As light as that
+  // (L 50, C 60): the corners' grime (wear()) darkens it, and at 0xb8432f the
+  // box's lit faces fell below the paving's (0013 put the chariot in the sun).
+  lacquer: { color: 0xc8503a, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6, wear: [0.8, 0.8] },
   // The box's paintings (宋史: 兩箱畫青龍、白虎，四面畫花鳥): plain lacquer red (a
   // one-texel map, dressChariot) till the painting atlas is in (photoMurals),
   // under a thinner coat than the box's.
-  mural_dragon: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "dragon" },
-  mural_tiger: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "tiger" },
-  mural_flowers: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "flowers" },
-  eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5 },
+  mural_dragon: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "dragon", wear: [0.4, 0.6, 1] },
+  mural_tiger: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "tiger", wear: [0.4, 0.6, 1] },
+  mural_flowers: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "flowers", wear: [0.4, 0.6, 1] },
+  eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5, wear: [0.6, 0.8] },
   // The wheels: red lacquer worn thinner than the box's and dulled by the road.
   // (0x962c1e under a 0.6 coat went a glowing orange in the low sun, and the
   // bevelled shoulders of the spokes caught it as white triangles.)
-  wheel: { color: 0x7e2a1e, map: "woodSoft", roughness: 0.62, clearcoat: 0.3, clearcoatRoughness: 0.4, normal: 0.2, scale: 0.8 },
-  // The wheels' marker spoke: yellow lacquer.
+  wheel: { color: 0x7e2a1e, map: "woodSoft", roughness: 0.62, clearcoat: 0.3, clearcoatRoughness: 0.4, normal: 0.2, scale: 0.8, wear: [1, 1] },
+  // The wheels' marker spoke: yellow lacquer, kept clean (no wear): it is
+  // read for the wheel's turns, as the trains' colours are (0006).
   mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8 },
-  // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
-  blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  // The differential's carrier and pinions (the middle train): yellow paint, kept clean like the trains' colours.
-  yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  // The differential's inner teeth, painted like the gear they belong to (the roles say "tooth" for the clearance check).
-  peg_blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
-  peg_orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
-  peg_yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  // Left train blue, right train orange: stained wood, the photographed grain
+  // (photoWood) under the dye and a thin wax, not paint under a thick coat
+  // (painted and coated 0.9, saturated, they read as plastic). The dyes are
+  // the site's blue and orange a little greyed, and cooled against the scan's
+  // warm tint (1, 0.93, 0.85) so they keep their hue over the wood.
+  blue: { color: 0x486ec8, map: "wood", roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.35, normal: 0.5, scale: 0.6, ao: false },
+  orange: { color: 0xec8b47, map: "wood", roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.35, normal: 0.5, scale: 0.6, ao: false },
+  // The differential's carrier and pinions (the middle train): stained yellow, kept clean like the trains' colours.
+  yellow: { color: 0xf5d271, map: "wood", roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.35, normal: 0.5, scale: 0.6, ao: false },
+  // The differential's inner teeth, stained like the gear they belong to (the roles say "tooth" for the clearance check).
+  peg_blue: { color: 0x486ec8, map: "wood", roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.3, normal: 0.4, scale: 1.4, ao: false },
+  peg_orange: { color: 0xec8b47, map: "wood", roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.3, normal: 0.4, scale: 1.4, ao: false },
+  peg_yellow: { color: 0xf5d271, map: "wood", roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.3, normal: 0.4, scale: 1.4, ao: false },
   // Gilt fittings: the figure's lotus seat, crown and sash ends, the phoenix's beak, the pouches' tassels.
   gold: { color: 0xe6c98c, map: "metal", roughness: 0.2, metalness: 1, normal: 0.2, scale: 0.8 },
   marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1, ao: false },
@@ -141,7 +153,7 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   // The figure's collar, cuffs, sash and stole: mineral green (石绿), as on Song painted figures.
   trim: { color: 0x2f6b55, map: "woodSoft", roughness: 0.55, sheen: 0.5, normal: 0.2, scale: 2 },
   skin: { color: 0xf0cda4, map: "woodSoft", roughness: 0.5, clearcoat: 0.4, clearcoatRoughness: 0.3, normal: 0.15, scale: 1.5 },
-  hat: { color: 0x1c1b1e, map: "woodSoft", roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.1, normal: 0.2, scale: 1.5 },
+  hat: { color: 0x1c1b1e, map: "woodSoft", roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.1, normal: 0.2, scale: 1.5, wear: [0.5, 0.5] },
 });
 
 /**
@@ -152,10 +164,12 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
  * @type {Record<string, number>}
  */
 export const TRAIN_SHADES = {
-  "wheel.L": 0x173a85, "diff.crown.L": 0x2c64c8, "song.foot.L": 0x2c64c8, "diff.sideA": 0x7db8ff, "song.small.L": 0x7db8ff,
-  "wheel.R": 0xb95e12, "diff.crown.R": 0xea7d1c, "song.foot.R": 0xea7d1c, "diff.sideB": 0xffa860, "song.small.R": 0xffa860,
+  "wheel.L": 0x2a4184, "diff.crown.L": 0x486ec8, "song.foot.L": 0x486ec8, "diff.sideA": 0x84b4f8, "song.small.L": 0x84b4f8,
+  "wheel.R": 0xba6935, "diff.crown.R": 0xec8b47, "song.foot.R": 0xec8b47, "diff.sideB": 0xffa86a, "song.small.R": 0xffa86a,
+  // (the light shades keep nearly all their colour: greyed over the wood they
+  // went white and plain timber)
   // the middle: the carrier a deep yellow, the pinions it carries a light one
-  "diff.carrier": 0xd49a14, "diff.pinion.0": 0xffd95a, "diff.pinion.1": 0xffd95a,
+  "diff.carrier": 0xd5a856, "diff.pinion.0": 0xffe27a, "diff.pinion.1": 0xffe27a,
 };
 
 /** Roles painted in their part's shade of its train's colour. */
@@ -193,7 +207,100 @@ export function makeMaterial(r, tex) {
     m.normalScale.setScalar(r.normal ?? 0.5);
     if (r.metalness) m.metalnessMap = null;
   }
+  if (r.wear) {
+    // the photographed lacquer's gloss goes in these slots (photoLacquer):
+    // a flat 0.5 stands in, so the factors are twice the recipe's
+    m.roughnessMap = lacquerBlank();
+    m.clearcoatRoughnessMap = m.roughnessMap;
+    m.roughness = Math.min(1, 2 * r.roughness);
+    m.clearcoatRoughness = Math.min(1, 2 * (r.clearcoatRoughness ?? 0));
+    wear(m, r.wear[0], r.wear[1], r.wear[2] ?? 0);
+  }
   return m;
+}
+
+/** @type {THREE.Texture | null} */
+let lacquerBlankTex = null;
+/** A one-texel stand-in for the lacquer's arm map: roughness 0.5, flakes 0.5. */
+function lacquerBlank() {
+  if (!lacquerBlankTex) {
+    lacquerBlankTex = new THREE.DataTexture(new Uint8Array([255, 128, 128, 255]), 1, 1);
+    lacquerBlankTex.wrapS = lacquerBlankTex.wrapT = THREE.RepeatWrapping;
+    lacquerBlankTex.needsUpdate = true;
+  }
+  return lacquerBlankTex;
+}
+
+/** The lacquer's black ground (灰底 under 黑漆), where an edge is rubbed through (linear). */
+const GROUND = new THREE.Color(0x231611);
+/** Road dirt and old wax in the corners (linear), multiplied in. */
+const GRIME = new THREE.Color(0x5a4a3c);
+
+/**
+ * Wear on a lacquered part, from the baked atlas (aoMap: G the edges, B the
+ * corners; white is none, as the stand-in aoBlank is): its edges rubbed
+ * through to the black ground in flakes (the arm map's B, along the grain),
+ * dull and with no coat there; grime in the corners, darker and duller.
+ * A painting under the coat (varnish > 0) is dulled and yellowed by it, as
+ * old painted lacquer is: a sticker's clean colours were what it read as.
+ * Copied onto the rig's clones (Material.copy leaves onBeforeCompile).
+ * @param {THREE.MeshPhysicalMaterial} m @param {number} rub 0..1 @param {number} dirt 0..1 @param {number} [varnish] 0..1
+ */
+export function wear(m, rub, dirt, varnish = 0) {
+  const f = (/** @type {number} */ v) => v.toFixed(3);
+  const c = (/** @type {THREE.Color} */ v) => `vec3(${f(v.r)}, ${f(v.g)}, ${f(v.b)})`;
+  m.userData.wear = [rub, dirt, varnish];
+  m.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
+float wornEdge = 0.0;
+#if defined(USE_AOMAP) && defined(USE_ROUGHNESSMAP)
+{
+  vec3 wz = texture2D(aoMap, vAoMapUv).rgb;
+  float flake = texture2D(roughnessMap, vRoughnessMapUv).b;
+  float rubbed = (1.0 - wz.g) * ${f(rub)};
+  wornEdge = smoothstep(0.1, 0.25, rubbed - 0.6 * flake);
+  float grime = (1.0 - wz.b) * ${f(dirt)};
+  // the coat a little uneven: thicker and darker, thinner and paler, in patches a chi or two across
+  ${varnish ? `{
+    float l = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    // yellowed more than darkened (the tint's luminance 0.94; at 0.85 the paintings sank to mud)
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l), ${f(0.3 * varnish)}) * mix(vec3(1.0), vec3(1.06, 0.93, 0.69), ${f(varnish)});
+  }` : ""}
+  float patchy = texture2D(roughnessMap, vRoughnessMapUv * 0.27 + 0.31).b;
+  diffuseColor.rgb *= mix(0.85, 1.15, patchy); // patchy is even over 0..1: no darker on the whole
+  diffuseColor.rgb = mix(diffuseColor.rgb, ${c(GROUND)}, wornEdge * 0.85);
+  diffuseColor.rgb *= mix(vec3(1.0), ${c(GRIME)}, grime * 0.7);
+  roughnessFactor = min(1.0, mix(roughnessFactor, 0.72, wornEdge) + 0.35 * grime);
+}
+#endif`)
+      .replace("#include <lights_physical_fragment>", `#include <lights_physical_fragment>
+#ifdef USE_CLEARCOAT
+material.clearcoat *= 1.0 - wornEdge;
+#endif`);
+  };
+  m.customProgramCacheKey = () => `wear:${rub}:${dirt}:${varnish}`;
+}
+
+/**
+ * Put the photographed lacquer (photo.js, Poly Haven lacquered_cherry_wood)
+ * on the lacquered parts: its gloss (rubs, scratches, board seams) in the
+ * roughness and the coat's roughness, its grain faintly in the colour and the
+ * normal. The slots are filled already (lacquerBlank), so nothing compiles.
+ * The paintings keep their pictures.
+ * @param {Iterable<THREE.Mesh>} meshes @param {import("./photo.js").PhotoSet} set @param {Textures} tex the procedural ones
+ */
+export function photoLacquer(meshes, set, tex) {
+  // the scan is 1 m (3.3 chi) of board; the parts' UVs run ~0.6 tiles a chi
+  for (const t of [set.albedo, set.normal, set.arm]) t?.repeat.setScalar(0.5);
+  for (const o of meshes) {
+    const m = /** @type {THREE.MeshPhysicalMaterial} */ (o.material);
+    if (!m.userData.wear || !set.arm) continue;
+    m.roughnessMap = set.arm;
+    m.clearcoatRoughnessMap = set.arm;
+    if (m.map === tex.woodSoft) m.map = set.albedo;
+    if (m.normalMap === tex.woodNormal) m.normalMap = set.normal;
+  }
 }
 
 /** Small string hash → [0, 1). @param {string} s */

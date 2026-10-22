@@ -70,6 +70,11 @@ SKY_MEDIAN = 0.32
 #               so materials.js and the rig's highlight colours stay as they are
 #   tint        like multiplier (near white, contrast softened) but keeping the scan's
 #               own colour: rust stays brown under the role's iron grey
+#   lacquer     a lacquered board: the colour a faint grain near white (mean ~0.85 linear,
+#               like the procedural woodSoft it replaces) under the role's lacquer colour;
+#               the arm's G the scan's gloss -- rubs, scratches and board seams -- spread
+#               round a mean of 0.5, so a role's roughness doubles to its old mean; its B
+#               (no metal) flakes along the grain, where a worn edge breaks through first
 #   rows        palace tile rows baked from a height field, the scan for grain (tile_rows)
 TEXTURES = {
     # ground also at 256: fetched with the sky, so the very first picture already has it
@@ -79,6 +84,8 @@ TEXTURES = {
     "wood": ((1024, 512), (1024, 512), (), "multiplier"),
     # the ironwork is small: 512 is plenty, and its arm map carries the rust (metal 0) vs iron (metal 1)
     "iron": ((512,), (512,), (512,), "tint"),
+    # the chariot's lacquer (box, railing, wheels, eaves, paintings' coat)
+    "lacquer": ((1024, 512), (1024, 512), (1024, 512), "lacquer"),
 }
 
 # The tile rows (chi): one texture is TILE_SPAN square, TILE_ROWS rows of round tiles
@@ -456,6 +463,18 @@ def build_texture(name, meta, cache, manifest):
         g = np.exp(np.log(np.maximum(g / g.mean(), 1e-3)) * 0.7)
         lin = np.clip(g[..., None] * 0.72 * np.array([1.0, 0.93, 0.85], np.float32), 0, 1)
         albedo = Image.fromarray(to_srgb8(lin))
+    elif mode == "lacquer":
+        g = lum(lin)
+        g = np.exp(np.log(np.maximum(g / g.mean(), 1e-3)) * 0.5)
+        lin = np.clip(g[..., None] * 0.85, 0, 1).repeat(3, -1)
+        albedo = Image.fromarray(to_srgb8(lin))
+        r = np.asarray(arm, np.float32)[..., 1] / 255
+        r = np.clip(0.5 + (r - r.mean()) * 1.6, 0.25, 1)
+        # B (no metal here): where an edge's wear breaks through first, the scan's
+        # figure blurred to flakes along the grain, ranked to an even 0..1
+        f = blur(lum(from_srgb8(np.asarray(Image.open(albedo_path).convert("RGB")))), 5.0)
+        f = (np.argsort(np.argsort(f, axis=None)).reshape(f.shape) / f.size).astype(np.float32)
+        arm = Image.fromarray((np.stack([np.ones_like(r), r, f], -1) * 255 + 0.5).clip(0, 255).astype(np.uint8))
     elif mode == "tint":
         g = lum(lin)
         g2 = np.exp(np.log(np.maximum(g / g.mean(), 1e-3)) * 0.7) * 0.72

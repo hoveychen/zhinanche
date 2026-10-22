@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { Environment, SetShadow, contactShadow } from "./environment.js";
 import { Courtyard } from "./courtyard.js";
 import { dressGround, makeGround, photoGround } from "./ground.js";
-import { chariotAO, dressChariot, loadTextures, photoIron, photoMurals, photoWood } from "./materials.js";
+import { chariotAO, dressChariot, loadTextures, photoIron, photoLacquer, photoMurals, photoWood } from "./materials.js";
 import { meanOf } from "./photo.js";
 import { AGE_ORIGIN, age } from "./aging.js";
 import { FrameGovernor, SETTINGS, pickQuality } from "./quality.js";
@@ -113,6 +113,8 @@ export class Look {
     this.chariotMeshes = [];
     /** @type {import("./photo.js").PhotoSet | null} the photographed wood, once it is up */
     this.woodPhoto = null;
+    /** @type {import("./photo.js").PhotoSet | null} the photographed lacquer, once it is up */
+    this.lacquerPhoto = null;
     /** @type {import("./photo.js").PhotoSet | null} the photographed rusty iron, once it is up */
     this.ironPhoto = null;
     /** @type {Record<string, THREE.Texture> | null} the box's paintings, once they are up */
@@ -192,6 +194,8 @@ export class Look {
       roof: safe("roof", this.photos.surface("roof", { full: [1024, 512, 512], lite: [512, 512, 256] })),
       dougong: safe("dougong", this.photos.surface("dougong", { full: [320, 320, 320], lite: [160, 160, 160] })),
       wood: safe("wood", this.photos.surface("wood", { full: [1024, 1024, 0], lite: [512, 512, 0] })),
+      // the lacquer's gloss: swapped in with the wood (one entry in body[data-photo])
+      lacquer: safe("lacquer", this.photos.surface("lacquer", { full: [1024, 1024, 1024], lite: [512, 512, 512] })),
       iron: safe("iron", this.photos.surface("iron", { full: [512, 512, 512], lite: [512, 512, 512] })),
       trees: safe("trees", this.photos.trees()),
       // the paintings (2048 × 682 each) going up with their mipmaps came a
@@ -234,9 +238,16 @@ export class Look {
         groundFull = true;
         photoGround(this.ground, s, stone);
       }),
-      put("wood", sets.wood, async (s) => {
-        this.woodPhoto = s;
-        photoWood(this.chariotMeshes, s, await this.chariotTex);
+      put("wood", Promise.all([sets.wood, sets.lacquer]), async ([wood, lacquer]) => {
+        const tex = await this.chariotTex;
+        if (wood) {
+          this.woodPhoto = wood;
+          photoWood(this.chariotMeshes, wood, tex);
+        }
+        if (lacquer) {
+          this.lacquerPhoto = lacquer;
+          photoLacquer(this.chariotMeshes, lacquer, tex);
+        }
       }),
       put("iron", sets.iron, (s) => {
         this.ironPhoto = s;
@@ -274,6 +285,7 @@ export class Look {
     });
     this.chariotMeshes.push(...meshes);
     if (this.woodPhoto) photoWood(meshes, this.woodPhoto, await this.chariotTex);
+    if (this.lacquerPhoto) photoLacquer(meshes, this.lacquerPhoto, await this.chariotTex);
     if (this.ironPhoto) photoIron(meshes, this.ironPhoto);
     if (this.muralTex) photoMurals(meshes, this.muralTex);
     /** @type {string | undefined} */

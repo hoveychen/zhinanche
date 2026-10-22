@@ -999,9 +999,16 @@ def unwrap():
     bpy.ops.object.select_all(action="DESELECT")
 
 
+# The atlas's G: how far round an edge the bevel reaches (chi) -- the rubbed band of an
+# edge; its B: how far the corners' dirt reaches.
+EDGE_RADIUS = 0.06
+CAVITY_DISTANCE = 0.3
+
+
 def bake(mechanism, size=1024, samples=32):
-    """Cycles bake of AO x dust into assets/photo/chariot-<m>-ao-{1024,512}.webp. Call after export:
-    it rewires every material to an emission shader."""
+    """Cycles bake into assets/photo/chariot-<m>-ao-{1024,512}.webp: R the occlusion x dust,
+    G the worn edges, B the dirt in the corners (white = none; materials.js wear()).
+    Call after export: it rewires every material to an emission shader."""
     img = bpy.data.images.new("atlas", size, size, alpha=False, float_buffer=False)
     img.colorspace_settings.name = "Non-Color"
     for mat in bpy.data.materials:
@@ -1028,8 +1035,47 @@ def bake(mechanism, size=1024, samples=32):
         mul.operation = "MULTIPLY"
         nt.links.new(ao.outputs["AO"], mul.inputs[0])
         nt.links.new(dust.outputs["Result"], mul.inputs[1])
+        # G: the worn edges. A bevel's rounded normal leans off the face's own only near
+        # a convex or concave edge; 1 - their dot, as white = none, black = an edge.
+        bev = nt.nodes.new("ShaderNodeBevel")
+        bev.samples = 8
+        bev.inputs["Radius"].default_value = EDGE_RADIUS
+        dot = nt.nodes.new("ShaderNodeVectorMath")
+        dot.operation = "DOT_PRODUCT"
+        nt.links.new(bev.outputs["Normal"], dot.inputs[0])
+        nt.links.new(geo.outputs["Normal"], dot.inputs[1])
+        edge = nt.nodes.new("ShaderNodeMapRange")
+        edge.inputs["From Min"].default_value = 0.998
+        edge.inputs["From Max"].default_value = 0.96
+        nt.links.new(dot.outputs["Value"], edge.inputs["Value"])
+        # B: dirt in the corners and joints, a short-range occlusion (white = clean)
+        cav = nt.nodes.new("ShaderNodeAmbientOcclusion")
+        cav.inputs["Distance"].default_value = CAVITY_DISTANCE
+        cav.samples = 8
+        cavr = nt.nodes.new("ShaderNodeMapRange")
+        cavr.inputs["From Min"].default_value = 0.45
+        cavr.inputs["From Max"].default_value = 0.95
+        nt.links.new(cav.outputs["AO"], cavr.inputs["Value"])
+        # a bevel bends at an inside corner too: only an edge open to the sky (no
+        # occlusion close by) is one that hands and the road rub
+        open_ = nt.nodes.new("ShaderNodeMapRange")
+        open_.inputs["From Min"].default_value = 0.25
+        open_.inputs["From Max"].default_value = 0.6
+        nt.links.new(cavr.outputs["Result"], open_.inputs["Value"])
+        rub = nt.nodes.new("ShaderNodeMath")
+        rub.operation = "MULTIPLY"
+        nt.links.new(edge.outputs["Result"], rub.inputs[0])
+        nt.links.new(open_.outputs["Result"], rub.inputs[1])
+        worn = nt.nodes.new("ShaderNodeMath")
+        worn.operation = "SUBTRACT"
+        worn.inputs[0].default_value = 1.0
+        nt.links.new(rub.outputs["Value"], worn.inputs[1])
+        rgb = nt.nodes.new("ShaderNodeCombineColor")
+        nt.links.new(mul.outputs["Value"], rgb.inputs[0])
+        nt.links.new(worn.outputs["Value"], rgb.inputs[1])
+        nt.links.new(cavr.outputs["Result"], rgb.inputs[2])
         emit = nt.nodes.new("ShaderNodeEmission")
-        nt.links.new(mul.outputs["Value"], emit.inputs["Color"])
+        nt.links.new(rgb.outputs["Color"], emit.inputs["Color"])
         nt.links.new(emit.outputs["Emission"], nt.nodes["Material Output"].inputs["Surface"])
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"

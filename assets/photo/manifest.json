@@ -123,6 +123,26 @@
     "320": "dougong-arm-320.webp",
     "160": "dougong-arm-160.webp"
    }
+  },
+  "lacquer": {
+   "id": "lacquered_cherry_wood",
+   "mean": [
+    0.8357,
+    0.8357,
+    0.8357
+   ],
+   "albedo": {
+    "1024": "lacquer-albedo-1024.webp",
+    "512": "lacquer-albedo-512.webp"
+   },
+   "normal": {
+    "1024": "lacquer-normal-1024.webp",
+    "512": "lacquer-normal-512.webp"
+   },
+   "arm": {
+    "1024": "lacquer-arm-1024.webp",
+    "512": "lacquer-arm-512.webp"
+   }
   }
  },
  "sky": {
