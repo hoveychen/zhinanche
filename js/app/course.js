@@ -155,14 +155,22 @@ export class Course {
       h("button", { type: "button", class: "plain big", onclick: () => this.open(0) }, [h("span", { text: t.start })]),
     ]);
     // If either label must break (English on a tablet), both break into two
-    // lines: one fitting by a pixel or so left one line beside two.
+    // lines: one fitting by a pixel or so left one line beside two. The
+    // buttons are flex boxes, so a label is one box however many lines it
+    // has: it breaks when it is taller than a line and a half. Checked again
+    // once the web fonts are in (a font swap moves the break, not the width).
     let ctaW = -1;
+    const breaks = () => {
+      cta.classList.remove("two");
+      const tall = (/** @type {HTMLElement} */ s) => s.offsetHeight > 1.5 * parseFloat(getComputedStyle(s).lineHeight);
+      if ([...cta.querySelectorAll("span")].some(tall)) cta.classList.add("two");
+    };
     new ResizeObserver(() => {
       if (cta.clientWidth === ctaW) return;
       ctaW = cta.clientWidth;
-      cta.classList.remove("two");
-      if ([...cta.querySelectorAll("span")].some((s) => s.getClientRects().length > 1)) cta.classList.add("two");
+      breaks();
     }).observe(cta);
+    document.fonts?.ready.then(breaks);
     const body = h("div", { class: "home" }, [
       h("p", { class: "home-kicker", text: t.kicker }),
       h("h2", { class: "home-title", text: t.title }),
