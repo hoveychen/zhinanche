@@ -126,8 +126,9 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   // (0x962c1e under a 0.6 coat went a glowing orange in the low sun, and the
   // bevelled shoulders of the spokes caught it as white triangles.)
   wheel: { color: 0x7e2a1e, map: "woodSoft", roughness: 0.62, clearcoat: 0.3, clearcoatRoughness: 0.4, normal: 0.2, scale: 0.8, wear: [1, 1] },
-  // The wheels' marker spoke: yellow lacquer.
-  mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8, wear: [0.9, 0.8] },
+  // The wheels' marker spoke: yellow lacquer, kept clean (no wear): it is
+  // read for the wheel's turns, as the trains' colours are (0006).
+  mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8 },
   // Left train blue, right train orange: stained wood, the photographed grain
   // (photoWood) under the dye and a thin wax, not paint under a thick coat
   // (painted and coated 0.9, saturated, they read as plastic). The dyes are
