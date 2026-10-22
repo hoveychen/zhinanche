@@ -123,8 +123,14 @@ const OUTSIDE_DIR = /** @type {const} */ ([-0.55, 0.62, 1.1]);
 /** Views close in on the works on purpose: they may look from inside the body. */
 const CLOSE = new Set(["gears", "works", "pair", "diff", "wheels", "figure", "hero", "intro"]);
 
-/** The gears view looks from behind and above, a little to the right (chariot local). */
-const GEARS_DIR = /** @type {const} */ ([-1, 1.35, 0.75]);
+/**
+ * The gears view looks from behind and above, a little to the right (chariot
+ * local): the Song one 56° up, the differential 40°, both 22° right of
+ * straight behind (decision 0017). From further right (37°, 32°) the right
+ * wheel stood in front of where the right gears mesh.
+ */
+const GEARS_DIR = /** @type {const} */ ([-1, 1.6, 0.4]);
+const DIFF_DIR = /** @type {const} */ ([-1, 0.9, 0.4]);
 
 /** Views that swing round with the chariot. */
 const TURNING = new Set(["gears", "works", "pair", "diff", "wheels"]);
@@ -432,12 +438,16 @@ export class CameraRig {
         // hide the gears from any side-on angle. Close on the gears, which
         // fill the view (the figure is up its shaft, out of the picture: the
         // dial shows where it points); a little to the right so the big left
-        // crown wheel shows its face. The boards go see-through with x-ray.
+        // crown wheel shows its face. The boards go see-through with x-ray,
+        // and the shaft and the pole (rig.js CLEAR) go to glass: the shaft
+        // rises from the middle of the gears, and from any angle low enough
+        // to see under the top flat gear it stood over where they mesh.
         // The differential from lower down: from as high as the Song one, its
         // small top flat gear covers the small gears and carrier under it.
         const target = song ? local(1.1, 3.7, 0) : local(0.1, 2.2, -0.4);
         const r = song ? 4.9 : 4.8;
-        return { target, pos: target.clone().addScaledVector(song ? dirLocal(...GEARS_DIR) : dirLocal(-1, 0.72, 0.62), this.fit(r)) };
+        const [dx, dy, dz] = song ? GEARS_DIR : DIFF_DIR;
+        return { target, pos: target.clone().addScaledVector(dirLocal(dx, dy, dz), this.fit(r)) };
       }
       case "works": {
         // The gears and, up the shaft, the figure standing on them: the

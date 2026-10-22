@@ -105,6 +105,17 @@ for (const m of /** @type {MechanismId[]} */ (["differential", "song"])) {
     }
   });
 
+  // close on the gears the shaft and the pole go to glass (js/scene/rig.js
+  // CLEAR, decision 0017): the rig finds them as the parts their meshes
+  // belong to, the nearest node with a group, so each carries its own
+  test(`${m}: the shaft and the pole are parts of their own`, () => {
+    for (const name of ["figure.shaft", "body.pole"]) {
+      const n = byName.get(name);
+      assert.ok(n, `missing ${name}`);
+      assert.ok(GROUPS.includes(n.extras?.group), `${name} has no group`);
+    }
+  });
+
   test(`${m}: motion extras name real pose keys`, () => {
     let movers = 0;
     for (const [name, n] of byName) {
