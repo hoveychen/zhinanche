@@ -425,6 +425,8 @@ export function setBoxLineOpacity(lines, v) {
 const ARC = Math.PI * 1.55;
 /** dash length along the arc (chi) */
 const DASH = 0.7;
+/** how strongly an arc shows through what is in front of it */
+const GHOST_TRACE = 0.3;
 
 let dashTex = /** @type {THREE.CanvasTexture | null} */ (null);
 /** Comet dashes: faint tail, bright head, gap. */
@@ -456,7 +458,7 @@ export class SpinArc {
    * @param {THREE.Color} color
    * @param {number} [tube] chi
    */
-  constructor(radius, color, tube = 0.085) {
+  constructor(radius, color, tube = 0.055) {
     this.group = new THREE.Group();
     this.group.name = "spinArc";
     this.spin = new THREE.Group(); // mirrored for the other way round
@@ -470,17 +472,30 @@ export class SpinArc {
     // tone-mapped like the rest of the scene: crisp dashes, not a glow the bloom smears into flames
     this.mat = new THREE.MeshBasicMaterial({ color, map: tex, transparent: true, opacity: 0, depthWrite: false });
     this.headMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 6, Math.max(24, Math.round(radius * 40)), ARC), this.mat);
-    const head = new THREE.Mesh(new THREE.ConeGeometry(tube * 3.6, tube * 8, 16), this.headMat);
+    // Seen close (looking at the gears) the arc runs behind teeth, spokes and
+    // shafts, and depth cut a thick tube into scattered chips. Thin now, and
+    // drawn twice: the parts behind something as a faint trace through it
+    // (no depth test, under the solid pass), so it reads as one arc round the gear.
+    this.ghostMat = this.mat.clone();
+    this.ghostMat.depthTest = false;
+    this.ghostHeadMat = this.headMat.clone();
+    this.ghostHeadMat.depthTest = false;
+    const ringGeo = new THREE.TorusGeometry(radius, tube, 6, Math.max(24, Math.round(radius * 40)), ARC);
+    const headGeo = new THREE.ConeGeometry(tube * 4.4, tube * 10, 16);
     // the cone's middle sits on the arc's end, pointing along it
-    const a = ARC + (tube * 4) / radius;
-    head.position.set(radius * Math.cos(a), radius * Math.sin(a), 0);
-    head.rotation.z = a;
-    for (const m of [ring, head]) {
+    const a = ARC + (tube * 5) / radius;
+    for (const [geo, mat, order] of /** @type {const} */ ([
+      [ringGeo, this.ghostMat, 1], [headGeo, this.ghostHeadMat, 1], [ringGeo, this.mat, 2], [headGeo, this.headMat, 2],
+    ])) {
+      const m = new THREE.Mesh(geo, mat);
+      if (geo === headGeo) {
+        m.position.set(radius * Math.cos(a), radius * Math.sin(a), 0);
+        m.rotation.z = a;
+      }
       m.castShadow = m.receiveShadow = false;
       m.userData.noAO = true;
       m.raycast = () => {};
-      m.renderOrder = 2;
+      m.renderOrder = order;
       this.spin.add(m);
     }
     this.group.visible = false;
@@ -503,5 +518,6 @@ export class SpinArc {
     this.tex.offset.x = -angle * this.sign * this.dashes;
     this.mat.opacity = act;
     this.headMat.opacity = act;
+    this.ghostMat.opacity = this.ghostHeadMat.opacity = act * GHOST_TRACE;
   }
 }
