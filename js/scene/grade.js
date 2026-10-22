@@ -10,7 +10,11 @@
 // lite) the haze went onto display values, drawn into the high tier's linear
 // buffer it went onto radiance, so the same dark tree was much bluer in high
 // (measured: 57 against 30 in blue). Now it always goes onto radiance, as
-// haze does.
+// haze does. Its colour comes linear too: three hands fogColor over in the
+// output's colour space when drawing to the screen (made for its own fog,
+// mixed after the encode), so medium and lite took the sRGB-encoded colour
+// for radiance and their haze was far paler than high's (pure haze 225 against
+// 170 in red, measured; a shaded wall at 100–200 chi L 39 against 26).
 //
 // And it is aerial perspective, not a curtain at the far edge: it thins
 // exponentially from FOG_CLEAR chi out (the chariot and the court round it
@@ -67,11 +71,13 @@ const fog = (sun, glow) => {
   #else
     float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
   #endif
+  // fogColor is in the output's colour space (sRGB on the screen): back to linear
+  vec3 fogLin = linearToOutputTexel( vec4( 0.5 ) ).r > 0.6 ? sRGBTransferEOTF( vec4( fogColor, 1.0 ) ).rgb : fogColor;
   vec3 fogDir = normalize( vFogDir );
   float fogAz = dot( normalize( fogDir.xz + 1e-5 ), vec2( ${(sun.x / flat).toFixed(4)}, ${(sun.z / flat).toFixed(4)} ) );
   float fogSun = pow( clamp( 0.5 + 0.5 * fogAz, 0.0, 1.0 ), 2.0 );
   float fogS = max( dot( fogDir, ${vec3([sun.x, sun.y, sun.z])} ), 0.0 );
-  vec3 fogCol = fogColor * mix( vec3( 1.08, 0.98, 0.93 ), vec3( 1.2, 1.0, 0.8 ), fogSun )
+  vec3 fogCol = fogLin * mix( vec3( 1.08, 0.98, 0.93 ), vec3( 1.2, 1.0, 0.8 ), fogSun )
     + ${vec3([glow.r, glow.g, glow.b])} * ( pow( fogS, 8.0 ) * 0.1 );
   gl_FragColor.rgb = mix( gl_FragColor.rgb, fogCol, fogFactor );
 #endif
