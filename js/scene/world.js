@@ -515,6 +515,8 @@ export class World {
     // looking at the works is a diagram: every gear sharp, near or far
     if (this.look.postfx) this.look.postfx.dofOn = !this.rig?.inside;
     this.rig?.fadeBoxLines(this.camera);
+    // close on the gears the shaft and the pole are glass: they stood over where the gears mesh
+    this.rig?.setClear(this.cam.view === "gears" && this.rig.inside);
     this.look.render();
     // the highlighted parts' halo, over the finished picture
     const lit = this.rig?.glowParts();

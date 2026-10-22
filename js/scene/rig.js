@@ -34,6 +34,7 @@ import { TRAIN_SHADES } from "./materials.js";
  * @property {boolean} [dim] faded back because other parts are highlighted
  * @property {THREE.Mesh} mesh
  * @property {THREE.Mesh | null} lines its x-ray ghost
+ * @property {THREE.Mesh | null} [clear] its glass stand-in close on the gears (CLEAR)
  * @property {Placed | null} place the exploding node it moves with
  */
 
@@ -80,6 +81,17 @@ const TMP = new THREE.Color();
 const GHOST_FADE_FROM_BOX = 5;
 /** A turning part glows in its own shade of its train's colour (materials.js). */
 const GLOW_OF = new Map(Object.entries(TRAIN_SHADES).map(([k, v]) => [k, new THREE.Color(v)]));
+/**
+ * Close on the gears these stand in front of them (the figure's shaft rises
+ * from the middle of the differential's gears, the pole crosses over them):
+ * drawn as glass then, the body's ghost but not fading near the camera
+ * (decision 0017). The Song shaft stays solid: it stands in the middle of
+ * the big flat gear, clear of where the gears mesh, and lesson 5 points it out.
+ * How strong each one's glass is: the shaft (a rod, mostly face-on, gone at
+ * the body's strength) three times, so it reads as glass up out of its
+ * socket; the pole, not part of the works, as faint as the body.
+ */
+const CLEAR = new Map([["figure.shaft", 3], ["body.pole", 1]]);
 /** Groups whose parts fade back (highlights) or light up (turning). */
 const MOVING_GROUPS = new Set(["gear", "wheel", "figure"]);
 
@@ -146,6 +158,10 @@ export class Rig {
     this.clutch = new ClutchDisplay();
     this.explode = 0;
     this.xray = false;
+    /** the shaft and the pole are glass (setClear) */
+    this.clearing = false;
+    /** @type {Set<string>} the parts that go to glass (CLEAR, on this chariot) */
+    this.glassy = new Set();
     /** @type {Set<string>} */
     this.lit = new Set();
     this.dimming = false;
@@ -213,6 +229,15 @@ export class Rig {
       /** @type {Look} */
       const look = { mat, color: mat.color.clone(), group, owner, wire, keep, mesh: o, lines: null, place };
       this.looks.push(look);
+      if (CLEAR.has(owner) && !(owner === "figure.shaft" && this.mechanism === "song")) {
+        const glass = makeWire(o);
+        const u = /** @type {THREE.ShaderMaterial} */ (glass.material).uniforms;
+        u.fade.value.set(-1, 0);
+        u.opacity.value = CLEAR.get(owner) ?? 1;
+        o.add(glass);
+        look.clear = glass;
+        this.glassy.add(owner);
+      }
       if (wire) {
         const lines = makeWire(o);
         o.add(lines);
@@ -406,7 +431,7 @@ export class Rig {
   #outline() {
     const on = this.inside;
     for (const { hull, owner } of this.hulls) {
-      hull.visible = on;
+      hull.visible = on && !(this.clearing && this.glassy.has(owner));
       hull.material = this.dimming && !this.lit.has(owner) ? OUTLINES.faded : OUTLINES.ink;
     }
   }
@@ -461,6 +486,21 @@ export class Rig {
     // x-ray: the body stops drawing (it writes nothing, casts no shadow) and
     // its ghost shows instead
     this.#shell();
+    this.#outline();
+  }
+
+  /**
+   * The shaft and the pole as glass (close on the gears, looking inside) or solid.
+   * @param {boolean} on
+   */
+  setClear(on) {
+    if (on === this.clearing) return;
+    this.clearing = on;
+    for (const l of this.looks) {
+      if (!l.clear) continue;
+      l.mat.visible = !on;
+      l.clear.visible = on;
+    }
     this.#outline();
   }
 
