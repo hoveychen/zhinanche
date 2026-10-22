@@ -41,11 +41,13 @@ pnpm serve       # 本地静态服务器
 
 ## 发布
 
-还没定放在哪里。上线前要填两处：
+站点放在 GitHub Pages：<https://hoveychen.github.io/zhinanche/>（英文 <https://hoveychen.github.io/zhinanche/en.html>），源码在 <https://github.com/hoveychen/zhinanche>。整个仓库就是站点，没有构建步骤：在仓库设置的 Pages 里选「从分支部署」、`main` 分支、根目录 `/` 即可。根目录的空文件 `.nojekyll` 不能删：没有它 GitHub Pages 会用 Jekyll 处理站点，而 Jekyll 默认不发布 `vendor/`，three.js 就加载不到了。
 
-- [`js/site.js`](js/site.js) 的 `repo`：源码仓库地址，填了以后首页课程列表下面会出现「源代码」链接。
-- [`index.html`](index.html)（中文）和 [`en.html`](en.html)（英文）`<head>` 里的链接预览：`og:image` / `twitter:image` 现在是相对路径 `images/og.jpg`、`images/og.en.jpg`，多数网站抓预览图要绝对地址，改成 `https://<站点>/images/og.jpg`、`https://<站点>/images/og.en.jpg`，加上 `<meta property="og:url" content="https://<站点>/">`（en.html 里是 `…/en.html`），三条 `hreflang` 链接也改成绝对地址。
-- 发到英文网站（Reddit 等）用 `https://<站点>/en.html`（GitHub Pages 上 `https://<站点>/en` 也行），预览就是英文的。
+地址写在三处，换地方时一起改（`tests/entry.test.js` 会核对它们一致）：
+
+- [`js/site.js`](js/site.js) 的 `site` 和 `repo`；有 `repo` 时首页课程列表下面会出现「源代码」链接。
+- [`index.html`](index.html)（中文）和 [`en.html`](en.html)（英文）`<head>` 里的链接预览：`og:url`、`og:image` / `twitter:image` 和三条 `hreflang` 都是绝对地址，多数网站抓预览只认绝对地址。
+- 发到英文网站（Reddit 等）用 `…/en.html`（GitHub Pages 上 `…/en` 也行），预览就是英文的。
 
 预览图 `images/og.jpg`、`images/og.en.jpg`（1200×630）、README 头图和动图都是从页面里的 3D 场景截的。
 
