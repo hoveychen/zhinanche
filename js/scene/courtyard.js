@@ -6,14 +6,13 @@
 // gate, pines and bronze water vats fill the corners, a main hall closes the
 // north, and over the walls rise tree crowns, far roofs and blue hills.
 //
-// It rides with the chariot like the gate does (Look moves the group; it
-// never turns), because the chariot can drive anywhere and the gate always
-// stands due south of it. The paving is fixed to the world (ground.js) and
-// carries the sense of motion; its detail fades out before it reaches the
-// buildings so nothing visibly slides.
+// It stands still at the origin, the gate in it (design/decisions/0018): the
+// chariot drives about inside, walls, gate and lions coming nearer and going
+// by as it does, and is turned back at an invisible wall short of them
+// (js/sim/pen.js).
 // All static; merged by material into ~15 draw calls; shadows are baked once
 // (environment.js SetShadow).
-// Units: chi. Rider-local: the chariot at the origin, south = +z, east = +x.
+// Units: chi. The chariot starts at the origin; south = +z, east = +x.
 
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
@@ -32,7 +31,7 @@ import { gateDoors, latticeDoors } from "./doors.js";
 /** Stand-ins for photographed textures: white colour, a flat normal, no occlusion and roughness ×1. */
 const BLANK = { white: placeholder([255, 255, 255]), flat: placeholder([128, 128, 255]), arm: placeholder([255, 255, 0]) };
 
-/** The court the chariot sits in (rider-local chi). */
+/** The court the chariot drives in (chi). */
 export const COURT = { half: 77, north: -205, south: 225 };
 
 /** Deterministic pseudo-random. @param {number} seed */
@@ -639,13 +638,20 @@ function hills(b) {
   b.add("hills", g);
 }
 
+/** The lane of sun through the west wood, as z − x·tan(24°) of the court's points it lights (chi). */
+const LANE = { lo: -42, hi: 15 };
+
 /**
  * A wood of tall trees beyond the west wall. The sun is low behind it
  * (west-north-west, 17° up: environment.js SUN), so the crowns throw shadows
  * three times their height long, right across the court: most of the court
  * lies in their dappled shade and the chariot stands in a lane of sun. The
- * lane is where no tree stands: a gap along the line from the chariot to the
- * sun (the court rides with the chariot, so the lane is always on it). With
+ * lane is where no tree stands: a gap along the line from the court's middle
+ * to the sun. The court stands still and the chariot drives about it
+ * (design/decisions/0018), so the gap is wide enough for where it starts and
+ * the home page's drive goes (a point in the court is lit through the gap
+ * when z − x·tan(24°) lies in LANE); driven further it goes into the shade,
+ * and is shaded (Look.shadeChariot). With
  * the whole court sunlit the paving, pale grey, was brighter than the red
  * chariot on it (Lab L 38 against 23–27, measured), and nothing in the picture
  * said where to look; a photographer waits for the sun to find the subject.
@@ -659,8 +665,9 @@ function westWood(b, lite) {
   for (let z = -120; z <= 215; z += step) {
     for (const [x0, depth] of [[-90, 14], [-112, 18]]) {
       const x = x0 - r() * depth, zz = z + (r() - 0.5) * step * 0.8;
-      // the lane of sun: keep clear of the line to the sun through the chariot
-      if (Math.abs(zz - x * toSun) < 15) continue;
+      // the lane of sun: no tree where it would shade the lane (LANE)
+      const off = zz - x * toSun;
+      if (off > LANE.lo && off < LANE.hi) continue;
       tree(b, x, zz, 58 + r() * 26, Math.floor(r() * 1e6));
     }
   }

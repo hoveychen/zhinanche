@@ -58,17 +58,18 @@ const HERO_DIR = new THREE.Vector3(-Math.sin(THREE.MathUtils.degToRad(50)), 0.14
  * on a narrow one, closer put the near wheel under the home page's caption).
  */
 const CHASE = { least: 11, most: 40, gate: 0.75, up: 0.14, left: 0.3, close: 0.78, wide: 0.7 };
-/** The gate's plaque, south of the chariot (js/scene/landmark.js), and its height. */
+/** The gate's plaque, south of the origin (js/scene/landmark.js), and its height. */
 const GATE = { z: LANDMARK_DISTANCE, y: 17 };
 /** How far round the chariot the chase view keeps clear of the HUD, whichever way it turns (the shafts reach further). */
 const CHASE_ROOM = 5;
 
 /**
- * Where the camera may go, relative to the chariot (the courtyard rides along
- * with it, js/scene/look.js): inside the corridor columns (x ±63.5), short of
+ * Where the camera may go in the courtyard (it stands at the origin,
+ * design/decisions/0018): inside the corridor columns (x ±63.5), short of
  * the lions and the south gate (z 92, 105) and the pines and cauldrons in
- * the north (z −108). A drag that would take it further brings it in closer
- * along the line of sight instead of through a wall.
+ * the north (z −108). A drag, or the chariot driving toward a wall, that
+ * would take it further brings it in closer along the line of sight instead
+ * of through the wall.
  */
 const ROOM = { x: 56, north: -100, south: 84 };
 
@@ -199,9 +200,9 @@ export class CameraRig {
   }
 
   /**
-   * Keep the camera in the courtyard and out of the chariot, moving it along
-   * its line of sight (the view keeps its direction). Remembers how far it
-   * wanted to be, so it eases back out once the way is clear.
+   * Keep the camera in the courtyard (ROOM) and out of the chariot, moving it
+   * along its line of sight (the view keeps its direction). Remembers how far
+   * it wanted to be, so it eases back out once the way is clear.
    * @param {Focus} f
    */
   #keepIn(f) {
@@ -215,8 +216,8 @@ export class CameraRig {
       if (p > hi && o > 0) t = Math.min(t, (hi - base) / o);
       if (p < lo && o < 0) t = Math.min(t, (lo - base) / o);
     };
-    lim(off.x, tgt.x - f.x, -ROOM.x, ROOM.x);
-    lim(off.z, tgt.z - f.z, ROOM.north, ROOM.south);
+    lim(off.x, tgt.x, -ROOM.x, ROOM.x);
+    lim(off.z, tgt.z, ROOM.north, ROOM.south);
     t = Math.max(0, t);
     off.multiplyScalar(t);
     if (!CLOSE.has(this.view) && !this.apart) {
@@ -348,13 +349,13 @@ export class CameraRig {
   /**
    * How far right of the middle the gate's plaque is in a chase view (in
    * halves of the view's width).
-   * @param {{pos: THREE.Vector3, target: THREE.Vector3}} c @param {Focus} f
+   * @param {{pos: THREE.Vector3, target: THREE.Vector3}} c
    */
-  #gateX(c, f) {
+  #gateX(c) {
     const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
     const fwd = c.target.clone().sub(c.pos).normalize();
     const right = fwd.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
-    const g = new THREE.Vector3(f.x, GATE.y, f.z + GATE.z).sub(c.pos);
+    const g = new THREE.Vector3(0, GATE.y, GATE.z).sub(c.pos);
     return g.dot(right) / (g.dot(fwd) * th);
   }
 
@@ -412,12 +413,13 @@ export class CameraRig {
       case "follow": {
         // A chase camera that does not turn with the chariot: the chariot
         // turns on screen while the figure's hand keeps pointing at the gate.
-        // As far round as keeps the gate in (it doesn't hang on where the
-        // chariot is or which way it faces: the world keeps still).
+        // As far round as keeps the gate in, from where the chariot is when
+        // the view is chosen (not which way it faces); driving, the camera
+        // keeps that bearing and the court goes by.
         let at = this.#chaseAt(f, CHASE.least);
         for (let deg = CHASE.most; deg > CHASE.least; deg -= 1) {
           const c = this.#chaseAt(f, deg);
-          if (this.#gateX(c, f) <= CHASE.gate) {
+          if (this.#gateX(c) <= CHASE.gate) {
             at = c;
             break;
           }

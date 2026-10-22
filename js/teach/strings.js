@@ -61,6 +61,9 @@ export const STR = {
     hook: "车在拐弯，木人的手一直指着南门",
     dragHint: "拖一拖，换个角度看",
     drawHint: "用手指在地上画一条路，松手车就出发",
+    /** the chariot met the courtyard's invisible wall and drives itself back in */
+    wall: "到院墙了，车自己掉头开回来",
+    wallHow: "看木人：车掉了头，手还指着南",
     sceneLabel: "指南车三维场景",
     /** @param {number} inner @param {number} outer */
     demoCount: (inner, outer) => `里圈走了 ${inner} 步，外圈走了 ${outer} 步`,
@@ -101,7 +104,7 @@ export const STR = {
     howDriveTouch: "按住方向按钮开车。",
     howDraw: "按「画路线」，在地上画一条路，车会沿着它走。点一点齿轮，看看它叫什么。",
     breakHead: "让它出错试试",
-    breakNote: "给车调一个毛病，再开一圈，看木人还指不指南门。",
+    breakNote: "给车调一个毛病，再开一圈，看木人还指不指南。",
     /** the button on the 3D view that goes close on the gears, and back */
     gearsOn: "看齿轮",
     gearsOff: "回到车后",

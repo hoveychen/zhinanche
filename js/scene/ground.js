@@ -85,8 +85,10 @@ export function makeGround(size = 1400) {
 /**
  * Lay the stone texture on the ground in world space, with a slow tone
  * variation so the 12-chi tile doesn't read as a repeat. The slabs fade to
- * their average colour away from the chariot: the buildings round the court
- * ride with the chariot, and slabs sliding past their feet would give that away.
+ * their average colour away from the chariot (the mesh is kept under it,
+ * Look.follow): made when the buildings rode along with the chariot, to keep
+ * slabs from sliding past their feet, and kept for the look the court was
+ * tuned with (design/decisions/0018).
  * @param {THREE.Mesh} mesh from makeGround
  * @param {Record<string, THREE.Texture>} tex
  */

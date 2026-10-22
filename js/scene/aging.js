@@ -3,8 +3,8 @@
 // lichen and grime on the stone, verdigris on the bronze. Real courtyards are
 // never this clean, and the clean, even colour was much of what read as CG.
 //
-// Driven by position relative to the rider (AGE_ORIGIN: the courtyard and the
-// gate ride with the chariot, so world positions would slide), with one or two taps of the procedural
+// Driven by position in the courtyard's frame (AGE_ORIGIN: the courtyard and
+// the gate stand at the origin, design/decisions/0018), with one or two taps of the procedural
 // noise texture (texgen.js clouds: R fine fbm, G slow variation) per effect
 // instead of per-pixel noise maths: cheap enough for the tablet tiers. Only
 // the albedo, roughness and metalness change, so it chains with any other
@@ -12,7 +12,7 @@
 
 import * as THREE from "three";
 
-/** Where the chariot is (Look.follow): the courtyard's origin. */
+/** The courtyard's origin (it stands still at the world's: design/decisions/0018). */
 export const AGE_ORIGIN = { value: new THREE.Vector3() };
 
 /** sRGB hex → linear vec3 literal. @param {number} hex */

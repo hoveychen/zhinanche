@@ -1,7 +1,7 @@
 // The court's pines and firs: Poly Haven's CC0 tree models, rendered in
 // Blender into impostors (tools/assets/build_trees.py). Space for time: the
-// sun and the sky never move and the trees never turn (the courtyard rides
-// with the chariot but never turns), so each tree was path-traced once from 16
+// sun and the sky never move and the trees never turn (the courtyard stands
+// still), so each tree was path-traced once from 16
 // directions round it under the court's own sun and photographed sky, light,
 // self-shadow and all, and the page only draws a card per tree.
 //

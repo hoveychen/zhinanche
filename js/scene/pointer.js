@@ -12,8 +12,10 @@ import { LANDMARK_DISTANCE } from "./landmark.js";
 /** Lengths in chi, as seen in the world while the figure is drawn big: shaft and head length, their radii (the head narrower than the figure's own head). */
 const SHAFT = 3.2, HEAD = 1.05;
 const SHAFT_R = 0.085, HEAD_R = 0.27;
-/** The beam reaches about as far as the gate, so a hand on south lights up its plaque. */
+/** The beam's length from the start (the gate's distance less its depth): a hand on south lights up its plaque. */
 const BEAM = LANDMARK_DISTANCE - 8;
+/** ...and the shortest it is drawn, the chariot right by the gate. */
+const BEAM_LEAST = 12;
 
 /** Opaque at the hand, clear at the far end (canvas top = far end of the beam). */
 function fadeTexture() {
@@ -51,8 +53,11 @@ export class Pointer {
     g.name = "pointer";
     const shaft = new THREE.Mesh(along(SHAFT_R, SHAFT_R, SHAFT, 0.1), this.mat);
     const head = new THREE.Mesh(along(HEAD_R, 0.001, HEAD, 0.1 + SHAFT), this.mat);
-    const beam = new THREE.Mesh(along(0.07, 0.25, BEAM, 0.1 + SHAFT + HEAD * 0.6), this.beamMat);
+    // drawn from 0 and set at its start, so it can be drawn longer or shorter (update)
+    const beam = new THREE.Mesh(along(0.07, 0.25, BEAM, 0), this.beamMat);
+    beam.position.x = 0.1 + SHAFT + HEAD * 0.6;
     beam.renderOrder = 4;
+    this.beam = beam;
     for (const m of [shaft, head]) m.castShadow = true;
     g.add(shaft, head, beam);
     // Sized for the big figure; it shrinks with the figure close on the gears.
@@ -61,8 +66,12 @@ export class Pointer {
     this.mesh = g;
   }
 
-  /** @param {number} errorDeg */
-  update(errorDeg) {
+  /**
+   * @param {number} errorDeg
+   * @param {number} [reach] how long the beam is to be drawn (chi, the big figure's)
+   */
+  update(errorDeg, reach = BEAM) {
+    this.beam.scale.x = Math.max(BEAM_LEAST, reach) / BEAM;
     const hex = Math.abs(errorDeg) < OK_DEG ? COLORS.ok : COLORS.off;
     this.mat.color.setHex(hex);
     this.mat.emissive.setHex(hex);

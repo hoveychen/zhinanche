@@ -3,10 +3,11 @@
 // SceneState. Lessons, free driving and the self-test all go through direct().
 
 import { Chariot, wrap } from "../sim/chariot.js";
-import { pivotTwist, roll, twist } from "../sim/drive.js";
+import { pivot, pivotTwist, roll, spin, straight, twist } from "../sim/drive.js";
 import { applyDirective, freeBase, hasFaults, hasSlip, sameFaults } from "./directive.js";
-import { FollowPlayer, planPlayback } from "./playback.js";
+import { FollowPlayer, StepPlayer, planPlayback, recordSteps } from "./playback.js";
 import { joinParts } from "../sim/route.js";
+import { backInside, outside } from "../sim/pen.js";
 import { Tracker } from "./checks.js";
 import { RAMP, ease } from "./drive.js";
 import { toSim, toWorld } from "../scene/world.js";
@@ -54,6 +55,12 @@ export class App {
     /** following a route the child drew */
     /** @type {FollowPlayer | null} */
     this.follow = null;
+    /** driving itself back in from the courtyard's invisible wall (js/sim/pen.js) */
+    /** @type {StepPlayer | null} */
+    this.back = null;
+    /** the chariot met the wall and is driving back in (true), or has got back (false) */
+    /** @type {(on: boolean) => void} */
+    this.onWall = () => {};
     /** the last route drawn and where the chariot set off from (for a shared link) */
     /** @type {DrawnRoute | null} */
     this.drawn = null;
@@ -164,12 +171,16 @@ export class App {
   driveDrawn(r) {
     this.resetChariot(false);
     const st = this.state;
-    this.chariot = new Chariot({ mechanism: st.mechanism, faults: st.faults, x: r.x, y: r.y, heading: r.heading });
+    // a link from before the courtyard stood still may set off outside it:
+    // the whole road moved in, as drawn
+    const inside = outside(r) > 0 ? backInside(r) : r;
+    const dx = inside.x - r.x, dy = inside.y - r.y;
+    this.chariot = new Chariot({ mechanism: st.mechanism, faults: st.faults, x: inside.x, y: inside.y, heading: r.heading });
     this.world.clearTrails();
     this.world.showPose(this.chariot.pose(), 0);
     this.world.setView(st.view, true);
     for (const fn of this.stateListeners) fn(st);
-    const pts = r.pts.map(toWorld);
+    const pts = r.pts.map((p) => toWorld({ x: p.x + dx, y: p.y + dy }));
     this.followRoute(pts);
   }
 
@@ -184,6 +195,7 @@ export class App {
     this.chariot = new Chariot({ mechanism: st.mechanism, faults: st.faults, heading });
     this.player = null;
     this.follow = null;
+    this.#endBack();
     this.world.route.clear();
     this.world.clearTrails();
     for (const r of Object.values(this.world.rigs)) r.resetClutch();
@@ -254,6 +266,9 @@ export class App {
    */
   followRoute(worldPts) {
     this.player = null;
+    // a road drawn while it drives itself back: the road from here (it is
+    // turned back again if the road leads out)
+    this.#endBack();
     this.setPaused(false);
     const c = this.chariot;
     // joined onto the chariot: it sets off along the line, and the line shown is the one it drives
@@ -302,8 +317,13 @@ export class App {
     let byChild = false;
     const speed = this.state.speed;
     if (this.waiting && dt > 0 && !this.world.cam.opening) this.play(this.waiting);
-    if ((this.player && !this.player.done) || this.follow) this.drive = { fwd: 0, turn: 0 };
-    if (this.player && !this.player.done) {
+    if ((this.player && !this.player.done) || this.follow || this.back) this.drive = { fwd: 0, turn: 0 };
+    // driven by the child (by hand or along a road): it may meet the wall
+    let free = false;
+    if (this.back) {
+      this.back.update(c, dt, speed);
+      if (this.back.done) this.#endBack();
+    } else if (this.player && !this.player.done) {
       this.player.update(c, dt, speed);
       if (this.player.done && this.idleLoop && this.lastPlay) {
         const name = this.lastPlay;
@@ -313,6 +333,7 @@ export class App {
     } else if (this.follow) {
       this.follow.update(c, dt, speed);
       byChild = true;
+      free = true;
       if (this.follow.done) {
         this.follow = null;
         this.tracker.routeDone();
@@ -328,12 +349,48 @@ export class App {
         const g = st.mechanism === "song" && st.assist ? pivotTwist(v, omega, dt, c.track) : twist(v, omega, dt, c.track);
         roll(c, g.groundL, g.groundR, st.slip);
         byChild = true;
+        free = true;
       }
     }
+    if (free) this.#wall(before);
     if (byChild) this.tracker.drove((c.distL + c.distR) / 2 - before.d, wrap(c.heading - before.heading));
     this.tracker.sawBroken(this.broken);
     this.world.showPose(c.pose(), dt);
     for (const fn of this.listeners) fn();
+  }
+
+  /**
+   * Driven out past the courtyard's invisible wall (js/sim/pen.js) this
+   * frame: drop the road being followed and drive back in, for real (the
+   * wheels, the gears and the figure go on as in any drive). Only on the way
+   * out: a road or a chariot coming back in from outside is left to go on.
+   * @param {{x: number, y: number}} before where the chariot was
+   */
+  #wall(before) {
+    const c = this.chariot;
+    const out = outside(c);
+    if (out <= 0 || out <= outside(before)) return;
+    if (this.follow) {
+      this.follow = null;
+      this.world.route.clear();
+    }
+    this.drive = { fwd: 0, turn: 0 };
+    const st = this.state;
+    // Round to face the way in, then straight in: one turn, on the spot (or,
+    // the Song chariot with the charioteer's help, round a wheel, so it
+    // lowers a wheel once: a road follower corrected its aim a degree at a
+    // time on the way, a wheel lowered for each).
+    const to = backInside(c);
+    const angle = wrap(Math.atan2(to.y - c.y, to.x - c.x) - c.heading);
+    const turn = st.mechanism === "song" && st.assist ? pivot(angle) : spin(angle);
+    this.back = new StepPlayer(recordSteps([turn, straight(Math.hypot(to.x - c.x, to.y - c.y))], c.track, st.slip));
+    this.onWall(true);
+  }
+
+  #endBack() {
+    if (!this.back) return;
+    this.back = null;
+    this.onWall(false);
   }
 
   /** @returns {CheckSnapshot} */

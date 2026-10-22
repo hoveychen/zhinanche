@@ -76,6 +76,10 @@ world.busy = () => {
   const c = input.command();
   return c.fwd !== 0 || c.turn !== 0;
 };
+app.onWall = (on) => {
+  wallNote.hidden = !on;
+  syncHint();
+};
 app.onPause((on) => {
   pauseBtn.classList.toggle("on", on);
   pauseBtn.setAttribute("aria-pressed", String(on));
@@ -147,6 +151,8 @@ const pauseBtn = bind(h("button", { type: "button", class: "bar-btn pause-btn", 
 ]), (s) => s.ui.pauseKey, "title");
 const share = new ShareButton(() => setupOf(app.state, app.drawn));
 const pausedNote = h("p", { class: "paused-note", hidden: true, role: "status" }, [bind(h("b"), (s) => s.ui.paused), bind(h("span"), (s) => s.ui.pausedHow)]);
+// the chariot met the courtyard's invisible wall: it says so while it drives itself back in
+const wallNote = h("p", { class: "paused-note wall-note", hidden: true, role: "status" }, [bind(h("b"), (s) => s.stage.wall), bind(h("span"), (s) => s.stage.wallHow)]);
 // the pause note and the drawing hint stack at the top middle, never on top of each other
 // Esc backs out of what the view's own buttons go into: the gears close-up, drawing a road
 addEventListener("keydown", (e) => {
@@ -161,10 +167,10 @@ addEventListener("keydown", (e) => {
 // arrow keys), which shows only what the step uses.
 const barBtns = h("div", { class: "bar-btns" }, [gearsBtn, input.drawBtn]);
 const stageBar = h("div", { class: "stage-bar" }, [barBtns, input.pad]);
-overlay.append(dial.el, odo.el, stageBar, h("div", { class: "stage-notes" }, [pausedNote, hint]), demoCount, callout, stageHook, h("div", { class: "stage-corner" }, [pauseBtn, share.el]), share.status);
+overlay.append(dial.el, odo.el, stageBar, h("div", { class: "stage-notes" }, [pausedNote, wallNote, hint]), demoCount, callout, stageHook, h("div", { class: "stage-corner" }, [pauseBtn, share.el]), share.status);
 /** The drawing hint shows while a road is wanted: not while one is being drawn or driven. */
 function syncHint() {
-  hint.hidden = !input.drawOn || drawing !== null || app.follow !== null;
+  hint.hidden = !input.drawOn || drawing !== null || app.follow !== null || app.back !== null;
 }
 
 const course = new Course(app, tools, byId("panel"), {
@@ -399,7 +405,7 @@ function hudBoxes(labels = false) {
   const boxes = [];
   // the dial's words can run wider than the dial on a phone
   /** @type {HTMLElement[]} */
-  const els = [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote];
+  const els = [dial.el, dial.text, odo.el, gearsBtn, input.drawBtn, input.pad, pauseBtn, share.el, demoCount, hint, pausedNote, wallNote];
   if (labels) els.push(.../** @type {NodeListOf<HTMLElement>} */ (overlay.querySelectorAll(".scene-label")));
   else els.push(callout);
   for (const el of els) {
