@@ -19,6 +19,7 @@ import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { meanOf, placeholder } from "./photo.js";
 import { age } from "./aging.js";
+import { SUN } from "./environment.js";
 import { Trees } from "./trees.js";
 import { Eaves, TILE_REPEAT, UV_PER_CHI } from "./eaves.js";
 import { gateDoors, latticeDoors } from "./doors.js";
@@ -638,6 +639,33 @@ function hills(b) {
   b.add("hills", g);
 }
 
+/**
+ * A wood of tall trees beyond the west wall. The sun is low behind it
+ * (west-north-west, 17° up: environment.js SUN), so the crowns throw shadows
+ * three times their height long, right across the court: most of the court
+ * lies in their dappled shade and the chariot stands in a lane of sun. The
+ * lane is where no tree stands: a gap along the line from the chariot to the
+ * sun (the court rides with the chariot, so the lane is always on it). With
+ * the whole court sunlit the paving, pale grey, was brighter than the red
+ * chariot on it (Lab L 38 against 23–27, measured), and nothing in the picture
+ * said where to look; a photographer waits for the sun to find the subject.
+ * Its own random stream, so the groves elsewhere stand where they did.
+ * @param {Bucket} b @param {boolean} lite
+ */
+function westWood(b, lite) {
+  const r = rand(11);
+  const toSun = Math.tan(THREE.MathUtils.degToRad(SUN.northOfWest));
+  const step = lite ? 13 : 9;
+  for (let z = -120; z <= 215; z += step) {
+    for (const [x0, depth] of [[-90, 14], [-112, 18]]) {
+      const x = x0 - r() * depth, zz = z + (r() - 0.5) * step * 0.8;
+      // the lane of sun: keep clear of the line to the sun through the chariot
+      if (Math.abs(zz - x * toSun) < 15) continue;
+      tree(b, x, zz, 58 + r() * 26, Math.floor(r() * 1e6));
+    }
+  }
+}
+
 /** The arches' spring as a share of their height (archway: 11 of 15.5, 8.5 of 12). */
 const SPRING = 0.71;
 
@@ -717,6 +745,8 @@ function* layout(b, lite) {
     tree(b, x + sx * 7, z + sz * 5, h * 0.82, Math.floor(r() * 1e6), kind === "pine" ? "firb" : "pine");
     tree(b, x - sx * 2, z + sz * 10, h * 0.7, Math.floor(r() * 1e6), "firb");
   }
+  westWood(b, lite);
+  yield;
   // beyond the walls: groves of one to three trees (the photographed trees
   // are slimmer than the old crowns were, and a card costs next to nothing)
   const outer = lite ? 18 : 40;
