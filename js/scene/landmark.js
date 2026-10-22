@@ -2,16 +2,15 @@
 // the chariot. It gives the figure's hand something to point at, so the
 // viewer can tell it points the same way without reading a compass.
 //
-// It is meant to be added to a group that moves with the chariot but never
-// turns (the compass ring): it then always stands due south, like a far
-// mountain, however far the chariot drives.
+// It stands in the courtyard, LANDMARK_DISTANCE south of the origin where the
+// chariot starts (design/decisions/0018): driving toward it brings it nearer.
 
 import * as THREE from "three";
 import { S as strings, canvasFont, onLang } from "../i18n.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { Bucket, hipRoof } from "./courtyard.js";
 
-/** How far south of the chariot the gate stands (chi). */
+/** How far south of the origin (the chariot's start) the gate stands (chi). */
 export const LANDMARK_DISTANCE = 105;
 
 /**

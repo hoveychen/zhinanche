@@ -285,10 +285,9 @@ export function drawCasters(renderer, scene, camera, mat) {
 }
 
 /**
- * Sun shadows for the courtyard. The courtyard moves with the chariot but
- * never turns, and the sun never moves, so its shadows are fixed relative to
- * it: render its depth from the sun once, and let the courtyard's and the
- * ground's materials look it up (patch). Only the sun's direct light is
+ * Sun shadows for the courtyard. The courtyard and the sun never move, so
+ * its shadows are fixed: render its depth from the sun once, and let the
+ * courtyard's and the ground's materials look it up (patch). Only the sun's direct light is
  * shaded; sky light still fills the shadows.
  */
 export class SetShadow {
@@ -352,7 +351,7 @@ export class SetShadow {
       scratch.add(o);
     }
     for (const [o, , mw] of back) {
-      // keep the caster's placement relative to its rider (no rider offset)
+      // keep the caster's placement relative to the courtyard's origin
       const local = mw.clone();
       local.elements[12] -= this.offset.x;
       local.elements[14] -= this.offset.z;

@@ -8,7 +8,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Rig } from "./rig.js";
 import { COLORS, CompassRing } from "./ground.js";
 import { Pointer } from "./pointer.js";
-import { Landmark } from "./landmark.js";
+import { LANDMARK_DISTANCE, Landmark } from "./landmark.js";
 import { Ribbon, RouteLine } from "./trails.js";
 import { CompassDemo, HoldHands } from "./demos.js";
 import { CameraRig } from "./cameraRig.js";
@@ -87,7 +87,8 @@ export class World {
 
     this.ring = new CompassRing();
     scene.add(this.ring.group);
-    this.ring.group.add(new Landmark().group);
+    // the gate stands in the courtyard, which stays put (design/decisions/0018)
+    scene.add(new Landmark().group);
     this.trackL = new Ribbon(COLORS.left, 0.32);
     this.trackR = new Ribbon(COLORS.right, 0.32);
     scene.add(this.trackL.mesh, this.trackR.mesh);
@@ -411,7 +412,8 @@ export class World {
     this.focus = { x: w.x, z: w.z, heading: pose.heading };
     this.rig?.apply(pose, dt);
     this.ring.update(w.x, w.z, pose.figureWorld, pose.errorDeg);
-    this.beams[this.mechanism]?.update(pose.errorDeg);
+    // the beam reaches about as far as the gate's plaque, however near it is
+    this.beams[this.mechanism]?.update(pose.errorDeg, LANDMARK_DISTANCE - w.z - 8);
     // Wheel contact points: left is −Z in the chariot frame.
     const c = Math.cos(pose.heading), s = Math.sin(pose.heading);
     const dx = c, dz = -s;

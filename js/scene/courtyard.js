@@ -6,14 +6,13 @@
 // gate, pines and bronze water vats fill the corners, a main hall closes the
 // north, and over the walls rise tree crowns, far roofs and blue hills.
 //
-// It rides with the chariot like the gate does (Look moves the group; it
-// never turns), because the chariot can drive anywhere and the gate always
-// stands due south of it. The paving is fixed to the world (ground.js) and
-// carries the sense of motion; its detail fades out before it reaches the
-// buildings so nothing visibly slides.
+// It stands still at the origin, the gate in it (design/decisions/0018): the
+// chariot drives about inside, walls, gate and lions coming nearer and going
+// by as it does, and is turned back at an invisible wall short of them
+// (js/sim/pen.js).
 // All static; merged by material into ~15 draw calls; shadows are baked once
 // (environment.js SetShadow).
-// Units: chi. Rider-local: the chariot at the origin, south = +z, east = +x.
+// Units: chi. The chariot starts at the origin; south = +z, east = +x.
 
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
@@ -32,7 +31,7 @@ import { gateDoors, latticeDoors } from "./doors.js";
 /** Stand-ins for photographed textures: white colour, a flat normal, no occlusion and roughness ×1. */
 const BLANK = { white: placeholder([255, 255, 255]), flat: placeholder([128, 128, 255]), arm: placeholder([255, 255, 0]) };
 
-/** The court the chariot sits in (rider-local chi). */
+/** The court the chariot drives in (chi). */
 export const COURT = { half: 77, north: -205, south: 225 };
 
 /** Deterministic pseudo-random. @param {number} seed */

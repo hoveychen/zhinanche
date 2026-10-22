@@ -12,8 +12,8 @@
 // its indirect light (sky and hemisphere), not the sun: the baked shadow
 // (environment.js SetShadow) does the sun.
 //
-// The courtyard rides with the chariot (Look.follow), so everything is in the
-// rider's frame: the map is baked round the rider and read at world − rider.
+// Everything is in the courtyard's frame: the map is baked round its origin
+// (AGE_ORIGIN) and read at world − origin.
 
 import * as THREE from "three";
 import { AGE_ORIGIN } from "./aging.js";
@@ -34,7 +34,7 @@ uniform float span;
 uniform float top;
 uniform float far;
 varying vec2 vUv;
-// height of the courtyard at rider-local xz (below the paving where there is nothing)
+// height of the courtyard at xz round its origin (below the paving where there is nothing)
 float heightAt(vec2 xz) {
   vec2 uv = vec2(xz.x / (2.0 * span) + 0.5, 0.5 - xz.y / (2.0 * span));
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
@@ -79,9 +79,9 @@ export class BakedAO {
 
   /**
    * Draw the casters' height from above, then bake the occlusion. The
-   * casters sit round the rider (`at`); they are lent to a scratch scene and
-   * put back.
-   * @param {THREE.WebGLRenderer} renderer @param {THREE.Object3D[]} casters @param {THREE.Vector3} at the rider
+   * casters sit round `at` (the courtyard's origin); they are lent to a
+   * scratch scene and put back.
+   * @param {THREE.WebGLRenderer} renderer @param {THREE.Object3D[]} casters @param {THREE.Vector3} at the courtyard's origin
    */
   bake(renderer, casters, at) {
     const { size, half } = this;

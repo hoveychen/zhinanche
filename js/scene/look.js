@@ -89,8 +89,6 @@ export class Look {
     this.setShadow.patch(/** @type {THREE.Material} */ (this.ground.material));
     this.bakedAO.patch(/** @type {THREE.Material} */ (this.ground.material));
     scene.add(this.ground);
-    /** where the chariot is: the courtyard, gate and ground ride along */
-    this.rider = new THREE.Vector2();
     // The courtyard is built while the loading note is up (World.load calls
     // buildYard), so the first picture is the whole scene, not a bare floor
     // the court pops into a second later.
@@ -330,19 +328,22 @@ export class Look {
     this.holder = holder;
   }
 
-  /** @param {number} x @param {number} z chariot position (world) */
+  /**
+   * The courtyard, the gate, their baked shadows and weathering stay put at
+   * the origin (design/decisions/0018): the chariot drives about in them.
+   * What follows it is the sun's shadow box (its own shadow) and the ground's
+   * mesh, whose paving is laid in world space, so only where its detail
+   * fades out round the chariot moves.
+   * @param {number} x @param {number} z chariot position (world)
+   */
   follow(x, z) {
-    this.rider.set(x, z);
     this.env.follow(x, z);
     this.ground.position.set(x, 0, z);
-    this.yard?.group.position.set(x, 0, z);
-    this.setShadow.move(x, z);
-    AGE_ORIGIN.value.set(x, 0, z);
   }
 
   /**
-   * Build the courtyard in short slices, compile its shaders, then put it
-   * round the chariot and bake its shadows. It runs while the loading note is
+   * Build the courtyard in short slices, compile its shaders, then bake its
+   * shadows and sky occlusion (at the origin). It runs while the loading note is
    * up (World.load), so nothing is drawing yet: slices only give the model's
    * download and parse a turn, and the programs are all compiled in one go.
    */
@@ -379,17 +380,14 @@ export class Look {
       this.setShadow.patch(o.material);
       this.bakedAO.patch(o.material);
     });
-    yard.group.position.set(this.rider.x, 0, this.rider.y);
     await Promise.all([yard.group, this.ground, ...(gate ? [gate] : [])].map((o) => this.compile(o)));
     this.yard = yard;
-    yard.group.position.set(this.rider.x, 0, this.rider.y);
     scene.add(yard.group);
     const hills = yard.group.getObjectByName("courtyard.hills");
     if (hills) hills.visible = false;
-    this.setShadow.move(this.rider.x, this.rider.y);
     this.setShadow.bake(renderer, gate ? [yard.group, gate] : [yard.group]);
     if (new URLSearchParams(location.search).get("debug") !== "nobao") {
-      this.bakedAO.bake(renderer, gate ? [yard.group, gate] : [yard.group], new THREE.Vector3(this.rider.x, 0, this.rider.y));
+      this.bakedAO.bake(renderer, gate ? [yard.group, gate] : [yard.group], AGE_ORIGIN.value);
     }
     if (hills) hills.visible = true;
     document.body.dataset.scene = "ready";

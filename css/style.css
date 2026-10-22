@@ -754,6 +754,8 @@ body[data-mode="home"] .stage-hook { display: flex; }
   .paused-note { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 240px); padding: 5px 12px; border-radius: var(--r-m); }
   .paused-note b { font-size: var(--fs-m); }
   .paused-note span { display: none; }
+  /* the wall's note where the drawing hint goes (that one keeps out of its way) */
+  .wall-note { top: 132px; max-width: calc(100% - 16px); }
   .stage-hint { position: absolute; top: 132px; left: 8px; right: 8px; padding: 6px 10px; font-size: 15px; border-radius: var(--r-m); }
   /* in a lesson the step's words right under the view say the same, and the view is too short to spare */
   body[data-mode="lesson"] .stage-hint { display: none; }
