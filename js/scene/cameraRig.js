@@ -102,7 +102,7 @@ const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
 
 /**
  * The overview frames a sphere this big round the chariot (a demo on the
- * ground: the demo's own, if bigger), from the west and a little south, 31°
+ * ground: the demo's own, if bigger), from the west and a little south, 22°
  * up: the sunlit side (the sun is low in the west-north-west,
  * js/scene/environment.js), the near wheel under the box, the south seal by
  * it. How far south of west (degrees) is picked when the view is chosen, for
@@ -112,7 +112,7 @@ const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
  * hid both wheels. North of west, the compass demo (east-south-east of the
  * chariot) would be behind it. The world keeps still while the view lasts.
  */
-const OVERVIEW = { r: 12, up: 31, from: 10, to: 50, usual: 29 };
+const OVERVIEW = { r: 12, up: 22, from: 10, to: 50, usual: 29 };
 /**
  * The gears view before the body is seen through: the whole cart from behind
  * and to the side the sun is on, 27° up (chariot local), the near wheel under
@@ -436,7 +436,7 @@ export class CameraRig {
         // The differential from lower down: from as high as the Song one, its
         // small top flat gear covers the small gears and carrier under it.
         const target = song ? local(1.1, 3.7, 0) : local(0.1, 2.2, -0.4);
-        const r = song ? 4.9 : 4.2;
+        const r = song ? 4.9 : 4.8;
         return { target, pos: target.clone().addScaledVector(song ? dirLocal(...GEARS_DIR) : dirLocal(-1, 0.72, 0.62), this.fit(r)) };
       }
       case "works": {
