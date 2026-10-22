@@ -114,7 +114,7 @@ LICENSES/             许可证全文
 - 第三课的两个小朋友照宋画婴戏图的大意（双丫髻、交领短襦），冰面、零件高亮的光晕、透视时的箱棱都是教学用的画法，不是考据。
 - 故障演示里的尺寸误差和打滑（轮距大 10%、一个轮子大 5%、打滑 20%）故意放大，让偏差几步之内就能看出来。真车的误差小得多，但会在长路上一点点攒起来。
 - 宋尺取 0.31 米，只用于界面上换算「米」。
-- 庭院、牌楼和天空是布景，不是某座真实宫殿的复原。天空、地砖、墙、瓦、车木用的是实拍扫描（Poly Haven，CC0），做旧、阴影和天光遮蔽是程序生成或在加载时烘焙的，只为看起来像实拍；见[决策 0004](design/decisions/0004-realtime-photo-look.md)。
+- 庭院、牌楼和天空是布景，不是某座真实宫殿的复原。天空、地砖、墙、瓦、车木用的是实拍扫描（Poly Haven，CC0），做旧、阴影和天光遮蔽是程序生成或在加载时烘焙的，只为看起来像实拍；见[决策 0004](design/decisions/0004-realtime-photo-look.md)。地砖按行错缝、每块深浅不同，远景的雾，西墙外让院子落进树影、只把车留在光里的那片树林，也都是为画面安排的；见[决策 0013](design/decisions/0013-art-round-air-reds-light.md)。
 - 院里院外的松和冷杉是 Poly Haven 的 CC0 树模型在 Blender 里从 16 个方向渲成的贴片，树的位置和成团方式是为画面排的。屋面的筒瓦垄、檐口的瓦当滴水椽头、檐下的斗拱是按清式做法的大意自己画的（高度场烘焙 + 实拍釉面颗粒），只求常用镜头下读得出来：垄距、斗拱攒数和彩画都没有按某座建筑考据；牌楼还是原来的平面屋顶，只贴了瓦和斗拱。见[决策 0005](design/decisions/0005-trees-and-eaves.md)。
 
 每个参数的出处和置信度都在 [`params/chariot.json`](params/chariot.json) 里，标签含义见 [`docs/sources.md`](docs/sources.md)。调研的依据和没覆盖到的地方见 [`research/REPORT.md`](research/REPORT.md)，书目见 [`research/sources/bibliography.md`](research/sources/bibliography.md)。

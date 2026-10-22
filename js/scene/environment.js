@@ -8,7 +8,7 @@
 // courtyard (SetShadow), which never moves relative to the sun.
 
 import * as THREE from "three";
-import { GRADED } from "./grade.js";
+import { FOG_DENSITY, GRADED, installFog } from "./grade.js";
 import { placeholder } from "./photo.js";
 
 /** @import { Textures } from "./materials.js" */
@@ -69,6 +69,8 @@ export function skyAt(dir, out = new THREE.Color()) {
   out.add(SKY.glow.clone().multiplyScalar(Math.pow(s, 5) * 0.22 + Math.pow(s, 40) * 0.5));
   return out;
 }
+
+installFog(SUN_DIR, SKY.glow);
 
 /** Fog colour: the sky just above the horizon looking south (where the view goes). */
 export const FOG = skyAt(new THREE.Vector3(0, 0.03, 1).normalize());
@@ -461,7 +463,7 @@ export class Environment {
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     scene.background = FOG.clone();
-    scene.fog = new THREE.FogExp2(FOG, 0.0018);
+    scene.fog = new THREE.FogExp2(FOG, FOG_DENSITY);
 
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(1000, 32, 16), skyMaterial(null));
     this.sky.name = "sky";

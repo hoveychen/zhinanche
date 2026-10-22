@@ -104,8 +104,10 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   // set in, smooth from wear. (Pale boxwood, 0xe6c690, went olive grey in the
   // box's shade under the blue sky and did not look like the wheel's timber.)
   peg: { color: 0xb88250, map: "wood", roughness: 0.42, clearcoat: 0.3, clearcoatRoughness: 0.3, normal: 0.35, scale: 1.4 },
-  // The red box, railings, pillars: cinnabar lacquer (赤質).
-  lacquer: { color: 0xa82a1d, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
+  // The red box, railings, pillars: cinnabar lacquer (赤質), new and glossy:
+  // brighter and purer than the court's weathered reds (0xa82a1d was as dark
+  // and no purer than the palace's columns, and the chariot sank into them).
+  lacquer: { color: 0xc83a22, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6 },
   // The box's paintings (宋史: 兩箱畫青龍、白虎，四面畫花鳥): plain lacquer red (a
   // one-texel map, dressChariot) till the painting atlas is in (photoMurals),
   // under a thinner coat than the box's.
