@@ -150,14 +150,24 @@ export class Course {
         h("span", { class: "ask-go", "aria-hidden": "true", text: str.course.askGo(a.lesson - 1) }),
       ]),
     ])));
+    const cta = h("div", { class: "home-cta" }, [
+      h("button", { type: "button", class: "primary big", "data-focus": "free", onclick: () => this.free() }, [h("span", { text: t.drive })]),
+      h("button", { type: "button", class: "plain big", onclick: () => this.open(0) }, [h("span", { text: t.start })]),
+    ]);
+    // If either label must break (English on a tablet), both break into two
+    // lines: one fitting by a pixel or so left one line beside two.
+    let ctaW = -1;
+    new ResizeObserver(() => {
+      if (cta.clientWidth === ctaW) return;
+      ctaW = cta.clientWidth;
+      cta.classList.remove("two");
+      if ([...cta.querySelectorAll("span")].some((s) => s.getClientRects().length > 1)) cta.classList.add("two");
+    }).observe(cta);
     const body = h("div", { class: "home" }, [
       h("p", { class: "home-kicker", text: t.kicker }),
       h("h2", { class: "home-title", text: t.title }),
       h("p", { class: "home-hook", text: t.hook }),
-      h("div", { class: "home-cta" }, [
-        h("button", { type: "button", class: "primary big", "data-focus": "free", onclick: () => this.free() }, [h("span", { text: t.drive })]),
-        h("button", { type: "button", class: "plain big", onclick: () => this.open(0) }, [h("span", { text: t.start })]),
-      ]),
+      cta,
       h("h3", { class: "list-head", text: t.askHead }),
       asks,
       h("h3", { class: "list-head", text: t.lessonsHead }),

@@ -3,6 +3,7 @@
 
 import * as THREE from "three";
 import { SUN_DIR } from "./environment.js";
+import { LANDMARK_DISTANCE } from "./landmark.js";
 
 /** @import { ViewId } from "../teach/types.js" */
 /** @import { OrbitControls } from "three/addons/controls/OrbitControls.js" */
@@ -45,16 +46,20 @@ const HERO_DIR = new THREE.Vector3(-Math.sin(THREE.MathUtils.degToRad(50)), 0.14
 /**
  * The follow view looks along a fixed bearing in the world: from the north
  * and to the west, south past the chariot at the gate (js/scene/landmark.js),
- * 8° up. How far round to the west goes by how wide the view is (this much of
- * half its width, within these bounds): the further round, the more of the
- * near wheel shows under the box, and the further right the gate is. The
- * chariot is set this much of half the width left of the middle, so the gate
- * has room on the right; and drawn this much bigger than the sphere fit
- * (closer on a wide stage: there the chariot was a third of the picture,
- * measured, and lost against the court; on a narrow one, closer put the near
- * wheel under the home page's caption).
+ * 8° up. The chariot is set this much of half the width left of the middle
+ * (about the left third, as far as the HUD beside it allows), so it and the
+ * red gate stand apart; then it looks as far round from the west as keeps the
+ * gate's middle this far right of the middle at most (the chariot starts
+ * facing north, end on to a view from the north: the box overhangs the
+ * wheels 5.45 front and back and hides them; three-quarters on, 1.75 at the
+ * side, the near wheel shows under it), within these bounds (degrees). Drawn
+ * this much bigger than the sphere fit (closer on a wide stage: there the
+ * chariot was a third of the picture, measured, and lost against the court;
+ * on a narrow one, closer put the near wheel under the home page's caption).
  */
-const CHASE = { side: 0.85, least: 11, most: 22, up: 0.14, left: 0.1, close: 0.78, wide: 0.7 };
+const CHASE = { least: 11, most: 40, gate: 0.75, up: 0.14, left: 0.3, close: 0.78, wide: 0.7 };
+/** The gate's plaque, south of the chariot (js/scene/landmark.js), and its height. */
+const GATE = { z: LANDMARK_DISTANCE, y: 17 };
 /** How far round the chariot the chase view keeps clear of the HUD, whichever way it turns (the shafts reach further). */
 const CHASE_ROOM = 5;
 
@@ -97,12 +102,23 @@ const FIGURE_TOP = FIGURE_MID.y + FIGURE_MID.h / 2 + 0.6;
 
 /**
  * The overview frames a sphere this big round the chariot (a demo on the
- * ground: the demo's own, if bigger), from the west and a little south, 30°
+ * ground: the demo's own, if bigger), from the west and a little south, 31°
  * up: the sunlit side (the sun is low in the west-north-west,
- * js/scene/environment.js), the near wheel under the box, the south seal by it.
+ * js/scene/environment.js), the near wheel under the box, the south seal by
+ * it. How far south of west (degrees) is picked when the view is chosen, for
+ * the way the chariot faces then (a step can open with it facing any way):
+ * the bearing in this range most side on to it, as near the usual one as
+ * that allows. End on, the box (5.45 longer than the wheels front and back)
+ * hid both wheels. North of west, the compass demo (east-south-east of the
+ * chariot) would be behind it. The world keeps still while the view lasts.
  */
-const OVERVIEW_R = 12;
-const OVERVIEW_DIR = new THREE.Vector3(-0.9, 0.62, 0.5).normalize();
+const OVERVIEW = { r: 12, up: 31, from: 10, to: 50, usual: 29 };
+/**
+ * The gears view before the body is seen through: the whole cart from behind
+ * and to the side the sun is on, 27° up (chariot local), the near wheel under
+ * the box (from higher, and more from behind, the box hid both).
+ */
+const OUTSIDE_DIR = /** @type {const} */ ([-0.55, 0.62, 1.1]);
 
 /** Views close in on the works on purpose: they may look from inside the body. */
 const CLOSE = new Set(["gears", "works", "pair", "diff", "wheels", "figure", "hero", "intro"]);
@@ -146,6 +162,10 @@ export class CameraRig {
     this.partsPick = 0;
     /** which wheel the wheels view looks at: 1 the right (local +Z), -1 the left */
     this.wheelSide = 1;
+    /** the side the gears view looks from before the body is seen through: 1 the right (local +Z), -1 the left */
+    this.sunSide = 1;
+    /** the overview's bearing, degrees south of west */
+    this.overviewAt = OVERVIEW.usual;
     /** the view is under 600 CSS px tall (set by the world) */
     this.short = false;
     /** the HUD's margins over the view (set by the world) */
@@ -156,6 +176,8 @@ export class CameraRig {
     this.lowInsets = () => this.insets();
     /** how much of the view's height a sheet pulled up over it covers (set by the world) */
     this.cover = () => 0;
+    /** how much of the view's height the home page's caption takes along the bottom (set by the world) */
+    this.caption = () => 0;
     /** the ways to keep clear of the HUD: beside it, or above and below it (set by the world) */
     /** @type {() => Insets[]} */
     this.bands = () => [this.insets()];
@@ -251,6 +273,85 @@ export class CameraRig {
     return { target, pos: target.clone().addScaledVector(off, d) };
   }
 
+  /**
+   * The chase view (see CHASE) looking round `deg` from the north toward the west.
+   * @param {Focus} f @param {number} deg
+   * @returns {{pos: THREE.Vector3, target: THREE.Vector3}}
+   */
+  #chaseAt(f, deg) {
+    const side = THREE.MathUtils.degToRad(deg);
+    const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
+    const dir = new THREE.Vector3(-Math.sin(side), CHASE.up, -Math.cos(side)).normalize();
+    const none = { left: 0, right: 0, top: 0, bottom: 0 };
+    // Phones held upright (polish-mobile): fit() goes by the narrow width
+    // there and leaves the chariot small, so come in closer.
+    // A short stage (a tablet held upright, the lesson panel below it)
+    // leaves it small too, and so does a stage narrower than it is tall
+    // (a tablet held flat, the panel beside it).
+    const r = this.camera.aspect < 0.8 ? CHASE.close * 15.5 : this.short || this.camera.aspect < 1 ? CHASE.close * 16 : CHASE.wide * 19;
+    // ...but never so close that the figure's head leaves the top (a wide,
+    // short view), and on the home page the wheels stay above its caption
+    // along the bottom (it sat over them)
+    const whole = new THREE.Box3(new THREE.Vector3(f.x - 5.5, 0, f.z - 5.5), new THREE.Vector3(f.x + 5.5, FIGURE_TOP, f.z + 5.5));
+    const cap = THREE.MathUtils.clamp(this.caption(), 0, 0.4);
+    const d = Math.max(this.fit(r), this.#fitBox(whole, dir, { ...none, bottom: cap }, 0.5) * 1.08);
+    // in the middle of what the HUD leaves free across the view (the
+    // drive pad on a phone would sit on the chariot)
+    const ins = this.lowInsets();
+    // The camera keeps this framing as the chariot drives and turns; side
+    // on (shafts and all) it is twice as long as head on. If that would
+    // not fit between the panels down the sides (free driving on a
+    // tablet: the odometer one side, "See the gears" and the arrows the
+    // other), set it where the HUD leaves the most room, further back if
+    // it must be.
+    const round = new THREE.Box3(new THREE.Vector3(f.x - CHASE_ROOM, 0, f.z - CHASE_ROOM), new THREE.Vector3(f.x + CHASE_ROOM, FIGURE_TOP, f.z + CHASE_ROOM));
+    // A sheet pulled up over the view (free driving on a phone): the
+    // picture is moved up into what still shows (World #liftOver), so
+    // keep the chariot and the figure whole in that, further back.
+    const c = Math.min(this.cover(), 0.7);
+    if (c > 0.05) {
+      return this.#aimBox(round, dir, Math.max(d, this.#fitBox(round, dir, { ...none, top: c / 2, bottom: c / 2 }, 0.25)), none);
+    }
+    let best = { d: this.#fitBox(round, dir, ins, 0.25), ins };
+    if (best.d > d) {
+      for (const b of this.bands()) {
+        const bd = this.#fitBox(round, dir, b, 0.25);
+        if (bd < best.d * 0.95) best = { d: bd, ins: b };
+      }
+      if (best.ins !== ins) return this.#aimBox(round, dir, Math.max(d, best.d), best.ins);
+    }
+    // Across: the chariot about on the left third, as far as the panels
+    // down the sides leave its turning room clear (x: its middle, in halves
+    // of the view's width from the middle).
+    const { right, up } = axes(dir);
+    const centre = round.getCenter(new THREE.Vector3()), k = new THREE.Vector3();
+    let hw = 0;
+    for (let i = 0; i < 8; i++) {
+      k.set(i & 1 ? round.max.x : round.min.x, i & 2 ? round.max.y : round.min.y, i & 4 ? round.max.z : round.min.z).sub(centre);
+      hw = Math.max(hw, Math.abs(k.dot(right)) / (th * (d - k.dot(dir))));
+    }
+    const lo = -1 + 2 * ins.left + hw, hi = 1 - 2 * ins.right - hw;
+    const x = lo > hi ? (lo + hi) / 2 : THREE.MathUtils.clamp(-CHASE.left, lo, hi);
+    const tv = th / this.camera.aspect;
+    const target = new THREE.Vector3(f.x + 1, 7.5, f.z + 3.5)
+      .addScaledVector(right, -x * d * th)
+      .addScaledVector(up, -cap * tv * d);
+    return { target, pos: target.clone().addScaledVector(dir, d) };
+  }
+
+  /**
+   * How far right of the middle the gate's plaque is in a chase view (in
+   * halves of the view's width).
+   * @param {{pos: THREE.Vector3, target: THREE.Vector3}} c @param {Focus} f
+   */
+  #gateX(c, f) {
+    const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
+    const fwd = c.target.clone().sub(c.pos).normalize();
+    const right = fwd.clone().cross(new THREE.Vector3(0, 1, 0)).normalize();
+    const g = new THREE.Vector3(f.x, GATE.y, f.z + GATE.z).sub(c.pos);
+    return g.dot(right) / (g.dot(fwd) * th);
+  }
+
   /** Distance at which a sphere of radius r fills the view. @param {number} r */
   fit(r) {
     const v = THREE.MathUtils.degToRad(this.camera.fov);
@@ -305,48 +406,17 @@ export class CameraRig {
       case "follow": {
         // A chase camera that does not turn with the chariot: the chariot
         // turns on screen while the figure's hand keeps pointing at the gate.
-        const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
-        const side = THREE.MathUtils.clamp(Math.atan(th) * CHASE.side, THREE.MathUtils.degToRad(CHASE.least), THREE.MathUtils.degToRad(CHASE.most));
-        const dir = new THREE.Vector3(-Math.sin(side), CHASE.up, -Math.cos(side)).normalize();
-        const target = new THREE.Vector3(f.x + 1, 7.5, f.z + 3.5);
-        // Phones held upright (polish-mobile): fit() goes by the narrow width
-        // there and leaves the chariot small, so come in closer.
-        // A short stage (a tablet held upright, the lesson panel below it)
-        // leaves it small too, and so does a stage narrower than it is tall
-        // (a tablet held flat, the panel beside it).
-        const r = this.camera.aspect < 0.8 ? CHASE.close * 15.5 : this.short || this.camera.aspect < 1 ? CHASE.close * 16 : CHASE.wide * 19;
-        // ...but never so close that the figure's head leaves the top (a wide, short view)
-        const whole = new THREE.Box3(new THREE.Vector3(f.x - 5.5, 0, f.z - 5.5), new THREE.Vector3(f.x + 5.5, FIGURE_TOP, f.z + 5.5));
-        const d = Math.max(this.fit(r), this.#fitBox(whole, dir, { left: 0, right: 0, top: 0, bottom: 0 }, 1) * 1.08);
-        // in the middle of what the HUD leaves free across the view (the
-        // drive pad on a phone would sit on the chariot)
-        const ins = this.lowInsets();
-        // The camera keeps this framing as the chariot drives and turns; side
-        // on (shafts and all) it is twice as long as head on. If that would
-        // not fit between the panels down the sides (free driving on a
-        // tablet: the odometer one side, "See the gears" and the arrows the
-        // other), set it where the HUD leaves the most room, further back if
-        // it must be.
-        const round = new THREE.Box3(new THREE.Vector3(f.x - CHASE_ROOM, 0, f.z - CHASE_ROOM), new THREE.Vector3(f.x + CHASE_ROOM, FIGURE_TOP, f.z + CHASE_ROOM));
-        // A sheet pulled up over the view (free driving on a phone): the
-        // picture is moved up into what still shows (World #liftOver), so
-        // keep the chariot and the figure whole in that, further back.
-        const c = Math.min(this.cover(), 0.7);
-        if (c > 0.05) {
-          const none = { left: 0, right: 0, top: 0, bottom: 0 };
-          return this.#aimBox(round, dir, Math.max(d, this.#fitBox(round, dir, { ...none, top: c / 2, bottom: c / 2 }, 0.25)), none);
-        }
-        let best = { d: this.#fitBox(round, dir, ins, 0.25), ins };
-        if (best.d > d) {
-          for (const b of this.bands()) {
-            const bd = this.#fitBox(round, dir, b, 0.25);
-            if (bd < best.d * 0.95) best = { d: bd, ins: b };
+        // As far round as keeps the gate in (it doesn't hang on where the
+        // chariot is or which way it faces: the world keeps still).
+        let at = this.#chaseAt(f, CHASE.least);
+        for (let deg = CHASE.most; deg > CHASE.least; deg -= 1) {
+          const c = this.#chaseAt(f, deg);
+          if (this.#gateX(c, f) <= CHASE.gate) {
+            at = c;
+            break;
           }
-          if (best.ins !== ins) return this.#aimBox(round, dir, Math.max(d, best.d), best.ins);
         }
-        const right = new THREE.Vector3(0, 1, 0).cross(dir).normalize();
-        target.addScaledVector(right, ((ins.right - ins.left) / 2 + CHASE.left) * d * th);
-        return { target, pos: target.clone().addScaledVector(dir, d) };
+        return at;
       }
       case "gears": {
         const song = f.mechanism === "song";
@@ -354,7 +424,8 @@ export class CameraRig {
           // Not seeing through the body yet: the whole cart from behind and
           // above (sunlit side, figure in the picture); x-ray glides in close.
           const target = local(song ? 0.6 : 0.2, 5.6, 0);
-          return { target, pos: target.clone().addScaledVector(dirLocal(-1, 0.85, 1.05), this.fit(9.5)) };
+          const [lx, ly, lz] = OUTSIDE_DIR;
+          return { target, pos: target.clone().addScaledVector(dirLocal(lx, ly, lz * this.sunSide), this.fit(9.5)) };
         }
         // From behind and above, so the left wheel is on the left of the
         // screen: the wheels stand at the sides (local ±Z, radius 3) and would
@@ -436,8 +507,10 @@ export class CameraRig {
       }
       case "overview":
       default: {
+        const a = THREE.MathUtils.degToRad(this.overviewAt), e = THREE.MathUtils.degToRad(OVERVIEW.up);
+        const dir = new THREE.Vector3(-Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e));
         const target = new THREE.Vector3(f.x, 6.2, f.z + 4.6);
-        return { target, pos: target.clone().addScaledVector(OVERVIEW_DIR, this.fit(Math.max(OVERVIEW_R, this.extraRadius))) };
+        return { target, pos: target.clone().addScaledVector(dir, this.fit(Math.max(OVERVIEW.r, this.extraRadius))) };
       }
     }
   }
@@ -455,11 +528,19 @@ export class CameraRig {
     this.view = view;
     // the wheels view looks at the sunlit wheel: right (local +Z) or left
     if (view === "wheels") this.wheelSide = fromChariot(f, 0, 0, 1).dot(SUN_DIR) >= 0 ? 1 : -1;
+    // the sunlit side, and the overview's bearing, for the way the chariot faces now
+    this.sunSide = fromChariot(f, 0, 0, 1).dot(SUN_DIR) >= 0 ? 1 : -1;
+    if (view === "overview") this.overviewAt = sideOn(f.heading, OVERVIEW.from, OVERVIEW.to, OVERVIEW.usual);
     this.atPreset = true;
     // zooming in stops short of the chariot, except in the views that look inside it
     this.controls.minDistance = CLOSE.has(view) || this.apart ? 2 : 16;
     this.wantDist = 0;
     if (view !== "top") this.box = null;
+    // The glide sets off from where the camera was with respect to the
+    // chariot: a step that puts the chariot back at the start (it jumps
+    // there before the view is set) would otherwise swing the view over
+    // empty paving from where the chariot had got to.
+    const jump = new THREE.Vector3(f.x - this.last.x, 0, f.z - this.last.z);
     this.last = { x: f.x, z: f.z, heading: f.heading };
     if (instant) {
       const d = this.desired(view, f);
@@ -467,7 +548,7 @@ export class CameraRig {
       this.controls.target.copy(d.target);
       this.glide = null;
     } else {
-      this.glide = { fromPos: this.camera.position.clone(), fromTarget: this.controls.target.clone(), t: 0 };
+      this.glide = { fromPos: this.camera.position.clone().add(jump), fromTarget: this.controls.target.clone().add(jump), t: 0 };
     }
     this.controls.update();
   }
@@ -560,6 +641,10 @@ export class CameraRig {
     this.wantDist = 0;
     if (this.glide) {
       const g = this.glide;
+      // where it glides from moves with the chariot too
+      const mx = f.x - this.last.x, mz = f.z - this.last.z;
+      g.fromPos.x += mx; g.fromPos.z += mz;
+      g.fromTarget.x += mx; g.fromTarget.z += mz;
       g.t = Math.min(1, g.t + dt / (g.dur ?? GLIDE));
       const k = g.t * g.t * (3 - 2 * g.t);
       const d = this.desired(this.view, f);
@@ -667,6 +752,26 @@ export class CameraRig {
 function fromChariot(f, lx, ly, lz) {
   const c = Math.cos(f.heading), s = Math.sin(f.heading);
   return new THREE.Vector3(lx * c + lz * s, ly, -lx * s + lz * c).normalize();
+}
+
+/**
+ * The bearing between `from` and `to` (degrees south of west, seen from the
+ * chariot) most side on to a chariot facing `heading`, the nearest to
+ * `usual` of those about as good.
+ * @param {number} heading @param {number} from @param {number} to @param {number} usual
+ */
+function sideOn(heading, from, to, usual) {
+  const fx = Math.cos(heading), fz = -Math.sin(heading);
+  let best = usual, score = -Infinity;
+  for (let a = from; a <= to; a++) {
+    const r = THREE.MathUtils.degToRad(a);
+    const s = Math.abs(-Math.cos(r) * fz - Math.sin(r) * fx) - Math.abs(a - usual) * 0.002;
+    if (s > score) {
+      score = s;
+      best = a;
+    }
+  }
+  return best;
 }
 
 /**

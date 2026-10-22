@@ -40,7 +40,7 @@
  * What the 3D scene should look like when the step opens. Every field is optional;
  * omitted fields keep their current value, except `reset` which starts fresh.
  * @typedef {object} SceneDirective
- * @property {boolean} [reset] put the chariot back at the start, facing north, figure pointing south, clear trails
+ * @property {boolean} [reset] put the chariot back at the start, facing north (40° east of it in a step with "drive"), figure pointing south, clear trails
  * @property {MechanismId} [mechanism]
  * @property {ViewId} [view]
  * @property {boolean} [xray] shell transparent
