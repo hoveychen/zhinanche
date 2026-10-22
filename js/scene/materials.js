@@ -126,15 +126,19 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   wheel: { color: 0x7e2a1e, map: "woodSoft", roughness: 0.62, clearcoat: 0.3, clearcoatRoughness: 0.4, normal: 0.2, scale: 0.8, wear: [1, 1] },
   // The wheels' marker spoke: yellow lacquer.
   mark: { color: 0xe9c43a, map: "woodSoft", roughness: 0.42, clearcoat: 0.8, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.8, wear: [0.9, 0.8] },
-  // Left train blue, right train orange: painted, lacquered wood with the grain showing through.
-  blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  // The differential's carrier and pinions (the middle train): yellow paint, kept clean like the trains' colours.
-  yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 0.6, ao: false },
-  // The differential's inner teeth, painted like the gear they belong to (the roles say "tooth" for the clearance check).
-  peg_blue: { color: 0x2c64c8, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
-  peg_orange: { color: 0xea7d1c, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
-  peg_yellow: { color: 0xf2c230, map: "woodSoft", roughness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.18, normal: 0.3, scale: 1.4, ao: false },
+  // Left train blue, right train orange: stained wood, the photographed grain
+  // (photoWood) under the dye and a thin wax, not paint under a thick coat
+  // (painted and coated 0.9, saturated, they read as plastic). The dyes are
+  // the site's blue and orange a little greyed, and cooled against the scan's
+  // warm tint (1, 0.93, 0.85) so they keep their hue over the wood.
+  blue: { color: 0x486ec8, map: "wood", roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.35, normal: 0.5, scale: 0.6, ao: false },
+  orange: { color: 0xec8b47, map: "wood", roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.35, normal: 0.5, scale: 0.6, ao: false },
+  // The differential's carrier and pinions (the middle train): stained yellow, kept clean like the trains' colours.
+  yellow: { color: 0xf5d271, map: "wood", roughness: 0.55, clearcoat: 0.25, clearcoatRoughness: 0.35, normal: 0.5, scale: 0.6, ao: false },
+  // The differential's inner teeth, stained like the gear they belong to (the roles say "tooth" for the clearance check).
+  peg_blue: { color: 0x486ec8, map: "wood", roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.3, normal: 0.4, scale: 1.4, ao: false },
+  peg_orange: { color: 0xec8b47, map: "wood", roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.3, normal: 0.4, scale: 1.4, ao: false },
+  peg_yellow: { color: 0xf5d271, map: "wood", roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.3, normal: 0.4, scale: 1.4, ao: false },
   // Gilt fittings: the figure's lotus seat, crown and sash ends, the phoenix's beak, the pouches' tassels.
   gold: { color: 0xe6c98c, map: "metal", roughness: 0.2, metalness: 1, normal: 0.2, scale: 0.8 },
   marker: { color: 0xe41b2c, map: "woodSoft", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2, normal: 0.2, scale: 1, ao: false },
@@ -157,10 +161,12 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
  * @type {Record<string, number>}
  */
 export const TRAIN_SHADES = {
-  "wheel.L": 0x173a85, "diff.crown.L": 0x2c64c8, "song.foot.L": 0x2c64c8, "diff.sideA": 0x7db8ff, "song.small.L": 0x7db8ff,
-  "wheel.R": 0xb95e12, "diff.crown.R": 0xea7d1c, "song.foot.R": 0xea7d1c, "diff.sideB": 0xffa860, "song.small.R": 0xffa860,
+  "wheel.L": 0x2a4184, "diff.crown.L": 0x486ec8, "song.foot.L": 0x486ec8, "diff.sideA": 0x84b4f8, "song.small.L": 0x84b4f8,
+  "wheel.R": 0xba6935, "diff.crown.R": 0xec8b47, "song.foot.R": 0xec8b47, "diff.sideB": 0xffa86a, "song.small.R": 0xffa86a,
+  // (the light shades keep nearly all their colour: greyed over the wood they
+  // went white and plain timber)
   // the middle: the carrier a deep yellow, the pinions it carries a light one
-  "diff.carrier": 0xd49a14, "diff.pinion.0": 0xffd95a, "diff.pinion.1": 0xffd95a,
+  "diff.carrier": 0xd5a856, "diff.pinion.0": 0xffe27a, "diff.pinion.1": 0xffe27a,
 };
 
 /** Roles painted in their part's shade of its train's colour. */
