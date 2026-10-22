@@ -92,9 +92,10 @@ export function loadTextures(renderer, level) {
  * @property {"grain" | "roof"} [project]
  * @property {string} [mural] which of the box's paintings (photo.js murals()) is laid once over the whole sheet (muralUVs)
  * @property {false} [ao] false: never takes the baked occlusion atlas (a colour that must stay clean)
- * @property {[number, number] | [number, number, number]} [wear] lacquer: how far its edges are rubbed
- *   through to the black ground, how much dirt sits in its corners (0..1; the atlas's G and B) and how
- *   yellowed its varnish is (wear()); its gloss is the photographed lacquer's (photoLacquer)
+ * @property {[number, number] | [number, number, number] | [number, number, number, number]} [wear] lacquer: how far its edges are rubbed
+ *   through to the black ground, how much dirt sits in its corners (0..1; the atlas's G and B), how
+ *   yellowed its varnish is and whether it is the second tier's grid (1 its squares, 2 its strips:
+ *   each its own coat, latticeCells()) (wear()); its gloss is the photographed lacquer's (photoLacquer)
  */
 
 /** Role (GLB material name) → recipe. Colours are sRGB. */
@@ -121,6 +122,11 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   mural_dragon: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "dragon", wear: [0.4, 0.6, 1] },
   mural_tiger: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "tiger", wear: [0.4, 0.6, 1] },
   mural_flowers: { color: 0xffffff, map: "woodSoft", roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, normal: 0.08, scale: 0.6, mural: "flowers", wear: [0.4, 0.6, 1] },
+  // The second tier's grid (0016): the strips a shade lighter than the eaves,
+  // chamfered (the GLB), and a sheet of lacquer in each square; every square and
+  // strip its own coat (wear()'s cell): a flat even grid of one red was plastic.
+  lattice_bar: { color: 0x7a2a1f, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5, wear: [0.4, 0.8, 0, 2] },
+  lattice_cell: { color: 0xb44a36, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6, wear: [0, 0.6, 0, 1] },
   eave: { color: 0x6c2117, map: "woodSoft", roughness: 0.45, clearcoat: 0.8, clearcoatRoughness: 0.15, normal: 0.25, scale: 0.5, wear: [0.6, 0.8] },
   // The wheels: red lacquer worn thinner than the box's and dulled by the road.
   // (0x962c1e under a 0.6 coat went a glowing orange in the low sun, and the
@@ -214,7 +220,7 @@ export function makeMaterial(r, tex) {
     m.clearcoatRoughnessMap = m.roughnessMap;
     m.roughness = Math.min(1, 2 * r.roughness);
     m.clearcoatRoughness = Math.min(1, 2 * (r.clearcoatRoughness ?? 0));
-    wear(m, r.wear[0], r.wear[1], r.wear[2] ?? 0);
+    wear(m, r.wear[0], r.wear[1], r.wear[2] ?? 0, r.wear[3] ?? 0);
   }
   return m;
 }
@@ -243,17 +249,27 @@ const GRIME = new THREE.Color(0x5a4a3c);
  * dull and with no coat there; grime in the corners, darker and duller.
  * A painting under the coat (varnish > 0) is dulled and yellowed by it, as
  * old painted lacquer is: a sticker's clean colours were what it read as.
+ * The second tier's grid (cell 1 its squares, 2 its strips) takes a coat of
+ * its own in every square and strip (cellCoat()).
  * Copied onto the rig's clones (Material.copy leaves onBeforeCompile).
- * @param {THREE.MeshPhysicalMaterial} m @param {number} rub 0..1 @param {number} dirt 0..1 @param {number} [varnish] 0..1
+ * @param {THREE.MeshPhysicalMaterial} m @param {number} rub 0..1 @param {number} dirt 0..1 @param {number} [varnish] 0..1 @param {number} [cell] 0, 1, 2
  */
-export function wear(m, rub, dirt, varnish = 0) {
+export function wear(m, rub, dirt, varnish = 0, cell = 0) {
   const f = (/** @type {number} */ v) => v.toFixed(3);
   const c = (/** @type {THREE.Color} */ v) => `vec3(${f(v.r)}, ${f(v.g)}, ${f(v.b)})`;
-  m.userData.wear = [rub, dirt, varnish];
+  m.userData.wear = [rub, dirt, varnish, cell];
   m.onBeforeCompile = (shader) => {
+    if (cell) {
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nattribute vec4 cellInfo;\nvarying vec4 vCell;")
+        .replace("#include <begin_vertex>", "#include <begin_vertex>\nvCell = cellInfo;");
+      shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec4 vCell;");
+    }
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
 float wornEdge = 0.0;
+float cellCoat = 1.0;
+float cellCoatRough = 0.0;
 #if defined(USE_AOMAP) && defined(USE_ROUGHNESSMAP)
 {
   vec3 wz = texture2D(aoMap, vAoMapUv).rgb;
@@ -272,14 +288,84 @@ float wornEdge = 0.0;
   diffuseColor.rgb = mix(diffuseColor.rgb, ${c(GROUND)}, wornEdge * 0.85);
   diffuseColor.rgb *= mix(vec3(1.0), ${c(GRIME)}, grime * 0.7);
   roughnessFactor = min(1.0, mix(roughnessFactor, 0.72, wornEdge) + 0.35 * grime);
+  ${cell ? cellCoat(cell, c) : ""}
 }
 #endif`)
       .replace("#include <lights_physical_fragment>", `#include <lights_physical_fragment>
 #ifdef USE_CLEARCOAT
-material.clearcoat *= 1.0 - wornEdge;
+material.clearcoat *= (1.0 - wornEdge) * cellCoat;
+material.clearcoatRoughness = clamp(material.clearcoatRoughness + cellCoatRough, 0.0, 1.0);
 #endif`);
   };
-  m.customProgramCacheKey = () => `wear:${rub}:${dirt}:${varnish}`;
+  m.customProgramCacheKey = () => `wear:${rub}:${dirt}:${varnish}:${cell}`;
+}
+
+/** Bare wood where a square's coat is thinnest (linear): elm under the red, about as light. */
+const BARE = new THREE.Color(0x9a6040);
+/** Where a square's coat has flaked off: the ground's putty (灰底, linear), grey brown. */
+const PUTTY = new THREE.Color(0x957257);
+
+/**
+ * GLSL (in wear()'s block, after the edges and grime): the second tier's grid,
+ * each square (cell 1) or strip (2) its own coat from its seed (vCell.z; a
+ * square's own 0..1 across in vCell.xy, its height up the panel in vCell.w,
+ * latticeCells()). An old lacquered panel is not one even red, but nor is it
+ * a patchwork: the top rows sun-faded and chalky, the bottom ones darker with
+ * road dirt, and within that each square a little off its neighbours (one
+ * under a thicker, glossier coat, one so thin the grain shows through); dirt
+ * in a thin line along its strips, one in five flaked to the putty along part
+ * of an edge, a few crazed along the grain (流水断). The flakes and cracks
+ * are the photographed lacquer's B (the flake noise, run along the grain)
+ * at the square's own offset, so no two squares share them.
+ * @param {number} cell 1 squares, 2 strips @param {(v: THREE.Color) => string} c
+ */
+function cellCoat(cell, c) {
+  return `{
+    vec4 hc = fract(sin(vec4(1.0, 7.3, 13.1, 19.7) * (vCell.z * 91.7 + 3.1)) * 43758.5453);
+    vec4 hd = fract(sin(vec4(2.9, 5.1, 11.3, 17.9) * (vCell.z * 57.3 + 1.7)) * 24634.6345);
+    float l = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    // faded (paler, greyer, toward the pigment's pink) up the panel, where the sky has had it; a square or two more
+    float fade = clamp(0.5 * smoothstep(0.2, 1.0, vCell.w) + 0.6 * smoothstep(0.45, 1.0, hc.x), 0.0, 1.0);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l) * vec3(1.22, 1.0, 0.9), ${cell === 1 ? "0.45" : "0.25"} * fade);
+    // darker and duller down it, with the road's dust; each a little lighter or darker
+    float road = 1.0 - smoothstep(0.0, 0.6, vCell.w);
+    diffuseColor.rgb *= mix(0.8, 1.1, hc.y) * (1.0 - 0.16 * road);
+    roughnessFactor = clamp(roughnessFactor * mix(0.7, 1.35, hc.z) * (1.0 + 0.7 * fade + 0.5 * road), 0.08, 1.0);
+    // the coat chalky (rough) where faded or dusty, not gone: with no coat a square in the shade lost the sky's sheen and went black
+    cellCoat = mix(0.6, 1.0, hd.w);
+    cellCoatRough = 0.3 * fade + 0.25 * road + 0.3 * hc.z * hc.z;
+    ${cell === 1 ? `
+    float grain = texture2D(roughnessMap, (vRoughnessMapUv + hd.xy * 7.0) * vec2(1.0, 3.0)).b;
+    float rim = min(min(vCell.x, 1.0 - vCell.x), min(vCell.y, 1.0 - vCell.y));
+    // thin coat (one square in five): the wood's brown comes through along the grain, about as light as the red
+    float thin = smoothstep(0.8, 1.0, hc.w) * 0.45;
+    diffuseColor.rgb = mix(diffuseColor.rgb, ${c(BARE)} * (0.8 + 0.4 * grain), thin * smoothstep(0.35, 0.7, grain));
+    // dirt and old wax in a line against the strips
+    float edge = 1.0 - smoothstep(0.0, 0.07, rim);
+    diffuseColor.rgb *= 1.0 - 0.25 * edge;
+    roughnessFactor = min(1.0, roughnessFactor + 0.25 * edge);
+    cellCoatRough += 0.3 * edge;
+    // flakes: one square in five, off part of one edge (which and where from its seed) down to the putty
+    vec2 side = vCell.xy - 0.5;
+    float along = hd.x < 0.5 ? side.x : side.y;
+    float off = hd.x < 0.25 ? vCell.y : hd.x < 0.5 ? 1.0 - vCell.y : hd.x < 0.75 ? vCell.x : 1.0 - vCell.x;
+    float span = 1.0 - smoothstep(0.12, 0.3, abs(along - (hd.y - 0.5) * 0.6));
+    float chip = texture2D(roughnessMap, vRoughnessMapUv * 1.9 + hd.yx * 5.0).b;
+    float thr = step(0.8, hd.z) * 0.6 * span * (1.0 - smoothstep(0.0, mix(0.12, 0.3, hd.w), off));
+    float flake = 1.0 - smoothstep(thr - 0.05, thr, chip);
+    diffuseColor.rgb = mix(diffuseColor.rgb, ${c(PUTTY)} * (0.85 + 0.3 * grain), flake);
+    roughnessFactor = mix(roughnessFactor, 0.85, flake);
+    cellCoat *= 1.0 - flake;
+    cellCoatRough += 0.5 * flake;
+    // crazing along the grain in two squares of five: thin dark lines where the noise crosses a level
+    float crazed = step(0.6, hd.y);
+    float lv = grain * 9.0, w = fwidth(lv);
+    float d = abs(fract(lv + 0.5) - 0.5);
+    // a line a pixel or so wide; gone where the lines would crowd into noise (far off)
+    float crack = crazed * (1.0 - smoothstep(0.5 * w, 1.5 * w, d)) * (1.0 - smoothstep(0.12, 0.3, w));
+    diffuseColor.rgb *= 1.0 - 0.5 * crack;
+    roughnessFactor = min(1.0, roughnessFactor + 0.4 * crack);` : ""}
+  }`;
 }
 
 /**
@@ -411,6 +497,64 @@ export function faceUVs(geo, scale, mode, seed) {
 }
 
 /**
+ * The second tier's grid: each solid (a square's sheet, a strip) gets a seed,
+ * and a square its own 0..1 across and up (cellInfo: x across, y up, z the
+ * seed, w its middle's height up the whole grid; wear()'s cell). The solids are found by welding vertices at one place.
+ * @param {THREE.BufferGeometry} geo
+ */
+export function latticeCells(geo) {
+  const pos = geo.getAttribute("position");
+  if (!pos) return;
+  const n = pos.count, index = geo.getIndex();
+  const parent = new Int32Array(n).map((_, i) => i);
+  /** @param {number} i */
+  const find = (i) => {
+    while (parent[i] !== i) i = parent[i] = parent[parent[i]];
+    return i;
+  };
+  const tri = index ? index.count : n;
+  for (let t = 0; t < tri; t += 3) {
+    const a = index ? index.getX(t) : t;
+    for (let k = 1; k < 3; k++) parent[find(index ? index.getX(t + k) : t + k)] = find(a);
+  }
+  /** @type {Map<string, number>} */
+  const seen = new Map();
+  for (let i = 0; i < n; i++) {
+    const key = `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
+    const j = seen.get(key);
+    if (j === undefined) seen.set(key, i);
+    else parent[find(i)] = find(j);
+  }
+  /** @type {Map<number, THREE.Box3>} */
+  const boxes = new Map();
+  const P = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    let b = boxes.get(r);
+    if (!b) boxes.set(r, (b = new THREE.Box3()));
+    b.expandByPoint(P.fromBufferAttribute(pos, i));
+  }
+  geo.computeBoundingBox();
+  const all = /** @type {THREE.Box3} */ (geo.boundingBox);
+  const info = new Float32Array(n * 4);
+  const S = new THREE.Vector3(), C = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    const b = /** @type {THREE.Box3} */ (boxes.get(find(i)));
+    b.getSize(S);
+    b.getCenter(C);
+    P.fromBufferAttribute(pos, i);
+    // across: the wider of x and z (the sheet is thin across the other)
+    const ax = S.x > S.z ? 0 : 2;
+    info[i * 4] = (P.getComponent(ax) - b.min.getComponent(ax)) / Math.max(1e-6, S.getComponent(ax));
+    info[i * 4 + 1] = (P.y - b.min.y) / Math.max(1e-6, S.y);
+    info[i * 4 + 2] = hash01(`${C.x.toFixed(2)},${C.y.toFixed(2)},${C.z.toFixed(2)}`);
+    // a strip's height is its middle's (a post runs the whole way up)
+    info[i * 4 + 3] = (C.y - all.min.y) / Math.max(1e-6, all.max.y - all.min.y);
+  }
+  geo.setAttribute("cellInfo", new THREE.BufferAttribute(info, 4));
+}
+
+/**
  * UVs laying a painting (tools/assets/build_murals.py) over a thin sheet on
  * the outside of the box: u to the right as seen from outside, v up, the
  * sheet's extent to the picture's.
@@ -539,6 +683,7 @@ export function dressChariot(root, tex) {
     if (atlasUV) o.geometry.setAttribute("uv1", atlasUV);
     if (r.mural !== undefined) muralUVs(o.geometry);
     else faceUVs(o.geometry, r.scale, r.project ?? "grain", hash01(o.name));
+    if (r.wear?.[3]) latticeCells(o.geometry);
     const shade = SHADED.has(src.name) ? shadeOf(o) : null;
     const key = shade === null ? src.name : `${src.name}.${shade}`;
     let m = made.get(key);

@@ -118,6 +118,7 @@ LICENSES/             许可证全文
 - 宋尺取 0.31 米，只用于界面上换算「米」。
 - 庭院、牌楼和天空是布景，不是某座真实宫殿的复原。天空、地砖、墙、瓦、车木用的是实拍扫描（Poly Haven，CC0），做旧、阴影和天光遮蔽是程序生成或在加载时烘焙的，只为看起来像实拍；见[决策 0004](design/decisions/0004-realtime-photo-look.md)。地砖按行错缝、每块深浅不同，远景的雾，西墙外让院子落进树影、只把车留在光里的那片树林，也都是为画面安排的；见[决策 0013](design/decisions/0013-art-round-air-reds-light.md)。
 - 车漆上的擦痕、边角磨穿露出的黑底、角落的积灰和彩画上发黄的旧清漆，是用从模型烘出的边、凹处遮罩加实拍漆面扫描在着色器里做的，只为看起来像一辆用旧了的真车，不是哪件文物的实测。齿轮的蓝、橙、黄是为了分清左右两路染的木色，是教学用的。远处的树比墙和殿少吃一半雾。见[决策 0014](design/decisions/0014-lacquer-wear-stained-gears-cool-air.md)。
+- 上层箱的格子每格不一样：上排褪色发白、下排沾了路上的灰，有的格漆厚发亮、有的漆薄透出木纹，五格里约有一格边上掉漆露出灰底，有的格顺木纹开片，格条倒了角。这些都是按格随机种子在着色器里做的，只为打破「一整面一样的格子」的塑料感，不是考据；格子的格数、尺寸照旧。见[决策 0016](design/decisions/0016-lattice-aged-square-by-square.md)。
 - 院里院外的松和冷杉是 Poly Haven 的 CC0 树模型在 Blender 里从 16 个方向渲成的贴片，树的位置和成团方式是为画面排的。屋面的筒瓦垄、檐口的瓦当滴水椽头、檐下的斗拱是按清式做法的大意自己画的（高度场烘焙 + 实拍釉面颗粒），只求常用镜头下读得出来：垄距、斗拱攒数和彩画都没有按某座建筑考据；牌楼还是原来的平面屋顶，只贴了瓦和斗拱。见[决策 0005](design/decisions/0005-trees-and-eaves.md)。
 
 每个参数的出处和置信度都在 [`params/chariot.json`](params/chariot.json) 里，标签含义见 [`docs/sources.md`](docs/sources.md)。调研的依据和没覆盖到的地方见 [`research/REPORT.md`](research/REPORT.md)，书目见 [`research/sources/bibliography.md`](research/sources/bibliography.md)。
