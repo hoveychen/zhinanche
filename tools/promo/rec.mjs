@@ -75,6 +75,11 @@ try {
   await p.waitForTimeout(1500);
   await p.evaluate(() => window.__setup({ grain: false }));
   await p.addScriptTag({ path: process.env.SHOTS || 'shots.js' });
+  // the first shot placed and the still average settled before the clock is frozen
+  // (window.__hold: a timeline may keep the chariot still until then)
+  await p.evaluate(() => { window.__hold = true; delete document.body.dataset.still; });
+  await p.waitForFunction(() => document.body.dataset.still === 'settled', null, { timeout: 60000 });
+  await p.evaluate(() => { window.__hold = false; });
   const END = await p.evaluate(() => window.__T.end);
   const FROM = Number(process.env.FROM || (await p.evaluate(() => window.__T.from)) || 0), TO = Number(process.env.TO || END);
   await p.evaluate(() => window.__freeze());

@@ -2,9 +2,9 @@
 
 **中文** · [English](README.en.md)
 
-![庭院里的木车，车上的木人伸手指着南门](images/readme-hero.jpg)
+![庭院里的红漆宽箱车，车顶的木人伸手指着南门](images/readme-hero.jpg)
 
-<p align="center"><img src="images/readme-lap.gif" width="560" alt="车在原地转了一整圈，木人的手始终指着右边的南门；左上角的罗盘一直写着「木人指着正南」"><br><sub>车原地转一整圈，木人一直指着南门（镜头不动）</sub></p>
+<p align="center"><img src="images/readme-lap.gif" width="560" alt="红漆宽箱车在原地转了一整圈，木人的手始终指着右边的南门；左上角的罗盘一直写着「木人指着正南」"><br><sub>车原地转一整圈，木人一直指着南门（镜头不动）</sub></p>
 
 一辆两轮车，车上站着一个木人。车怎么拐弯，木人的手都一直指着南方。它里面没有磁铁，只有齿轮。
 
