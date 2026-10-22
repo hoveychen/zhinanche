@@ -22,6 +22,8 @@ COLORS = {
     "wheel": "#a2301f",      # the wheels' red lacquer, a shade darker than the box
     "mark": "#f0c93a",       # the wheels' marker spoke (yellow, reads against the red)
     "eave": "#7a2a1f",
+    "lattice_bar": "#7a2a1f",   # the second tier's grid: its strips and the lacquer in its squares (0016)
+    "lattice_cell": "#b8382c",
     "blue": "#2f6fd6",
     "orange": "#f08a24",
     "gold": "#e5b53b",
@@ -108,6 +110,16 @@ class MB:
                 f = list(reversed(f))
             self.faces.append([base + i for i in f])
             self.fmat.append(mi)
+
+    def quad(self, pts, out, mat):
+        """One planar face (not a solid), turned to face along `out`: a sheet laid on a face."""
+        pts = [V(p) for p in pts]
+        n = (pts[1] - pts[0]).cross(pts[2] - pts[0])
+        base = len(self.verts)
+        self.verts += pts
+        idx = [base + i for i in range(len(pts))]
+        self.faces.append(idx if n.dot(V(out)) > 0 else list(reversed(idx)))
+        self.fmat.append(self._mi(mat))
 
     def prism(self, poly, e, mat):
         """Extrude a planar convex polygon (world points) by vector e."""

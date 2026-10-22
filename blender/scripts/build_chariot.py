@@ -375,16 +375,32 @@ def railing(mb, x0, x1, y0, y1, z0, h, step=0.9, post=0.08, mat="lacquer"):
             mb.beam((ax, ay, zr), (bx, by, zr), s, s, mat)
 
 
-def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="eave", mural=None, heart=None):
+def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="eave", mural=None, heart=None,
+            cell=None, chamfer=0.0):
     """The painted grid of squares on a red panel (卤簿图): thin strips on the panel's face.
     axis 'y': panel in an x-z plane (u = x, w = z); 'x': panel in a y-z plane (u = y, w = z).
     mural: a role for the painting under the strips (a thin sheet on the panel over the grid's
     area: materials.js lays the painting over it, one picture per square); heart = (i0, i1, j0, j1):
-    heart: the middle cells left open for one bigger picture (the strips stop at its edges)."""
+    heart: the middle cells left open for one bigger picture (the strips stop at its edges).
+    cell: a role for a thin sheet of lacquer in each square, under the strips' edges, one solid
+    a square (materials.js latticeCells() gives each its own wear: an old coat is not even);
+    chamfer: the strips' outer corners cut (they catch the light along their edges)."""
     nu, nw = max(1, round((u1 - u0) / step)), max(1, round((w1 - w0) / step))
 
+    def P(u, w, d):
+        return (u, d, w) if axis == "y" else (d, u, w)
+
     def strip(ua, ub, wa, wb):
-        if axis == "y":
+        if chamfer > 0:
+            # along its length, the section (across, depth) with its corners cut
+            dm, dd = (depth0 + depth1) / 2, abs(depth1 - depth0)
+            if ub - ua > wb - wa:
+                wm = (wa + wb) / 2
+                mb.bar(P(ua, wm, dm), (wb - wa, dd), P(ub, wm, dm), (wb - wa, dd), mat, up=P(0, 0, 1), chamfer=chamfer)
+            else:
+                um = (ua + ub) / 2
+                mb.bar(P(um, wa, dm), (ub - ua, dd), P(um, wb, dm), (ub - ua, dd), mat, up=P(0, 0, 1), chamfer=chamfer)
+        elif axis == "y":
             mb.box((ua, depth0, wa), (ub, depth1, wb), mat)
         else:
             mb.box((depth0, ua, wa), (depth1, ub, wb), mat)
@@ -407,6 +423,17 @@ def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="
             strip(U(i1), u1, w - bar / 2, w + bar / 2)
         else:
             strip(u0, u1, w - bar / 2, w + bar / 2)
+    if cell:
+        # just off the panel's face (the depth nearer the middle), each square's sheet a little
+        # under its strips: one face, not a thin box (a box's buried back and slivers of sides
+        # baked black into the atlas over the face's own island)
+        d = min(depth0, depth1, key=abs)
+        e = 0.004 if d > 0 else -0.004
+        out = P(0, 0, 1 if d > 0 else -1)
+        for i in range(nu):
+            for j in range(nw):
+                ua, ub, wa, wb = U(i) + bar / 2 - 0.01, U(i + 1) - bar / 2 + 0.01, Wz(j) + bar / 2 - 0.01, Wz(j + 1) - bar / 2 + 0.01
+                mb.quad([P(ua, wa, d + e), P(ub, wa, d + e), P(ub, wb, d + e), P(ua, wb, d + e)], out, cell)
     if mural:
         # on the panel's face (the depth nearer the middle), under the strips
         d = min(depth0, depth1, key=abs)
@@ -417,6 +444,10 @@ def lattice(mb, axis, u0, u1, w0, w1, depth0, depth1, step=0.85, bar=0.07, mat="
         else:
             mb.box((da, u0, w0), (db, u1, w1), mural)
         print(f"MURAL {mural} cells {nu} x {nw} heart {heart} size {u1 - u0:.3f} x {w1 - w0:.3f}")
+
+
+# the second tier's grid (0016): its strips chamfered, a sheet of lacquer in each square
+TIER_GRID = dict(step=0.75, mat="lattice_bar", cell="lattice_cell", chamfer=0.016)
 
 
 def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts, extra_frame=None):
@@ -498,9 +529,9 @@ def body(L, root, x0, x1, bx0, bx1, board_z0, side_holes, floor_holes, mid_posts
                [(bx0 - 0.1, -by - 0.1, bz1 + 0.3), (bx1 + 0.1, -by - 0.1, bz1 + 0.3), (bx1 + 0.1, by + 0.1, bz1 + 0.3), (bx0 - 0.1, by + 0.1, bz1 + 0.3)], "eave")
     mb.box((tx0, -ty, tz0), (tx1, ty, tz1), "lacquer")
     for sy in (1, -1):
-        lattice(mb, "y", tx0 + 0.25, tx1 - 0.25, tz0 + 0.25, tz1 - 0.25, *sorted((sy * ty, sy * (ty + 0.05))), step=0.75)
-    lattice(mb, "x", -ty + 0.25, ty - 0.25, tz0 + 0.25, tz1 - 0.25, tx1, tx1 + 0.05, step=0.75)
-    lattice(mb, "x", -ty + 0.25, ty - 0.25, tz0 + 0.25, tz1 - 0.25, tx0 - 0.05, tx0, step=0.75)
+        lattice(mb, "y", tx0 + 0.25, tx1 - 0.25, tz0 + 0.25, tz1 - 0.25, *sorted((sy * ty, sy * (ty + 0.05))), **TIER_GRID)
+    lattice(mb, "x", -ty + 0.25, ty - 0.25, tz0 + 0.25, tz1 - 0.25, tx1, tx1 + 0.05, **TIER_GRID)
+    lattice(mb, "x", -ty + 0.25, ty - 0.25, tz0 + 0.25, tz1 - 0.25, tx0 - 0.05, tx0, **TIER_GRID)
     # 鏤拱: a band of bracket blocks with openings between them, all round
     step = 0.6
     for sy in (1, -1):
