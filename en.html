@@ -9,18 +9,18 @@
     <!-- The English entry: index.html with this <head> in English, so link
          previews (crawlers run no JS) are in English, and the page opens in
          English (data-entry, js/i18n.js). Same js/ and css/; keep the <body>
-         as index.html's (tests/entry.test.js). The site's address is not decided yet, so og:image and the
-         hreflang links are relative; most crawlers want absolute URLs: when the
-         site goes up, set og:url and make og:image / twitter:image / hreflang
-         absolute here and in index.html (README.en.md, "Publishing"). -->
-    <link rel="alternate" hreflang="zh-CN" href="./" />
-    <link rel="alternate" hreflang="en" href="en.html" />
-    <link rel="alternate" hreflang="x-default" href="./" />
+         as index.html's (tests/entry.test.js). Crawlers want absolute URLs, so og:url, og:image / twitter:image and
+         the hreflang links name the published site (SITE in js/site.js,
+         README.en.md "Publishing"); move the site and they change here and in index.html. -->
+    <link rel="alternate" hreflang="zh-CN" href="https://hoveychen.github.io/zhinanche/" />
+    <link rel="alternate" hreflang="en" href="https://hoveychen.github.io/zhinanche/en.html" />
+    <link rel="alternate" hreflang="x-default" href="https://hoveychen.github.io/zhinanche/" />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hoveychen.github.io/zhinanche/en.html" />
     <meta property="og:site_name" content="South-Pointing Chariot" />
     <meta property="og:title" content="No magnets. Just gears. The 1,000-year-old south-pointing chariot" />
     <meta property="og:description" content="A compass with no magnet, from ancient China. Drive it in your browser, draw it a road, X-ray it and take its gears apart to see why the wooden man always points south." />
-    <meta property="og:image" content="images/og.en.jpg" />
+    <meta property="og:image" content="https://hoveychen.github.io/zhinanche/images/og.en.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="The same wooden cart three times as it turns round in a palace courtyard; each time the little wooden man on top points his arm at the red South Gate" />
@@ -29,7 +29,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="No magnets. Just gears. The 1,000-year-old south-pointing chariot" />
     <meta name="twitter:description" content="A compass with no magnet, from ancient China. Drive it, X-ray it and take it apart in your browser to see how the gears keep the wooden man pointing south." />
-    <meta name="twitter:image" content="images/og.en.jpg" />
+    <meta name="twitter:image" content="https://hoveychen.github.io/zhinanche/images/og.en.jpg" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23c8361f'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23fbf8f1' font-family='serif'%3E南%3C/text%3E%3C/svg%3E" />
     <link rel="stylesheet" href="css/style.css" />
     <script type="importmap">

@@ -53,12 +53,14 @@ pnpm check:model   # checks the gears don't collide
 
 ## Publishing
 
-Where it will live isn't decided yet. Before it goes up, fill in:
+The site is on GitHub Pages at <https://hoveychen.github.io/zhinanche/en.html> (Chinese: <https://hoveychen.github.io/zhinanche/>), the source at <https://github.com/hoveychen/zhinanche>. The repository is the site, with no build step: in the repository's Pages settings, deploy from a branch, `main`, folder `/`. Keep the empty `.nojekyll` at the root: without it GitHub Pages runs the site through Jekyll, which leaves out `vendor/`, and three.js would not load.
 
-- `repo` in [`js/site.js`](js/site.js): the source repository; once set, a "Source code" link shows under the lesson list.
-- The link previews in the `<head>` of [`index.html`](index.html) (Chinese) and [`en.html`](en.html) (English). `og:image` / `twitter:image` are relative (`images/og.jpg`, `images/og.en.jpg`) and most sites want absolute URLs: make them `https://<site>/images/og.jpg` and `https://<site>/images/og.en.jpg`, add `<meta property="og:url" content="https://<site>/">` (and `…/en.html` in en.html), and make the three `hreflang` links absolute too.
+The address is written in three places; move the site and change them together (`tests/entry.test.js` checks they agree):
 
-Post `https://<site>/en.html` to English-speaking places (on GitHub Pages `https://<site>/en` works as well). The preview images (1200×630) are screenshots of the 3D scene with the title laid over it.
+- `site` and `repo` in [`js/site.js`](js/site.js); with `repo` set, a "Source code" link shows under the lesson list.
+- The link previews in the `<head>` of [`index.html`](index.html) (Chinese) and [`en.html`](en.html) (English): `og:url`, `og:image` / `twitter:image` and the three `hreflang` links are absolute, as most sites want for previews.
+
+Post `…/en.html` to English-speaking places (on GitHub Pages `…/en` works as well). The preview images (1200×630) are screenshots of the 3D scene with the title laid over it.
 
 ## How faithful is it?
 

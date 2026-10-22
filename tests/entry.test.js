@@ -5,6 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
+import { SITE } from "../js/site.js";
 
 const read = (/** @type {string} */ f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
 const zh = read("index.html");
@@ -39,9 +40,12 @@ test("en.html opens in English and previews in English", () => {
   assert.match(en, /<html lang="en" data-entry="en">/);
   assert.equal(meta(en, "og:locale"), "en_US");
   assert.equal(meta(zh, "og:locale"), "zh_CN");
-  assert.equal(meta(en, "og:image"), "images/og.en.jpg");
-  assert.equal(meta(en, "twitter:image", "name"), "images/og.en.jpg");
-  assert.equal(meta(zh, "og:image"), "images/og.jpg");
+  assert.equal(meta(en, "og:image"), `${SITE.site}images/og.en.jpg`);
+  assert.equal(meta(en, "twitter:image", "name"), `${SITE.site}images/og.en.jpg`);
+  assert.equal(meta(zh, "og:image"), `${SITE.site}images/og.jpg`);
+  assert.equal(meta(zh, "twitter:image", "name"), `${SITE.site}images/og.jpg`);
+  assert.equal(meta(zh, "og:url"), SITE.site);
+  assert.equal(meta(en, "og:url"), `${SITE.site}en.html`);
   for (const f of ["images/og.jpg", "images/og.en.jpg"]) assert.ok(existsSync(new URL(`../${f}`, import.meta.url)), f);
   // nothing in en.html's head that a crawler shows is still in Chinese
   const head = en.slice(0, en.indexOf("</head>"));
@@ -52,8 +56,8 @@ test("en.html opens in English and previews in English", () => {
 
 test("each entry names the other as its alternate language", () => {
   for (const h of [zh, en]) {
-    assert.match(h, /<link rel="alternate" hreflang="zh-CN" href="\.\/" \/>/);
-    assert.match(h, /<link rel="alternate" hreflang="en" href="en\.html" \/>/);
-    assert.match(h, /<link rel="alternate" hreflang="x-default" href="\.\/" \/>/);
+    assert.ok(h.includes(`<link rel="alternate" hreflang="zh-CN" href="${SITE.site}" />`));
+    assert.ok(h.includes(`<link rel="alternate" hreflang="en" href="${SITE.site}en.html" />`));
+    assert.ok(h.includes(`<link rel="alternate" hreflang="x-default" href="${SITE.site}" />`));
   }
 });
