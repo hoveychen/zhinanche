@@ -111,8 +111,10 @@ export const RECIPES = /** @type {Record<string, Recipe>} */ ({
   // and purer than the court's weathered reds (0xa82a1d was as dark and no
   // purer than the palace's columns, and the chariot sank into them), but a
   // pigment, not a light: 0xc83a22 (C 72) came out in the low sun as the
-  // screen's purest red (blue 10 of 255), a toy's plastic.
-  lacquer: { color: 0xb8432f, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6, wear: [0.8, 0.8] },
+  // screen's purest red (blue 10 of 255), a toy's plastic. As light as that
+  // (L 50, C 60): the corners' grime (wear()) darkens it, and at 0xb8432f the
+  // box's lit faces fell below the paving's (0013 put the chariot in the sun).
+  lacquer: { color: 0xc8503a, map: "woodSoft", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.12, normal: 0.25, scale: 0.6, wear: [0.8, 0.8] },
   // The box's paintings (宋史: 兩箱畫青龍、白虎，四面畫花鳥): plain lacquer red (a
   // one-texel map, dressChariot) till the painting atlas is in (photoMurals),
   // under a thinner coat than the box's.
@@ -261,10 +263,11 @@ float wornEdge = 0.0;
   // the coat a little uneven: thicker and darker, thinner and paler, in patches a chi or two across
   ${varnish ? `{
     float l = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l), ${f(0.3 * varnish)}) * mix(vec3(1.0), vec3(0.96, 0.84, 0.62), ${f(varnish)});
+    // yellowed more than darkened (the tint's luminance 0.94; at 0.85 the paintings sank to mud)
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l), ${f(0.3 * varnish)}) * mix(vec3(1.0), vec3(1.06, 0.93, 0.69), ${f(varnish)});
   }` : ""}
   float patchy = texture2D(roughnessMap, vRoughnessMapUv * 0.27 + 0.31).b;
-  diffuseColor.rgb *= mix(0.78, 1.08, patchy);
+  diffuseColor.rgb *= mix(0.85, 1.15, patchy); // patchy is even over 0..1: no darker on the whole
   diffuseColor.rgb = mix(diffuseColor.rgb, ${c(GROUND)}, wornEdge * 0.85);
   diffuseColor.rgb *= mix(vec3(1.0), ${c(GRIME)}, grime * 0.7);
   roughnessFactor = min(1.0, mix(roughnessFactor, 0.72, wornEdge) + 0.35 * grime);
