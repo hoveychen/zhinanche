@@ -49,9 +49,12 @@ const HERO_DIR = new THREE.Vector3(-Math.sin(THREE.MathUtils.degToRad(50)), 0.14
  * half its width, within these bounds): the further round, the more of the
  * near wheel shows under the box, and the further right the gate is. The
  * chariot is set this much of half the width left of the middle, so the gate
- * has room on the right; and drawn this much bigger than the sphere fit.
+ * has room on the right; and drawn this much bigger than the sphere fit
+ * (closer on a wide stage: there the chariot was a third of the picture,
+ * measured, and lost against the court; on a narrow one, closer put the near
+ * wheel under the home page's caption).
  */
-const CHASE = { side: 0.85, least: 11, most: 22, up: 0.14, left: 0.1, close: 0.68 };
+const CHASE = { side: 0.85, least: 11, most: 22, up: 0.14, left: 0.1, close: 0.78, wide: 0.7 };
 /** How far round the chariot the chase view keeps clear of the HUD, whichever way it turns (the shafts reach further). */
 const CHASE_ROOM = 5;
 
@@ -311,7 +314,7 @@ export class CameraRig {
         // A short stage (a tablet held upright, the lesson panel below it)
         // leaves it small too, and so does a stage narrower than it is tall
         // (a tablet held flat, the panel beside it).
-        const r = CHASE.close * (this.camera.aspect < 0.8 ? 15.5 : this.short || this.camera.aspect < 1 ? 16 : 19);
+        const r = this.camera.aspect < 0.8 ? CHASE.close * 15.5 : this.short || this.camera.aspect < 1 ? CHASE.close * 16 : CHASE.wide * 19;
         // ...but never so close that the figure's head leaves the top (a wide, short view)
         const whole = new THREE.Box3(new THREE.Vector3(f.x - 5.5, 0, f.z - 5.5), new THREE.Vector3(f.x + 5.5, FIGURE_TOP, f.z + 5.5));
         const d = Math.max(this.fit(r), this.#fitBox(whole, dir, { left: 0, right: 0, top: 0, bottom: 0 }, 1) * 1.08);
